@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Customers — Fitaniya</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <a href="/coach" class="sidebar-logo">FIT<span>ANIYA</span></a>
+    <nav class="sidebar-nav">
+      <a href="/coach" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
+      <a href="/coach/schedule" class="nav-item"><span class="icon">📅</span>My Schedule</a>
+      <a href="/coach/customers" class="nav-item active"><span class="icon">👥</span>My Customers</a>
+      <a href="/coach/sessions" class="nav-item"><span class="icon">📝</span>Session Notes</a>
+    </nav>
+    <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
+  </aside>
+  <main class="main-content">
+    <div class="page-header mb-32"><h2>My Customers</h2><p>View and manage your assigned customers</p></div>
+    <div id="customers-wrap"><div class="spinner"></div></div>
+  </main>
+</div>
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script>
+  async function init() {
+    const data = await api.get('/api/coach/my-customers');
+    const el = document.getElementById('customers-wrap');
+    if (!data?.customers?.length) {
+      el.innerHTML = '<div class="card text-center" style="padding:40px"><p class="text-dim">No customers assigned yet.</p></div>'; return;
+    }
+    el.innerHTML = data.customers.map(c => `
+      <div class="card mb-16 flex-between">
+        <div class="flex gap-16" style="align-items:center">
+          <img src="/images/default-avatar.png" style="width:48px;height:48px;border-radius:50%;border:2px solid var(--orange)" />
+          <div>
+            <div style="font-weight:600;color:var(--white)">${c.name}</div>
+            <div class="text-dim text-small">${c.email} · ${c.phone || '—'}</div>
+            <div class="flex gap-8 mt-4">
+              ${c.fitness_goal ? `<span class="badge badge-blue">${c.fitness_goal}</span>` : ''}
+              ${c.food_preference ? `<span class="badge badge-orange">${c.food_preference}</span>` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="text-small text-dim">Sessions</div>
+          <div style="font-family:var(--font-display);font-size:1.4rem;color:var(--orange)">${c.sessions_used}/${c.sessions_total}</div>
+          <span class="badge ${c.membership_status === 'active' ? 'badge-green' : 'badge-yellow'} mt-4">${c.membership_status}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+  init();
+</script>
+</body>
+</html>

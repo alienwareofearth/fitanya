@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Success — Fitaniya</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    body { display:flex;align-items:center;justify-content:center;min-height:100vh; }
+    .success-wrap { max-width:480px;width:100%;padding:24px;text-align:center; }
+    .checkmark { font-size:80px;margin-bottom:24px;animation:bounce 0.6s ease; }
+    @keyframes bounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
+  </style>
+</head>
+<body>
+  <div class="success-wrap">
+    <div class="card card-glow" style="padding:48px">
+      <div class="checkmark" id="status-icon">⏳</div>
+      <h2 style="font-family:var(--font-display);font-size:2.2rem;margin-bottom:12px" id="status-title">Verifying Payment...</h2>
+      <p class="text-dim mb-32" id="status-msg">Please wait while we confirm your payment.</p>
+      <div id="status-actions"></div>
+    </div>
+  </div>
+  <div id="toast-container"></div>
+  <script src="/js/app.js"></script>
+  <script>
+    async function verifyPayment() {
+      const params = new URLSearchParams(window.location.search);
+      const txnId = params.get('transactionId') || params.get('merchantTransactionId');
+
+      if (!txnId) {
+        // PhonePe redirects back — try to get from session via API
+        const data = await api.get('/api/payments/verify/latest');
+        handleResult(data);
+        return;
+      }
+
+      const data = await api.get('/api/payments/verify/' + txnId);
+      handleResult(data);
+    }
+
+    function handleResult(data) {
+      if (data?.success) {
+        document.getElementById('status-icon').textContent = '🎉';
+        document.getElementById('status-title').textContent = 'Payment Successful!';
+        document.getElementById('status-msg').textContent = 'Your payment is confirmed. Check your email for next steps!';
+        document.getElementById('status-actions').innerHTML = `
+          <a href="/dashboard" class="btn btn-primary btn-full mb-16">Go to Dashboard</a>
+          <p class="text-dim text-small">A confirmation email has been sent to your inbox.</p>
+        `;
+      } else {
+        document.getElementById('status-icon').textContent = '⚠️';
+        document.getElementById('status-title').textContent = 'Payment Pending';
+        document.getElementById('status-msg').textContent = 'Your payment is being processed. Check your email or contact support.';
+        document.getElementById('status-actions').innerHTML = `
+          <a href="/" class="btn btn-outline btn-full">Back to Home</a>
+        `;
+      }
+    }
+
+    verifyPayment();
+  </script>
+</body>
+</html>

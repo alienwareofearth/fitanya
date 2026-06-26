@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Members — Fitaniya Admin</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <a href="/admin" class="sidebar-logo" style="font-size:20px;padding:22px 20px">FIT<span>ANIYA</span></a>
+    <nav class="sidebar-nav">
+      <a href="/admin" class="nav-item"><span class="icon">📊</span>Dashboard</a>
+      <a href="/admin/packages" class="nav-item"><span class="icon">📦</span>Packages & Prices</a>
+      <a href="/admin/discounts" class="nav-item"><span class="icon">🏷️</span>Discounts</a>
+      <a href="/admin/coaches" class="nav-item"><span class="icon">🏋️</span>Coaches</a>
+      <a href="/admin/members" class="nav-item active"><span class="icon">👥</span>Members</a>
+      <a href="/admin/stories" class="nav-item"><span class="icon">📸</span>Stories</a>
+      <a href="/admin/diet" class="nav-item"><span class="icon">🥗</span>Diet Plans</a>
+      <a href="/admin/settings" class="nav-item"><span class="icon">⚙️</span>Settings</a>
+    </nav>
+    <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
+  </aside>
+  <main class="main-content">
+    <div class="page-header mb-32"><h2>Members</h2><p>View all members, their progress and coach assignments</p></div>
+    <div class="card mb-16">
+      <input class="form-control" id="search" placeholder="🔍 Search by name or email..." oninput="filterMembers()" style="max-width:320px" />
+    </div>
+    <div id="members-wrap"><div class="spinner"></div></div>
+  </main>
+</div>
+
+<!-- Reassign Coach Modal -->
+<div class="modal-overlay hidden" id="reassign-modal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="document.getElementById('reassign-modal').classList.add('hidden')">×</button>
+    <h3 class="modal-title">Reassign Coach</h3>
+    <input type="hidden" id="reassign-member-id" />
+    <div class="form-group">
+      <label>Select New Coach</label>
+      <select class="form-control" id="reassign-coach-id"></select>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doReassign()">Reassign Coach</button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script>
+  let allMembers = [];
+
+  async function init() {
+    const data = await api.get('/api/admin/members');
+    if (!data?.success) { window.location.href = '/login'; return; }
+    allMembers = data.members || [];
+    renderMembers(allMembers);
+    loadCoachOptions();
+  }
+
+  async function loadCoachOptions() {
+    const data = await api.get('/api/admin/coaches');
+    const sel = document.getElementById('reassign-coach-id');
+    sel.innerHTML = (data?.coaches || []).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  }
+
+  function renderMembers(members) {
+    const el = document.getElementById('members-wrap');
+    if (!members.length) { el.innerHTML = '<div class="card"><p class="text-dim">No members found.</p></div>'; return; }
+    el.innerHTML = `<div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>Email</th><th>Package</th><th>Coach</th><th>Sessions</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${members.map(m => `<tr>
+          <td style="font-weight:600;color:var(--white)">${m.name}</td>
+          <td class="text-dim">${m.email}</td>
+          <td>${m.package_name||'—'}</td>
+          <td>${m.coach_name||'<span class="text-dim">Unassigned</span>'}</td>
+          <td>${m.sessions_used!=null ? m.sessions_used+'/'+m.sessions_total : '—'}</td>
+          <td><span class="badge ${m.membership_status==='active'?'badge-green':'badge-yellow'}">${m.membership_status||'no plan'}</span></td>
+          <td><button class="btn btn-dark btn-sm" onclick="openReassign(${m.id})">Reassign Coach</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div></div>`;
+  }
+
+  function filterMembers() {
+    const q = document.getElementById('search').value.toLowerCase();
+    renderMembers(allMembers.filter(m => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)));
+  }
+
+  function openReassign(memberId) {
+    document.getElementById('reassign-member-id').value = memberId;
+    document.getElementById('reassign-modal').classList.remove('hidden');
+  }
+
+  async function doReassign() {
+    const memberId = document.getElementById('reassign-member-id').value;
+    const coachId = document.getElementById('reassign-coach-id').value;
+    const data = await api.post('/api/admin/members/' + memberId + '/reassign-coach', { coach_id: coachId });
+    if (data?.success) {
+      toast('Coach reassigned!', 'success');
+      document.getElementById('reassign-modal').classList.add('hidden');
+      init();
+    } else toast(data?.error || 'Failed', 'error');
+  }
+
+  init();
+</script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diet Plans — Fitaniya Admin</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <a href="/admin" class="sidebar-logo" style="font-size:20px;padding:22px 20px">FIT<span>ANIYA</span></a>
+    <nav class="sidebar-nav">
+      <a href="/admin" class="nav-item"><span class="icon">📊</span>Dashboard</a>
+      <a href="/admin/packages" class="nav-item"><span class="icon">📦</span>Packages & Prices</a>
+      <a href="/admin/discounts" class="nav-item"><span class="icon">🏷️</span>Discounts</a>
+      <a href="/admin/coaches" class="nav-item"><span class="icon">🏋️</span>Coaches</a>
+      <a href="/admin/members" class="nav-item"><span class="icon">👥</span>Members</a>
+      <a href="/admin/stories" class="nav-item"><span class="icon">📸</span>Stories</a>
+      <a href="/admin/diet" class="nav-item active"><span class="icon">🥗</span>Diet Plans</a>
+      <a href="/admin/settings" class="nav-item"><span class="icon">⚙️</span>Settings</a>
+    </nav>
+    <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
+  </aside>
+  <main class="main-content">
+    <div class="page-header flex-between mb-32">
+      <div><h2>Diet Plans</h2><p>Create and manage meal plan templates for members</p></div>
+      <button class="btn btn-primary" onclick="document.getElementById('add-modal').classList.remove('hidden')">+ Add Plan</button>
+    </div>
+    <div id="plans-wrap"><div class="spinner"></div></div>
+  </main>
+</div>
+
+<div class="modal-overlay hidden" id="add-modal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="document.getElementById('add-modal').classList.add('hidden')">×</button>
+    <h3 class="modal-title">Add Diet Plan</h3>
+    <div class="form-group"><label>Plan Name *</label><input class="form-control" id="p-name" placeholder="e.g. Veg Fat Loss Plan" /></div>
+    <div class="grid-2 gap-12">
+      <div class="form-group"><label>Food Preference *</label>
+        <select class="form-control" id="p-food"><option>Veg</option><option>Vegan</option><option>Non-Veg</option><option>all</option></select>
+      </div>
+      <div class="form-group"><label>Fitness Goal</label>
+        <select class="form-control" id="p-goal"><option value="">All Goals</option><option>Get Lean</option><option>Build Muscle</option><option>Tone &amp; Sculpt</option><option>Improve Fitness</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>Daily Calories Target</label><input class="form-control" type="number" id="p-cals" placeholder="e.g. 1800" /></div>
+    <div class="form-group"><label>Description</label><textarea class="form-control" id="p-desc" rows="2"></textarea></div>
+    <button class="btn btn-primary btn-full" onclick="addPlan()">Create Plan</button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script>
+  async function init() {
+    const data = await api.get('/api/admin/diet-plans');
+    if (!data?.success) { window.location.href = '/login'; return; }
+    const el = document.getElementById('plans-wrap');
+    if (!data.plans?.length) { el.innerHTML = '<div class="card"><p class="text-dim">No diet plans yet. Create templates for your members!</p></div>'; return; }
+    el.innerHTML = `<div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>Food Pref</th><th>Goal</th><th>Calories/Day</th><th>Status</th></tr></thead>
+      <tbody>
+        ${data.plans.map(p => `<tr>
+          <td style="font-weight:600;color:var(--white)">${p.name}</td>
+          <td><span class="badge badge-orange">${p.food_preference}</span></td>
+          <td>${p.fitness_goal||'All Goals'}</td>
+          <td>${p.calories_per_day ? p.calories_per_day + ' kcal' : '—'}</td>
+          <td><span class="badge ${p.is_active?'badge-green':'badge-red'}">${p.is_active?'Active':'Inactive'}</span></td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div></div>`;
+  }
+
+  async function addPlan() {
+    const payload = {
+      name: document.getElementById('p-name').value,
+      food_preference: document.getElementById('p-food').value,
+      fitness_goal: document.getElementById('p-goal').value,
+      calories_per_day: document.getElementById('p-cals').value,
+      description: document.getElementById('p-desc').value,
+    };
+    if (!payload.name) return toast('Plan name required', 'error');
+    const data = await api.post('/api/admin/diet-plans', payload);
+    if (data?.success) { toast('Plan created!', 'success'); document.getElementById('add-modal').classList.add('hidden'); init(); }
+    else toast(data?.error || 'Failed', 'error');
+  }
+
+  init();
+</script>
+</body>
+</html>

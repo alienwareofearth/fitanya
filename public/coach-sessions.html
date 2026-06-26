@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session Notes — Fitaniya</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <a href="/coach" class="sidebar-logo">FIT<span>ANIYA</span></a>
+    <nav class="sidebar-nav">
+      <a href="/coach" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
+      <a href="/coach/schedule" class="nav-item"><span class="icon">📅</span>My Schedule</a>
+      <a href="/coach/customers" class="nav-item"><span class="icon">👥</span>My Customers</a>
+      <a href="/coach/sessions" class="nav-item active"><span class="icon">📝</span>Session Notes</a>
+    </nav>
+    <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
+  </aside>
+  <main class="main-content">
+    <div class="page-header mb-32"><h2>Session Notes</h2><p>Add notes and plans for completed sessions</p></div>
+    <div id="sessions-wrap"><div class="spinner"></div></div>
+  </main>
+</div>
+
+<!-- Notes Modal -->
+<div class="modal-overlay hidden" id="notes-modal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="document.getElementById('notes-modal').classList.add('hidden')">×</button>
+    <h3 class="modal-title">Add Session Notes</h3>
+    <p class="text-dim mt-4 mb-24" id="notes-modal-subtitle"></p>
+    <input type="hidden" id="notes-booking-id" />
+    <div class="form-group"><label>Session Notes *</label><textarea class="form-control" id="notes-text" rows="4" placeholder="What did you work on? How did the customer perform?"></textarea></div>
+    <div class="form-group"><label>Workout Done</label><input class="form-control" id="notes-workout" placeholder="e.g. Upper body strength – 4x10 bench, rows, shoulder press" /></div>
+    <div class="form-group"><label>Next Session Plan</label><textarea class="form-control" id="notes-next" rows="3" placeholder="What will you focus on next time?"></textarea></div>
+    <button class="btn btn-primary btn-full" onclick="saveNotes()">Save Notes & Mark Complete</button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script>
+  async function init() {
+    const data = await api.get('/api/coach/sessions');
+    const el = document.getElementById('sessions-wrap');
+    if (!data?.sessions?.length) {
+      el.innerHTML = '<div class="card"><p class="text-dim">No sessions yet.</p></div>'; return;
+    }
+    el.innerHTML = data.sessions.map(s => {
+      const needsNotes = s.is_completed && !s.has_notes;
+      return `
+        <div class="card mb-16">
+          <div class="flex-between mb-12">
+            <div>
+              <div style="font-weight:600;color:var(--white)">${s.customer_name}</div>
+              <div class="text-dim text-small">${formatDate(s.date)} · ${formatTime(s.start_time)}</div>
+            </div>
+            <div class="flex gap-8">
+              ${s.is_completed ? `<span class="badge badge-green">Completed</span>` : `<span class="badge badge-orange">Upcoming</span>`}
+              ${s.has_notes ? `<span class="badge badge-blue">Notes Added</span>` : (s.is_completed ? `<span class="badge badge-red">Notes Needed</span>` : '')}
+            </div>
+          </div>
+          ${needsNotes ? `<button class="btn btn-primary btn-sm" onclick="openNotes(${s.id}, '${s.customer_name}', '${s.date}')">Add Session Notes →</button>` : ''}
+          ${!s.is_completed ? `<button class="btn btn-dark btn-sm" onclick="openNotes(${s.id}, '${s.customer_name}', '${s.date}')">Mark Complete + Add Notes</button>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function openNotes(bookingId, customerName, date) {
+    document.getElementById('notes-booking-id').value = bookingId;
+    document.getElementById('notes-modal-subtitle').textContent = `Session with ${customerName} on ${formatDate(date)}`;
+    document.getElementById('notes-text').value = '';
+    document.getElementById('notes-workout').value = '';
+    document.getElementById('notes-next').value = '';
+    document.getElementById('notes-modal').classList.remove('hidden');
+  }
+
+  async function saveNotes() {
+    const bookingId = document.getElementById('notes-booking-id').value;
+    const notes = document.getElementById('notes-text').value.trim();
+    if (!notes) return toast('Please add session notes', 'error');
+    const data = await api.post('/api/bookings/notes/' + bookingId, {
+      notes,
+      workout_done: document.getElementById('notes-workout').value,
+      next_session_plan: document.getElementById('notes-next').value,
+    });
+    if (data?.success) {
+      toast('Notes saved! Session marked complete.', 'success');
+      document.getElementById('notes-modal').classList.add('hidden');
+      init();
+    } else toast(data?.error || 'Failed to save', 'error');
+  }
+
+  init();
+</script>
+</body>
+</html>

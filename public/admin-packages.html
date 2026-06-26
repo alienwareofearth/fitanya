@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Packages & Pricing — Fitaniya Admin</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <a href="/admin" class="sidebar-logo" style="font-size:20px;padding:22px 20px">FIT<span>ANIYA</span></a>
+    <nav class="sidebar-nav">
+      <a href="/admin" class="nav-item"><span class="icon">📊</span>Dashboard</a>
+      <a href="/admin/packages" class="nav-item active"><span class="icon">📦</span>Packages & Prices</a>
+      <a href="/admin/discounts" class="nav-item"><span class="icon">🏷️</span>Discounts</a>
+      <a href="/admin/coaches" class="nav-item"><span class="icon">🏋️</span>Coaches</a>
+      <a href="/admin/members" class="nav-item"><span class="icon">👥</span>Members</a>
+      <a href="/admin/stories" class="nav-item"><span class="icon">📸</span>Stories</a>
+      <a href="/admin/diet" class="nav-item"><span class="icon">🥗</span>Diet Plans</a>
+      <a href="/admin/settings" class="nav-item"><span class="icon">⚙️</span>Settings</a>
+    </nav>
+    <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
+  </aside>
+  <main class="main-content">
+    <div class="page-header flex-between mb-32">
+      <div><h2>Packages & Pricing</h2><p>Create, edit and price training packages</p></div>
+      <button class="btn btn-primary" onclick="openAdd()">+ Add Package</button>
+    </div>
+    <div id="packages-wrap"><div class="spinner"></div></div>
+
+    <!-- Workout Styles section -->
+    <div class="section-title mt-32">Workout Styles (Homepage Goals)</div>
+    <div class="card mb-16">
+      <div class="flex gap-12 flex-wrap mb-16">
+        <input class="form-control" id="style-name" placeholder="Style name" style="flex:1;min-width:120px" />
+        <input class="form-control" id="style-icon" placeholder="Icon emoji" style="width:80px" />
+        <textarea class="form-control" id="style-desc" placeholder="Description" style="flex:2;min-width:200px;height:42px;resize:none"></textarea>
+        <button class="btn btn-primary" onclick="addStyle()">Add Style</button>
+      </div>
+      <div id="styles-list"><div class="spinner"></div></div>
+    </div>
+  </main>
+</div>
+
+<!-- Add/Edit Package Modal -->
+<div class="modal-overlay hidden" id="pkg-modal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="document.getElementById('pkg-modal').classList.add('hidden')">×</button>
+    <h3 class="modal-title" id="pkg-modal-title">Add Package</h3>
+    <input type="hidden" id="pkg-id" />
+    <div class="form-group"><label>Package Name *</label><input class="form-control" id="pkg-name" placeholder="e.g. Elite" /></div>
+    <div class="grid-2 gap-12">
+      <div class="form-group"><label>Sessions *</label><input class="form-control" type="number" id="pkg-sessions" placeholder="e.g. 24" /></div>
+      <div class="form-group"><label>Days Duration *</label><input class="form-control" type="number" id="pkg-days" placeholder="e.g. 40" /></div>
+    </div>
+    <div class="form-group"><label>Price (₹) *</label><input class="form-control" type="number" id="pkg-price" placeholder="e.g. 8000" /></div>
+    <div class="form-group"><label>Description</label><textarea class="form-control" id="pkg-desc" rows="2"></textarea></div>
+    <div class="form-group">
+      <label>Status</label>
+      <select class="form-control" id="pkg-active"><option value="1">Active</option><option value="0">Inactive</option></select>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="savePackage()">Save Package</button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script>
+  async function init() {
+    loadPackages();
+    loadStyles();
+  }
+
+  async function loadPackages() {
+    const data = await api.get('/api/admin/packages');
+    if (!data?.success) { window.location.href = '/login'; return; }
+    const el = document.getElementById('packages-wrap');
+    if (!data.packages?.length) { el.innerHTML = '<div class="card"><p class="text-dim">No packages yet.</p></div>'; return; }
+    el.innerHTML = `<div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>Sessions</th><th>Days</th><th>Price (₹)</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${data.packages.map(p => `<tr>
+          <td style="font-weight:600;color:var(--white)">${p.name}</td>
+          <td>${p.sessions}</td>
+          <td>${p.days}</td>
+          <td class="text-orange" style="font-family:var(--font-display);font-size:1.2rem">₹${p.price.toLocaleString('en-IN')}</td>
+          <td><span class="badge ${p.is_active ? 'badge-green' : 'badge-red'}">${p.is_active ? 'Active' : 'Inactive'}</span></td>
+          <td><button class="btn btn-dark btn-sm" onclick="editPackage(${JSON.stringify(p).replace(/"/g,'&quot;')})">Edit / Change Price</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div></div>`;
+  }
+
+  function openAdd() {
+    document.getElementById('pkg-id').value = '';
+    document.getElementById('pkg-modal-title').textContent = 'Add Package';
+    document.getElementById('pkg-name').value = '';
+    document.getElementById('pkg-sessions').value = '';
+    document.getElementById('pkg-days').value = '';
+    document.getElementById('pkg-price').value = '';
+    document.getElementById('pkg-desc').value = '';
+    document.getElementById('pkg-active').value = '1';
+    document.getElementById('pkg-modal').classList.remove('hidden');
+  }
+
+  function editPackage(p) {
+    document.getElementById('pkg-id').value = p.id;
+    document.getElementById('pkg-modal-title').textContent = 'Edit Package: ' + p.name;
+    document.getElementById('pkg-name').value = p.name;
+    document.getElementById('pkg-sessions').value = p.sessions;
+    document.getElementById('pkg-days').value = p.days;
+    document.getElementById('pkg-price').value = p.price;
+    document.getElementById('pkg-desc').value = p.description || '';
+    document.getElementById('pkg-active').value = p.is_active ? '1' : '0';
+    document.getElementById('pkg-modal').classList.remove('hidden');
+  }
+
+  async function savePackage() {
+    const id = document.getElementById('pkg-id').value;
+    const payload = {
+      name: document.getElementById('pkg-name').value,
+      sessions: parseInt(document.getElementById('pkg-sessions').value),
+      days: parseInt(document.getElementById('pkg-days').value),
+      price: parseFloat(document.getElementById('pkg-price').value),
+      description: document.getElementById('pkg-desc').value,
+      is_active: parseInt(document.getElementById('pkg-active').value),
+    };
+    const data = id ? await api.put('/api/admin/packages/' + id, payload) : await api.post('/api/admin/packages', payload);
+    if (data?.success) {
+      toast('Package saved!', 'success');
+      document.getElementById('pkg-modal').classList.add('hidden');
+      loadPackages();
+    } else toast(data?.error || 'Failed', 'error');
+  }
+
+  async function loadStyles() {
+    const data = await api.get('/api/admin/workout-styles');
+    const el = document.getElementById('styles-list');
+    if (!data?.styles?.length) { el.innerHTML = '<p class="text-dim">No styles yet.</p>'; return; }
+    el.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Icon</th><th>Name</th><th>Description</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>
+        ${data.styles.map(s => `<tr>
+          <td style="font-size:24px">${s.icon||'💪'}</td>
+          <td>${s.name}</td>
+          <td class="text-dim">${s.description||''}</td>
+          <td><span class="badge ${s.is_active?'badge-green':'badge-red'}">${s.is_active?'Active':'Hidden'}</span></td>
+          <td><button class="btn btn-dark btn-sm" onclick="toggleStyle(${s.id}, ${s.is_active})">Toggle</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+  }
+
+  async function addStyle() {
+    const name = document.getElementById('style-name').value.trim();
+    const icon = document.getElementById('style-icon').value.trim();
+    const description = document.getElementById('style-desc').value.trim();
+    if (!name) return toast('Enter a style name', 'error');
+    const data = await api.post('/api/admin/workout-styles', { name, icon, description });
+    if (data?.success) { toast('Style added!', 'success'); loadStyles(); }
+    else toast(data?.error || 'Failed', 'error');
+  }
+
+  async function toggleStyle(id, current) {
+    const data = await api.put('/api/admin/workout-styles/' + id, { is_active: current ? 0 : 1 });
+    if (data?.success) { toast('Updated!', 'success'); loadStyles(); }
+  }
+
+  init();
+</script>
+</body>
+</html>

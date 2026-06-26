@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Progress — Fitaniya</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <a href="/dashboard" class="sidebar-logo">FIT<span>ANIYA</span></a>
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
+      <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
+      <a href="/dashboard/membership" class="nav-item"><span class="icon">🎫</span>Membership</a>
+      <a href="/dashboard/progress" class="nav-item active"><span class="icon">📊</span>Progress</a>
+      <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
+      <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
+      <a href="/dashboard/referral" class="nav-item"><span class="icon">🎁</span>Refer & Earn</a>
+      <a href="/dashboard/profile" class="nav-item"><span class="icon">👤</span>Profile</a>
+    </nav>
+    <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
+  </aside>
+  <main class="main-content">
+    <div class="page-header mb-32">
+      <h2>My Progress</h2>
+      <p>Track your weekly measurements and see your transformation over time</p>
+    </div>
+
+    <!-- Log form -->
+    <div class="card mb-32">
+      <div class="section-title">Log This Week</div>
+      <div class="grid-2 gap-16">
+        <div class="form-group"><label>Weight (kg)</label><input class="form-control" type="number" id="log-weight" placeholder="e.g. 72.5" step="0.1" /></div>
+        <div class="form-group"><label>Steps Today</label><input class="form-control" type="number" id="log-steps" placeholder="e.g. 8000" /></div>
+        <div class="form-group"><label>Waist (inches)</label><input class="form-control" type="number" id="log-waist" placeholder="e.g. 32" step="0.5" /></div>
+        <div class="form-group"><label>Thigh (inches)</label><input class="form-control" type="number" id="log-thigh" placeholder="e.g. 22" step="0.5" /></div>
+        <div class="form-group"><label>Arm (inches)</label><input class="form-control" type="number" id="log-arm" placeholder="e.g. 12" step="0.5" /></div>
+        <div class="form-group"><label>Chest (inches)</label><input class="form-control" type="number" id="log-chest" placeholder="e.g. 36" step="0.5" /></div>
+      </div>
+      <div class="form-group"><label>Notes</label><textarea class="form-control" id="log-notes" rows="2" placeholder="How are you feeling this week?"></textarea></div>
+      <button class="btn btn-primary" onclick="saveProgress()">Save Progress 💪</button>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid-2 gap-24 mb-32">
+      <div class="card">
+        <div class="section-title">Weight Trend (kg)</div>
+        <canvas id="weight-chart" height="180"></canvas>
+      </div>
+      <div class="card">
+        <div class="section-title">Measurements Trend</div>
+        <canvas id="measurements-chart" height="180"></canvas>
+      </div>
+    </div>
+
+    <!-- History table -->
+    <div class="section-title">History</div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Week</th><th>Date</th><th>Weight (kg)</th><th>Waist"</th><th>Thigh"</th><th>Arm"</th><th>Chest"</th><th>Steps</th></tr></thead>
+          <tbody id="progress-rows"><tr><td colspan="8" class="text-center"><div class="spinner"></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script>
+  let weightChart, measChart;
+
+  async function init() {
+    await requireAuth();
+    const data = await api.get('/api/customer/progress');
+    renderCharts(data?.logs || []);
+    renderTable(data?.logs || []);
+  }
+
+  function renderCharts(logs) {
+    const reversed = [...logs].reverse();
+    const labels = reversed.map(l => `Wk ${l.week_number}`);
+
+    weightChart = new Chart(document.getElementById('weight-chart'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Weight (kg)',
+          data: reversed.map(l => l.weight),
+          borderColor: '#FF5C00',
+          backgroundColor: 'rgba(255,92,0,0.1)',
+          fill: true, tension: 0.4, pointBackgroundColor: '#FF5C00',
+        }]
+      },
+      options: { plugins: { legend: { labels: { color: '#888' } } }, scales: { x: { ticks: { color: '#888' } }, y: { ticks: { color: '#888' } } } }
+    });
+
+    measChart = new Chart(document.getElementById('measurements-chart'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Waist', data: reversed.map(l => l.waist), borderColor: '#3b82f6', tension: 0.4 },
+          { label: 'Chest', data: reversed.map(l => l.chest), borderColor: '#22c55e', tension: 0.4 },
+          { label: 'Arm',   data: reversed.map(l => l.arm),   borderColor: '#f59e0b', tension: 0.4 },
+        ]
+      },
+      options: { plugins: { legend: { labels: { color: '#888' } } }, scales: { x: { ticks: { color: '#888' } }, y: { ticks: { color: '#888' } } } }
+    });
+  }
+
+  function renderTable(logs) {
+    const tbody = document.getElementById('progress-rows');
+    if (!logs.length) { tbody.innerHTML = '<tr><td colspan="8" class="text-center text-dim">No logs yet</td></tr>'; return; }
+    tbody.innerHTML = logs.map(l => `
+      <tr>
+        <td>Week ${l.week_number}, ${l.year}</td>
+        <td>${formatDate(l.log_date)}</td>
+        <td class="text-orange">${l.weight || '—'}</td>
+        <td>${l.waist || '—'}</td>
+        <td>${l.thigh || '—'}</td>
+        <td>${l.arm || '—'}</td>
+        <td>${l.chest || '—'}</td>
+        <td>${l.steps ? l.steps.toLocaleString('en-IN') : '—'}</td>
+      </tr>
+    `).join('');
+  }
+
+  async function saveProgress() {
+    const payload = {
+      weight: document.getElementById('log-weight').value,
+      steps:  document.getElementById('log-steps').value,
+      waist:  document.getElementById('log-waist').value,
+      thigh:  document.getElementById('log-thigh').value,
+      arm:    document.getElementById('log-arm').value,
+      chest:  document.getElementById('log-chest').value,
+      notes:  document.getElementById('log-notes').value,
+    };
+    const data = await api.post('/api/customer/progress', payload);
+    if (data?.success) { toast('Progress saved! 💪', 'success'); init(); }
+    else toast(data?.error || 'Failed to save', 'error');
+  }
+
+  init();
+</script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile — Fitaniya</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <a href="/dashboard" class="sidebar-logo">FIT<span>ANIYA</span></a>
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
+      <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
+      <a href="/dashboard/membership" class="nav-item"><span class="icon">🎫</span>Membership</a>
+      <a href="/dashboard/progress" class="nav-item"><span class="icon">📊</span>Progress</a>
+      <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
+      <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
+      <a href="/dashboard/referral" class="nav-item"><span class="icon">🎁</span>Refer & Earn</a>
+      <a href="/dashboard/profile" class="nav-item active"><span class="icon">👤</span>Profile</a>
+    </nav>
+    <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
+  </aside>
+  <main class="main-content">
+    <div class="page-header mb-32">
+      <h2>My Profile</h2>
+      <p>Update your personal details and track your body measurements over time</p>
+    </div>
+    <div class="grid-2 gap-24">
+      <!-- Photo + basic -->
+      <div>
+        <div class="card mb-24" style="text-align:center;padding:40px">
+          <img id="profile-pic" src="/images/default-avatar.png" style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:3px solid var(--orange);margin-bottom:16px" />
+          <div style="font-family:var(--font-display);font-size:1.6rem;color:var(--white)" id="profile-name">—</div>
+          <div class="text-dim text-small" id="profile-email">—</div>
+          <div class="mt-16">
+            <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="uploadPhoto(this)" />
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('photo-input').click()">Change Photo</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="section-title">Quick Stats</div>
+          <div id="quick-stats"></div>
+        </div>
+      </div>
+
+      <!-- Edit form -->
+      <div class="card">
+        <div class="section-title">Edit Details</div>
+        <div class="form-group"><label>Full Name</label><input class="form-control" id="f-name" /></div>
+        <div class="form-group"><label>Phone</label><input class="form-control" id="f-phone" /></div>
+        <div class="form-group"><label>Occupation</label><input class="form-control" id="f-occupation" /></div>
+        <div class="form-group"><label>Address</label><textarea class="form-control" id="f-address" rows="2"></textarea></div>
+        <div class="form-group"><label>Food Preference</label>
+          <select class="form-control" id="f-food">
+            <option value="">Select</option><option>Veg</option><option>Vegan</option><option>Non-Veg</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Fitness Goal</label>
+          <select class="form-control" id="f-goal">
+            <option value="">Select</option>
+            <option>Get Lean</option><option>Build Muscle</option><option>Tone &amp; Sculpt</option><option>Improve Fitness</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Health Issues</label><input class="form-control" id="f-health" /></div>
+        <div class="form-group"><label>Allergies</label><input class="form-control" id="f-allergies" /></div>
+        <div class="grid-2 gap-12">
+          <div class="form-group"><label>Height (cm)</label><input class="form-control" type="number" id="f-height" /></div>
+          <div class="form-group"><label>Weight (kg)</label><input class="form-control" type="number" id="f-weight" step="0.1" /></div>
+          <div class="form-group"><label>Waist"</label><input class="form-control" type="number" id="f-waist" step="0.5" /></div>
+          <div class="form-group"><label>Chest"</label><input class="form-control" type="number" id="f-chest" step="0.5" /></div>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="saveProfile()">Save Changes</button>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script>
+  async function init() {
+    const data = await api.get('/api/customer/profile');
+    if (!data?.success) { window.location.href = '/login'; return; }
+    const { user, profile } = data;
+
+    document.getElementById('profile-name').textContent = user.name;
+    document.getElementById('profile-email').textContent = user.email;
+    if (user.profile_picture) document.getElementById('profile-pic').src = user.profile_picture;
+
+    document.getElementById('f-name').value = user.name || '';
+    document.getElementById('f-phone').value = user.phone || '';
+    document.getElementById('f-occupation').value = profile?.occupation || '';
+    document.getElementById('f-address').value = profile?.address || '';
+    document.getElementById('f-food').value = profile?.food_preference || '';
+    document.getElementById('f-goal').value = profile?.fitness_goal || '';
+    document.getElementById('f-health').value = profile?.health_issues || '';
+    document.getElementById('f-allergies').value = profile?.allergies || '';
+    document.getElementById('f-height').value = profile?.height || '';
+    document.getElementById('f-weight').value = profile?.weight || '';
+    document.getElementById('f-waist').value = profile?.waist || '';
+    document.getElementById('f-chest').value = profile?.chest || '';
+
+    document.getElementById('quick-stats').innerHTML = `
+      <div class="flex-between mb-8"><span class="text-dim">Member Since</span><span>${formatDate(user.created_at)}</span></div>
+      <div class="flex-between mb-8"><span class="text-dim">Referral Credits</span><span class="text-orange">₹${user.reward_credits || 0}</span></div>
+      <div class="flex-between mb-8"><span class="text-dim">Fitness Goal</span><span>${profile?.fitness_goal || '—'}</span></div>
+      <div class="flex-between"><span class="text-dim">Food Preference</span><span>${profile?.food_preference || '—'}</span></div>
+    `;
+  }
+
+  async function saveProfile() {
+    const payload = {
+      name: document.getElementById('f-name').value,
+      phone: document.getElementById('f-phone').value,
+      occupation: document.getElementById('f-occupation').value,
+      address: document.getElementById('f-address').value,
+      food_preference: document.getElementById('f-food').value,
+      fitness_goal: document.getElementById('f-goal').value,
+      health_issues: document.getElementById('f-health').value,
+      allergies: document.getElementById('f-allergies').value,
+      height: document.getElementById('f-height').value,
+      weight: document.getElementById('f-weight').value,
+      waist: document.getElementById('f-waist').value,
+      chest: document.getElementById('f-chest').value,
+    };
+    const data = await api.put('/api/customer/profile', payload);
+    if (data?.success) { toast('Profile saved!', 'success'); init(); }
+    else toast(data?.error || 'Failed', 'error');
+  }
+
+  async function uploadPhoto(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('photo', file);
+    const data = await api.upload('/api/customer/profile/picture', fd);
+    if (data?.success) { document.getElementById('profile-pic').src = data.url; toast('Photo updated!', 'success'); }
+    else toast(data?.error || 'Upload failed', 'error');
+  }
+
+  init();
+</script>
+</body>
+</html>

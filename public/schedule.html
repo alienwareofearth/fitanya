@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schedule — Fitaniya</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <style>
+    .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 20px; }
+    .slot-btn {
+      background: var(--card); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); padding: 16px; text-align: center;
+      cursor: pointer; transition: all 0.2s; color: var(--text); font-family: var(--font-body);
+    }
+    .slot-btn:hover { border-color: var(--orange); background: rgba(255,92,0,0.06); }
+    .slot-btn.selected { border-color: var(--orange); background: rgba(255,92,0,0.12); }
+    .slot-time { font-family: var(--font-display); font-size: 1.3rem; color: var(--white); }
+    .slot-coach { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+    .booking-row {
+      display: flex; align-items: center; gap: 20px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px; margin-bottom: 12px;
+    }
+    .booking-date-box {
+      background: var(--grad); border-radius: var(--radius-sm);
+      padding: 10px 14px; text-align: center; min-width: 56px;
+    }
+    .booking-day { font-family: var(--font-display); font-size: 1.6rem; color: #fff; line-height: 1; }
+    .booking-mon { font-size: 10px; color: rgba(255,255,255,0.8); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <a href="/dashboard" class="sidebar-logo">FIT<span>ANIYA</span></a>
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
+      <a href="/dashboard/schedule" class="nav-item active"><span class="icon">📅</span>Schedule</a>
+      <a href="/dashboard/membership" class="nav-item"><span class="icon">🎫</span>Membership</a>
+      <a href="/dashboard/progress" class="nav-item"><span class="icon">📊</span>Progress</a>
+      <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
+      <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
+      <a href="/dashboard/referral" class="nav-item"><span class="icon">🎁</span>Refer & Earn</a>
+      <a href="/dashboard/profile" class="nav-item"><span class="icon">👤</span>Profile</a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button>
+    </div>
+  </aside>
+  <main class="main-content">
+    <div class="page-header flex-between mb-32">
+      <div><h2>My Schedule</h2><p>Book, view and manage your training sessions</p></div>
+      <div id="sessions-badge" class="badge badge-orange"></div>
+    </div>
+
+    <!-- Book a session -->
+    <div class="card mb-32">
+      <div class="section-title">Book a New Session</div>
+      <div class="form-group">
+        <label>Select Date</label>
+        <input class="form-control" id="slot-date" placeholder="Pick a date" readonly style="max-width:260px" />
+      </div>
+      <div id="slots-wrap">
+        <p class="text-dim text-small">Choose a date to see available slots.</p>
+      </div>
+      <div id="book-confirm" class="hidden" style="margin-top:24px">
+        <div class="card" style="background:var(--dark);margin-bottom:16px" id="selected-slot-preview"></div>
+        <button class="btn btn-primary" onclick="confirmBook()">Confirm Booking →</button>
+        <button class="btn btn-dark" onclick="clearSelection()" style="margin-left:12px">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Upcoming bookings -->
+    <div class="section-title">My Bookings</div>
+    <div id="my-bookings"><div class="spinner"></div></div>
+  </main>
+</div>
+<div id="toast-container"></div>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="/js/app.js"></script>
+<script>
+  let membership = null;
+  let selectedSlot = null;
+
+  async function init() {
+    const data = await requireAuth();
+    if (!data) return;
+    membership = data.membership;
+    const rem = membership ? membership.sessions_total - membership.sessions_used : 0;
+    document.getElementById('sessions-badge').textContent = rem + ' Sessions Remaining';
+
+    flatpickr('#slot-date', {
+      minDate: 'today',
+      dateFormat: 'Y-m-d',
+      onChange: ([date]) => loadSlots(date.toISOString().split('T')[0]),
+    });
+
+    loadMyBookings();
+  }
+
+  async function loadSlots(date) {
+    document.getElementById('slots-wrap').innerHTML = '<div class="spinner"></div>';
+    clearSelection();
+    const data = await api.get('/api/bookings/slots?date=' + date);
+    if (!data?.slots?.length) {
+      document.getElementById('slots-wrap').innerHTML = '<p class="text-dim">No available slots on this date. Try another day.</p>';
+      return;
+    }
+    document.getElementById('slots-wrap').innerHTML = `
+      <div class="slot-grid">
+        ${data.slots.map(s => `
+          <div class="slot-btn" onclick="selectSlot(${JSON.stringify(s).replace(/"/g,'&quot;')})">
+            <div class="slot-time">${formatTime(s.start_time)}</div>
+            <div class="slot-coach">Coach: ${s.coach_name}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function selectSlot(slot) {
+    selectedSlot = slot;
+    document.querySelectorAll('.slot-btn').forEach(el => el.classList.remove('selected'));
+    event.currentTarget.classList.add('selected');
+    document.getElementById('selected-slot-preview').innerHTML = `
+      <div class="flex-between">
+        <div><strong class="text-white">${formatDate(slot.date)}</strong><br>
+        <span class="text-dim text-small">${formatTime(slot.start_time)} – ${formatTime(slot.end_time)} · Coach: ${slot.coach_name}</span></div>
+        <span class="badge badge-orange">1 Hour</span>
+      </div>
+    `;
+    document.getElementById('book-confirm').classList.remove('hidden');
+  }
+
+  function clearSelection() {
+    selectedSlot = null;
+    document.getElementById('book-confirm').classList.add('hidden');
+    document.querySelectorAll('.slot-btn').forEach(el => el.classList.remove('selected'));
+  }
+
+  async function confirmBook() {
+    if (!selectedSlot) return;
+    if (!membership?.id) return toast('No active membership. Please renew.', 'error');
+    const data = await api.post('/api/bookings/book', { slot_id: selectedSlot.id, membership_id: membership.id });
+    if (data?.success) {
+      toast('Session booked! 🎉 Check your email for Meet link.', 'success');
+      clearSelection();
+      document.getElementById('slot-date')._flatpickr.clear();
+      document.getElementById('slots-wrap').innerHTML = '<p class="text-dim text-small">Choose a date to see available slots.</p>';
+      loadMyBookings();
+    } else {
+      toast(data?.error || 'Booking failed', 'error');
+    }
+  }
+
+  async function loadMyBookings() {
+    const data = await api.get('/api/bookings/my');
+    const el = document.getElementById('my-bookings');
+    if (!data?.bookings?.length) {
+      el.innerHTML = '<div class="card"><p class="text-dim">No bookings yet.</p></div>'; return;
+    }
+    el.innerHTML = data.bookings.map(b => {
+      const d = new Date(b.date);
+      const status = b.is_completed ? 'badge-green' : b.status === 'cancelled' ? 'badge-red' : 'badge-orange';
+      const label = b.is_completed ? 'Completed' : b.status === 'cancelled' ? 'Cancelled' : 'Confirmed';
+      return `
+        <div class="booking-row">
+          <div class="booking-date-box">
+            <div class="booking-day">${d.getDate()}</div>
+            <div class="booking-mon">${d.toLocaleString('en-IN',{month:'short'})}</div>
+          </div>
+          <div style="flex:1">
+            <div style="color:var(--white);font-weight:600">Session with ${b.coach_name}</div>
+            <div class="text-dim text-small">${formatTime(b.start_time)} – ${formatTime(b.end_time)}</div>
+          </div>
+          <span class="badge ${status}">${label}</span>
+          ${b.meet_link && !b.is_completed && b.status !== 'cancelled' ? `<a href="${b.meet_link}" target="_blank" class="btn btn-primary btn-sm">Join Meet</a>` : ''}
+          ${!b.is_completed && b.status !== 'cancelled' ? `<button class="btn btn-dark btn-sm" onclick="cancelBooking(${b.id})">Cancel</button>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function cancelBooking(id) {
+    if (!confirm('Cancel this session? (24hr notice required)')) return;
+    const data = await api.post('/api/bookings/cancel/' + id, { reason: 'Customer requested' });
+    if (data?.success) { toast('Session cancelled', 'info'); loadMyBookings(); }
+    else toast(data?.error || 'Cancellation failed', 'error');
+  }
+
+  init();
+</script>
+</body>
+</html>

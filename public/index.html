@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fitaniya — Transform Your Body, Transform Your Life</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    /* ── HERO ─────────────────────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      padding: 120px 60px 80px;
+    }
+    .hero-bg {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 70% 50%, rgba(255,92,0,0.12) 0%, transparent 60%),
+                  radial-gradient(ellipse at 10% 80%, rgba(255,92,0,0.06) 0%, transparent 50%);
+    }
+    .hero-grid {
+      position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(255,92,0,0.04) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,92,0,0.04) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+    .hero-content { position: relative; max-width: 700px; }
+    .hero-eyebrow {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 20px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .hero-eyebrow::before {
+      content: '';
+      display: block; width: 32px; height: 2px;
+      background: var(--orange);
+    }
+    .hero h1 { margin-bottom: 24px; }
+    .hero-desc {
+      font-size: 18px;
+      color: var(--text-dim);
+      line-height: 1.7;
+      margin-bottom: 40px;
+      max-width: 520px;
+    }
+    .hero-cta { display: flex; gap: 16px; flex-wrap: wrap; }
+
+    /* ── WORKOUT STYLES ──────────────────────────────────────────────── */
+    section { padding: 100px 60px; }
+    .section-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 12px;
+    }
+    .section-heading { margin-bottom: 16px; }
+    .section-sub { color: var(--text-dim); max-width: 480px; margin-bottom: 60px; }
+
+    .styles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+    .style-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 28px;
+      transition: all 0.3s;
+      cursor: default;
+    }
+    .style-card:hover {
+      border-color: var(--orange);
+      transform: translateY(-4px);
+      box-shadow: var(--glow);
+    }
+    .style-icon { font-size: 40px; margin-bottom: 20px; }
+    .style-card h3 {
+      font-size: 1.4rem;
+      margin-bottom: 10px;
+    }
+    .style-card p { font-size: 14px; line-height: 1.7; }
+
+    /* ── PACKAGES ─────────────────────────────────────────────────────── */
+    .packages-section { background: var(--dark); }
+    .packages-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+    .package-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      transition: all 0.3s;
+      position: relative;
+    }
+    .package-card.featured {
+      border-color: var(--orange);
+      box-shadow: var(--glow);
+    }
+    .featured-badge {
+      position: absolute;
+      top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--grad);
+      color: #fff;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 4px 16px;
+      border-radius: 100px;
+    }
+    .pkg-name {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      margin-bottom: 4px;
+    }
+    .pkg-price {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      color: var(--orange);
+      line-height: 1;
+      margin: 16px 0;
+    }
+    .pkg-price sup { font-size: 1.2rem; vertical-align: top; margin-top: 8px; display: inline-block; }
+    .pkg-meta {
+      display: flex; gap: 24px;
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .pkg-meta-item { text-align: center; }
+    .pkg-meta-value {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      color: var(--white);
+    }
+    .pkg-meta-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: var(--font-ui);
+      letter-spacing: 0.5px;
+    }
+    .pkg-desc { color: var(--text-dim); font-size: 14px; margin-bottom: 28px; }
+
+    /* ── AGREEMENT MODAL ─────────────────────────────────────────────── */
+    .agreement-text {
+      background: var(--dark);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+    .agreement-text h4 {
+      font-size: 14px;
+      margin-bottom: 12px;
+      color: var(--orange);
+    }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+    /* ── STORIES ──────────────────────────────────────────────────────── */
+    .stories-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    .story-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: transform 0.3s;
+    }
+    .story-card:hover { transform: translateY(-4px); }
+    .story-photo { width: 100%; height: 200px; object-fit: cover; background: var(--muted); }
+    .story-body { padding: 24px; }
+    .story-user { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .story-avatar {
+      width: 40px; height: 40px;
+      border-radius: 50%; object-fit: cover;
+      background: var(--muted);
+    }
+    .story-user-name { font-weight: 600; color: var(--white); font-size: 14px; }
+    .story-card h4 { margin-bottom: 8px; font-size: 1.1rem; }
+    .story-card p { font-size: 14px; }
+
+    /* ── HOW IT WORKS ─────────────────────────────────────────────────── */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0;
+      position: relative;
+    }
+    .step {
+      text-align: center;
+      padding: 40px 24px;
+      position: relative;
+    }
+    .step-num {
+      font-family: var(--font-display);
+      font-size: 5rem;
+      color: rgba(255,92,0,0.12);
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+    .step h4 { margin-bottom: 8px; font-size: 1.1rem; }
+    .step p { font-size: 13px; }
+    .step-icon { font-size: 32px; margin-bottom: 12px; }
+
+    /* ── CTA SECTION ──────────────────────────────────────────────────── */
+    .cta-section {
+      text-align: center;
+      background: var(--dark);
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-section::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, rgba(255,92,0,0.15) 0%, transparent 70%);
+    }
+    .cta-section > * { position: relative; }
+    .cta-section h2 { margin-bottom: 16px; }
+    .cta-section p { margin-bottom: 40px; font-size: 18px; }
+    .cta-section .btn { font-size: 18px; padding: 20px 60px; }
+
+    /* ── FOOTER ───────────────────────────────────────────────────────── */
+    footer {
+      background: var(--dark);
+      border-top: 1px solid var(--border);
+      padding: 60px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+    .footer-logo {
+      font-family: var(--font-display);
+      font-size: 28px;
+      letter-spacing: 3px;
+    }
+    .footer-logo span { color: var(--orange); }
+    footer p { font-size: 13px; color: var(--text-dim); }
+
+    @media (max-width: 768px) {
+      .hero { padding: 100px 24px 60px; }
+      section { padding: 60px 24px; }
+      footer { padding: 40px 24px; }
+      .form-row, .form-row-3 { grid-template-columns: 1fr; }
+    }
+
+    /* Modal steps */
+    .step-indicator {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+    .step-dot {
+      height: 4px;
+      border-radius: 2px;
+      flex: 1;
+      background: var(--border);
+      transition: background 0.3s;
+    }
+    .step-dot.active { background: var(--orange); }
+    .step-dot.done   { background: var(--green); }
+
+    .form-step { display: none; }
+    .form-step.active { display: block; }
+  </style>
+</head>
+<body>
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="/" class="nav-logo">FIT<span>ANIYA</span></a>
+    <div class="nav-links">
+      <a href="#goals">Goals</a>
+      <a href="#packages">Packages</a>
+      <a href="#how">How It Works</a>
+      <a href="#stories">Stories</a>
+    </div>
+    <div class="nav-actions">
+      <a href="/login" class="btn btn-outline btn-sm">Login</a>
+      <a href="#packages" class="btn btn-primary btn-sm">Get Started</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-grid"></div>
+    <div class="hero-content">
+      <div class="hero-eyebrow">Online Personal Training · India</div>
+      <h1>TRANSFORM<br><span class="gradient-text">YOUR BODY.</span><br>TRANSFORM YOUR LIFE.</h1>
+      <p class="hero-desc">1-on-1 personal training sessions with elite coaches. Customised plans, real results, all from the comfort of your home.</p>
+      <div class="hero-cta">
+        <a href="#packages" class="btn btn-primary btn-lg">Choose Your Plan</a>
+        <a href="#how" class="btn btn-dark btn-lg">How It Works</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- WORKOUT GOALS -->
+  <section id="goals">
+    <div class="section-label">Your Goal. Your Journey.</div>
+    <h2 class="section-heading">What's Your <span class="gradient-text">Fitness Goal?</span></h2>
+    <p class="section-sub">Every programme is tailored to what you want to achieve. Our coaches build a plan around your goal.</p>
+    <div class="styles-grid" id="styles-grid">
+      <div style="text-align:center;padding:40px;grid-column:1/-1"><div class="spinner"></div></div>
+    </div>
+  </section>
+
+  <!-- PACKAGES -->
+  <section id="packages" class="packages-section">
+    <div class="section-label">Flexible Plans</div>
+    <h2 class="section-heading">Choose Your <span class="gradient-text">Package</span></h2>
+    <p class="section-sub">All packages include 1-on-1 sessions with a dedicated personal coach via Google Meet.</p>
+    <div class="packages-grid" id="packages-grid">
+      <div style="text-align:center;padding:40px;grid-column:1/-1"><div class="spinner"></div></div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how">
+    <div class="section-label">Simple Process</div>
+    <h2 class="section-heading">How <span class="gradient-text">It Works</span></h2>
+    <p class="section-sub">From sign-up to your first session in under 24 hours.</p>
+    <div class="steps-grid">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-icon">📦</div>
+        <h4>Pick a Package</h4>
+        <p>Choose the plan that fits your goals and budget</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-icon">📋</div>
+        <h4>Fill Your Profile</h4>
+        <p>Share your health info so we can personalise everything</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-icon">💳</div>
+        <h4>Pay Securely</h4>
+        <p>Quick and safe payment via PhonePe or Google Pay</p>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-icon">🏋️</div>
+        <h4>Start Training</h4>
+        <p>Book your first session and transform with your coach</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- STORIES -->
+  <section id="stories" class="packages-section">
+    <div class="section-label">Real Results</div>
+    <h2 class="section-heading">Transformation <span class="gradient-text">Stories</span></h2>
+    <p class="section-sub">Hear from our members who've changed their lives with Fitaniya.</p>
+    <div class="stories-grid" id="stories-grid">
+      <div style="text-align:center;padding:40px;grid-column:1/-1"><div class="spinner"></div></div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <p class="section-label" style="text-align:center">Ready?</p>
+    <h2>Start Your Transformation <span class="gradient-text">Today</span></h2>
+    <p class="section-sub" style="max-width:460px;margin:12px auto 40px">Your first session is just one click away. Pick a plan and let us handle the rest.</p>
+    <a href="#packages" class="btn btn-primary">Get Started Now</a>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div>
+      <div class="footer-logo">FIT<span>ANIYA</span></div>
+      <p class="mt-8">India's premier online personal training platform</p>
+    </div>
+    <p>© 2025 Fitaniya. All rights reserved.</p>
+  </footer>
+
+  <!-- REGISTRATION MODAL -->
+  <div class="modal-overlay hidden" id="reg-modal">
+    <div class="modal" style="max-width:680px;position:relative">
+      <button class="modal-close" onclick="closeModal()">×</button>
+
+      <!-- Step indicator -->
+      <div class="step-indicator">
+        <div class="step-dot active" id="dot-0"></div>
+        <div class="step-dot" id="dot-1"></div>
+        <div class="step-dot" id="dot-2"></div>
+        <div class="step-dot" id="dot-3"></div>
+      </div>
+
+      <!-- Step 0: Package confirm + OTP email -->
+      <div class="form-step active" id="step-0">
+        <h3 class="modal-title">Let's Get Started</h3>
+        <p class="text-dim mt-4 mb-32" id="selected-pkg-info">Loading package info...</p>
+        <div class="form-group">
+          <label>Your Full Name *</label>
+          <input class="form-control" id="reg-name" placeholder="E.g. Priya Sharma" />
+        </div>
+        <div class="form-group">
+          <label>Email Address *</label>
+          <input class="form-control" type="email" id="reg-email" placeholder="you@email.com" />
+        </div>
+        <div class="form-group">
+          <label>Referral Code (optional)</label>
+          <input class="form-control" id="reg-referral" placeholder="Enter referral code" />
+        </div>
+        <button class="btn btn-primary btn-full" onclick="sendOtp()">Send OTP →</button>
+      </div>
+
+      <!-- Step 1: OTP Verification -->
+      <div class="form-step" id="step-1">
+        <h3 class="modal-title">Verify Your Email</h3>
+        <p class="text-dim mt-4 mb-32">Enter the 6-digit code sent to <span id="otp-email-display" class="text-orange"></span></p>
+        <div class="form-group">
+          <label>OTP Code *</label>
+          <input class="form-control" id="otp-input" placeholder="Enter 6-digit OTP" maxlength="6" style="font-size:24px;letter-spacing:8px;text-align:center" />
+        </div>
+        <button class="btn btn-primary btn-full" onclick="verifyOtp()">Verify OTP →</button>
+        <p class="text-center mt-16 text-small"><a href="#" onclick="resendOtp()" class="text-orange">Resend OTP</a></p>
+      </div>
+
+      <!-- Step 2: Personal Details + Agreement -->
+      <div class="form-step" id="step-2">
+        <h3 class="modal-title">Your Details</h3>
+        <p class="text-dim mt-4 mb-24">Please read the agreement and fill in your information.</p>
+
+        <div class="agreement-text">
+          <h4>Personal Training Session Agreement</h4>
+          <p><strong>1. Services:</strong> Fitaniya provides personal training including fitness assessments, workout plans, nutritional guidance and ongoing support.</p>
+          <p style="margin-top:10px"><strong>2. Schedule:</strong> Sessions are 1 hour each, conducted online via Google Meet. Any rescheduling requires 24 hours notice.</p>
+          <p style="margin-top:10px"><strong>3. Payment:</strong> Full payment is due before sessions begin. All payments are processed securely via PhonePe.</p>
+          <p style="margin-top:10px"><strong>4. Cancellation:</strong> At least 24 hours notice required. Late cancellations may forfeit the session.</p>
+          <p style="margin-top:10px"><strong>5. Health & Safety:</strong> Disclose all medical conditions and injuries to your trainer. You participate at your own risk.</p>
+          <p style="margin-top:10px"><strong>6. Confidentiality:</strong> All personal information shared remains strictly confidential.</p>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Phone Number *</label>
+            <input class="form-control" id="reg-phone" placeholder="+91 9999999999" />
+          </div>
+          <div class="form-group">
+            <label>Occupation *</label>
+            <input class="form-control" id="reg-occupation" placeholder="Your profession" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Date of Birth *</label>
+            <input class="form-control" type="date" id="reg-dob" />
+          </div>
+          <div class="form-group">
+            <label>Age *</label>
+            <input class="form-control" type="number" id="reg-age" placeholder="e.g. 28" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Gender *</label>
+          <select class="form-control" id="reg-gender">
+            <option value="">Select gender</option>
+            <option>Male</option>
+            <option>Female</option>
+            <option>Others</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Address *</label>
+          <textarea class="form-control" id="reg-address" rows="2" placeholder="Your full address"></textarea>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="nextStep(3)">Continue →</button>
+      </div>
+
+      <!-- Step 3: Body + Health Info + Password -->
+      <div class="form-step" id="step-3">
+        <h3 class="modal-title">Health & Goals</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Height (cm) *</label>
+            <input class="form-control" type="number" id="reg-height" placeholder="e.g. 170" />
+          </div>
+          <div class="form-group">
+            <label>Weight (kg) *</label>
+            <input class="form-control" type="number" id="reg-weight" placeholder="e.g. 72" />
+          </div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label>Waist (inches)</label>
+            <input class="form-control" type="number" id="reg-waist" placeholder="e.g. 32" />
+          </div>
+          <div class="form-group">
+            <label>Thigh (inches)</label>
+            <input class="form-control" type="number" id="reg-thigh" placeholder="e.g. 22" />
+          </div>
+          <div class="form-group">
+            <label>Arm (inches)</label>
+            <input class="form-control" type="number" id="reg-arm" placeholder="e.g. 12" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Chest (inches)</label>
+          <input class="form-control" type="number" id="reg-chest" placeholder="e.g. 36" />
+        </div>
+        <div class="form-group">
+          <label>Health Issues</label>
+          <input class="form-control" id="reg-health" placeholder="e.g. Diabetes, Hypertension or None" />
+        </div>
+        <div class="form-group">
+          <label>Allergies</label>
+          <input class="form-control" id="reg-allergies" placeholder="e.g. Nuts, Dairy or None" />
+        </div>
+        <div class="form-group">
+          <label>Food Preference *</label>
+          <select class="form-control" id="reg-food-pref">
+            <option value="">Select preference</option>
+            <option>Veg</option>
+            <option>Vegan</option>
+            <option>Non-Veg</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Specific Food Preferences</label>
+          <input class="form-control" id="reg-food-specific" placeholder="Any specific food preferences" />
+        </div>
+        <div class="form-group">
+          <label>Prior Workout Experience</label>
+          <textarea class="form-control" id="reg-experience" rows="2" placeholder="Describe any previous workout experience"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Fitness Goal *</label>
+          <select class="form-control" id="reg-goal">
+            <option value="">Select goal</option>
+            <option>Get Lean</option>
+            <option>Build Muscle</option>
+            <option>Tone &amp; Sculpt</option>
+            <option>Improve Fitness</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Queries</label>
+          <textarea class="form-control" id="reg-queries" rows="2" placeholder="Any questions for your trainer?"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Create Password *</label>
+          <input class="form-control" type="password" id="reg-password" placeholder="Min 8 characters" />
+        </div>
+        <div class="form-group">
+          <label>All information provided is true? *</label>
+          <select class="form-control" id="reg-confirm">
+            <option value="">Select</option>
+            <option value="yes">Yes, all information is true</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+        <p class="text-small text-dim mb-24">⚠️ Make sure to complete payment via PhonePe after registration.</p>
+        <button class="btn btn-primary btn-full" onclick="submitRegistration()">Complete Registration 🔥</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAYMENT MODAL -->
+  <div class="modal-overlay hidden" id="pay-modal">
+    <div class="modal" style="max-width:460px;position:relative">
+      <button class="modal-close" onclick="closePayModal()">×</button>
+      <h3 class="modal-title">Complete Payment</h3>
+      <div class="card mt-24" id="pay-summary" style="background:var(--dark)">
+        Loading...
+      </div>
+      <div class="form-group mt-24">
+        <label>Discount Code</label>
+        <div class="flex gap-8">
+          <input class="form-control" id="discount-code" placeholder="Enter code" style="flex:1" />
+          <button class="btn btn-outline btn-sm" onclick="applyDiscount()">Apply</button>
+        </div>
+        <p class="text-small text-green mt-8 hidden" id="discount-msg"></p>
+      </div>
+      <div class="form-group">
+        <label>Use Reward Credits</label>
+        <div class="flex gap-8" style="align-items:center">
+          <input type="checkbox" id="use-credits" style="width:18px;height:18px;accent-color:var(--orange)" />
+          <span class="text-small" id="credits-label">You have ₹0 credits</span>
+        </div>
+      </div>
+      <div class="card mt-8" style="background:var(--dark)">
+        <div class="flex-between"><span class="text-dim">Original Price</span><span id="pay-original"></span></div>
+        <div class="flex-between mt-8"><span class="text-dim">Discount</span><span class="text-green" id="pay-discount">-₹0</span></div>
+        <div class="flex-between mt-8"><span class="text-dim">Credits Used</span><span class="text-green" id="pay-credits">-₹0</span></div>
+        <div class="flex-between mt-16" style="border-top:1px solid var(--border);padding-top:16px">
+          <span class="text-orange" style="font-weight:700">Total</span>
+          <span id="pay-total" style="font-family:var(--font-display);font-size:1.6rem;color:var(--orange)"></span>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full mt-24" onclick="proceedToPayment()">Pay with PhonePe →</button>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    let selectedPackage = null;
+    let currentStep = 0;
+    let discountAmount = 0;
+
+    // ── Load workout styles
+    async function loadStyles() {
+      const data = await api.get('/api/public/workout-styles');
+      const grid = document.getElementById('styles-grid');
+      if (!data?.styles?.length) { grid.innerHTML = '<p class="text-dim">No goals available yet.</p>'; return; }
+      grid.innerHTML = data.styles.map(s => `
+        <div class="style-card">
+          <div class="style-icon">${s.icon || '💪'}</div>
+          <h3>${s.name}</h3>
+          <p>${s.description}</p>
+        </div>
+      `).join('');
+    }
+
+    // ── Load packages
+    async function loadPackages() {
+      const data = await api.get('/api/public/packages');
+      const grid = document.getElementById('packages-grid');
+      if (!data?.packages?.length) { grid.innerHTML = '<p class="text-dim">No packages available yet.</p>'; return; }
+      const featured = data.packages.reduce((a, b) => b.sessions > a.sessions ? b : a, data.packages[0]);
+      grid.innerHTML = data.packages.map(p => `
+        <div class="package-card ${p.id === featured.id ? 'featured' : ''}">
+          ${p.id === featured.id ? '<div class="featured-badge">Most Popular</div>' : ''}
+          <div class="pkg-name">${p.name}</div>
+          <div class="pkg-price"><sup>₹</sup>${p.price.toLocaleString('en-IN')}</div>
+          <div class="pkg-meta">
+            <div class="pkg-meta-item">
+              <div class="pkg-meta-value">${p.sessions}</div>
+              <div class="pkg-meta-label">Sessions</div>
+            </div>
+            <div class="pkg-meta-item">
+              <div class="pkg-meta-value">${p.days}</div>
+              <div class="pkg-meta-label">Days</div>
+            </div>
+            <div class="pkg-meta-item">
+              <div class="pkg-meta-value">1hr</div>
+              <div class="pkg-meta-label">Per Session</div>
+            </div>
+          </div>
+          <p class="pkg-desc">${p.description || ''}</p>
+          <button class="btn btn-primary btn-full" onclick="selectPackage(${JSON.stringify(p).replace(/"/g, '&quot;')})">Choose This Plan</button>
+        </div>
+      `).join('');
+    }
+
+    // ── Load stories
+    async function loadStories() {
+      const data = await api.get('/api/public/stories');
+      const grid = document.getElementById('stories-grid');
+      if (!data?.stories?.length) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px"><p class="text-dim">Be the first to share your transformation!</p></div>';
+        return;
+      }
+      grid.innerHTML = data.stories.map(s => `
+        <div class="story-card">
+          ${s.photo_url ? `<img class="story-photo" src="${s.photo_url}" alt="Transformation" />` : ''}
+          <div class="story-body">
+            <div class="story-user">
+              <img class="story-avatar" src="${s.profile_picture || '/images/default-avatar.png'}" alt="${s.user_name}" />
+              <span class="story-user-name">${s.user_name}</span>
+            </div>
+            ${s.title ? `<h4>${s.title}</h4>` : ''}
+            <p>${s.body}</p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ── Package selection
+    function selectPackage(pkg) {
+      selectedPackage = pkg;
+      document.getElementById('selected-pkg-info').innerHTML = `
+        <strong style="color:var(--white)">${pkg.name} Plan</strong> — ${pkg.sessions} Sessions · ${pkg.days} Days · <span class="text-orange">₹${pkg.price.toLocaleString('en-IN')}</span>
+      `;
+      document.getElementById('reg-modal').classList.remove('hidden');
+      goToStep(0);
+    }
+
+    function closeModal() { document.getElementById('reg-modal').classList.add('hidden'); }
+    function closePayModal() { document.getElementById('pay-modal').classList.add('hidden'); }
+
+    // ── Step navigation
+    function goToStep(n) {
+      document.querySelectorAll('.form-step').forEach((el, i) => {
+        el.classList.toggle('active', i === n);
+      });
+      document.querySelectorAll('.step-dot').forEach((el, i) => {
+        el.classList.toggle('active', i === n);
+        el.classList.toggle('done', i < n);
+      });
+      currentStep = n;
+    }
+
+    function nextStep(n) { goToStep(n); }
+
+    // ── OTP
+    async function sendOtp() {
+      const name = document.getElementById('reg-name').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      if (!name || !email) return toast('Please enter your name and email', 'error');
+      const data = await api.post('/api/auth/send-otp', { name, email });
+      if (data?.success) {
+        document.getElementById('otp-email-display').textContent = email;
+        goToStep(1);
+        toast('OTP sent to your email!', 'success');
+      } else {
+        toast(data?.error || 'Failed to send OTP', 'error');
+      }
+    }
+
+    async function verifyOtp() {
+      const otp = document.getElementById('otp-input').value.trim();
+      if (!otp) return toast('Please enter the OTP', 'error');
+      const data = await api.post('/api/auth/verify-otp', { otp });
+      if (data?.success) { goToStep(2); toast('Email verified!', 'success'); }
+      else toast(data?.error || 'Invalid OTP', 'error');
+    }
+
+    async function resendOtp() {
+      const data = await api.post('/api/auth/resend-otp');
+      if (data?.success) toast('OTP resent!', 'success');
+    }
+
+    // ── Registration submit → go to payment
+    async function submitRegistration() {
+      if (document.getElementById('reg-confirm').value !== 'yes') {
+        return toast('Please confirm all information is true', 'error');
+      }
+      const password = document.getElementById('reg-password').value;
+      if (!password || password.length < 8) return toast('Password must be at least 8 characters', 'error');
+
+      const payload = {
+        password,
+        phone:          document.getElementById('reg-phone').value,
+        occupation:     document.getElementById('reg-occupation').value,
+        date_of_birth:  document.getElementById('reg-dob').value,
+        age:            document.getElementById('reg-age').value,
+        gender:         document.getElementById('reg-gender').value,
+        address:        document.getElementById('reg-address').value,
+        height:         document.getElementById('reg-height').value,
+        weight:         document.getElementById('reg-weight').value,
+        waist:          document.getElementById('reg-waist').value,
+        thigh:          document.getElementById('reg-thigh').value,
+        arm:            document.getElementById('reg-arm').value,
+        chest:          document.getElementById('reg-chest').value,
+        health_issues:  document.getElementById('reg-health').value,
+        allergies:      document.getElementById('reg-allergies').value,
+        food_preference:document.getElementById('reg-food-pref').value,
+        food_specific:  document.getElementById('reg-food-specific').value,
+        prior_experience:document.getElementById('reg-experience').value,
+        fitness_goal:   document.getElementById('reg-goal').value,
+        queries:        document.getElementById('reg-queries').value,
+        package_id:     selectedPackage?.id,
+        referred_by_code: document.getElementById('reg-referral').value,
+      };
+
+      const data = await api.post('/api/auth/register', payload);
+      if (data?.success) {
+        closeModal();
+        showPaymentModal();
+        toast('Registration successful! Complete payment to activate.', 'success');
+      } else {
+        toast(data?.error || 'Registration failed', 'error');
+      }
+    }
+
+    // ── Payment modal
+    function showPaymentModal() {
+      const pkg = selectedPackage;
+      document.getElementById('pay-summary').innerHTML = `
+        <div class="flex-between">
+          <div>
+            <div style="font-family:var(--font-display);font-size:1.4rem;color:var(--white)">${pkg.name}</div>
+            <div class="text-dim text-small">${pkg.sessions} Sessions · ${pkg.days} Days</div>
+          </div>
+          <div style="font-family:var(--font-display);font-size:1.8rem;color:var(--orange)">₹${pkg.price.toLocaleString('en-IN')}</div>
+        </div>
+      `;
+      document.getElementById('pay-original').textContent = `₹${pkg.price.toLocaleString('en-IN')}`;
+      document.getElementById('pay-total').textContent = `₹${pkg.price.toLocaleString('en-IN')}`;
+      document.getElementById('pay-modal').classList.remove('hidden');
+    }
+
+    async function applyDiscount() {
+      const code = document.getElementById('discount-code').value.trim();
+      if (!code) return;
+      const data = await api.get(`/api/payments/validate-code?code=${code}&amount=${selectedPackage.price}`);
+      if (data?.valid) {
+        discountAmount = parseFloat(data.discountAmount);
+        document.getElementById('discount-msg').textContent = `✅ ${data.type === 'percentage' ? data.value + '%' : '₹' + data.value} discount applied!`;
+        document.getElementById('discount-msg').classList.remove('hidden');
+        updatePayTotal();
+        toast('Discount applied!', 'success');
+      } else {
+        toast(data?.message || 'Invalid code', 'error');
+      }
+    }
+
+    function updatePayTotal() {
+      const base = selectedPackage.price;
+      const total = Math.max(0, base - discountAmount);
+      document.getElementById('pay-discount').textContent = `-₹${discountAmount.toFixed(0)}`;
+      document.getElementById('pay-total').textContent = `₹${total.toLocaleString('en-IN')}`;
+    }
+
+    async function proceedToPayment() {
+      const customerName = document.getElementById('reg-name').value;
+      const customerEmail = document.getElementById('reg-email').value;
+      const customerPhone = document.getElementById('reg-phone').value;
+      const discountCode = document.getElementById('discount-code').value;
+      const useCredits = document.getElementById('use-credits').checked;
+
+      const data = await api.post('/api/payments/initiate', {
+        package_id: selectedPackage.id,
+        discount_code: discountCode,
+        use_credits: useCredits,
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone,
+      });
+
+      if (data?.redirectUrl) {
+        window.location.href = data.redirectUrl;
+      } else {
+        toast(data?.error || 'Payment failed to initiate', 'error');
+      }
+    }
+
+    // Init
+    loadStyles();
+    loadPackages();
+    loadStories();
+  </script>
+</body>
+</html>

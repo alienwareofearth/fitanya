@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Schedule — Fitaniya</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <a href="/coach" class="sidebar-logo">FIT<span>ANIYA</span></a>
+    <nav class="sidebar-nav">
+      <a href="/coach" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
+      <a href="/coach/schedule" class="nav-item active"><span class="icon">📅</span>My Schedule</a>
+      <a href="/coach/customers" class="nav-item"><span class="icon">👥</span>My Customers</a>
+      <a href="/coach/sessions" class="nav-item"><span class="icon">📝</span>Session Notes</a>
+    </nav>
+    <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
+  </aside>
+  <main class="main-content">
+    <div class="page-header mb-32"><h2>My Schedule</h2><p>Open and manage your available training slots</p></div>
+    <div class="card mb-32">
+      <div class="section-title">Add New Slot</div>
+      <div class="flex gap-16 flex-wrap">
+        <div class="form-group" style="flex:1;min-width:160px"><label>Date</label><input class="form-control" id="slot-date" readonly /></div>
+        <div class="form-group" style="flex:1;min-width:140px"><label>Start Time</label><input class="form-control" id="slot-start" type="time" /></div>
+        <div class="form-group" style="flex:1;min-width:140px"><label>End Time</label><input class="form-control" id="slot-end" type="time" /></div>
+        <div class="form-group" style="display:flex;align-items:flex-end"><button class="btn btn-primary" onclick="addSlot()">Add Slot</button></div>
+      </div>
+    </div>
+    <div class="section-title">My Upcoming Slots</div>
+    <div id="slots-wrap"><div class="spinner"></div></div>
+  </main>
+</div>
+<div id="toast-container"></div>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="/js/app.js"></script>
+<script>
+  async function init() {
+    flatpickr('#slot-date', { minDate: 'today', dateFormat: 'Y-m-d' });
+    document.getElementById('slot-start').value = '06:00';
+    document.getElementById('slot-end').value = '07:00';
+    loadSlots();
+  }
+
+  async function loadSlots() {
+    const data = await api.get('/api/coach/my-schedule');
+    const el = document.getElementById('slots-wrap');
+    if (!data?.slots?.length) { el.innerHTML = '<div class="card"><p class="text-dim">No upcoming slots. Add some above!</p></div>'; return; }
+    el.innerHTML = `<div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Time</th><th>Status</th><th>Customer</th><th>Action</th></tr></thead>
+      <tbody>
+        ${data.slots.map(s => `<tr>
+          <td>${formatDate(s.date)}</td>
+          <td>${formatTime(s.start_time)} – ${formatTime(s.end_time)}</td>
+          <td><span class="badge ${s.is_booked ? 'badge-orange' : 'badge-green'}">${s.is_booked ? 'Booked' : 'Open'}</span></td>
+          <td>${s.customer_name || '—'}</td>
+          <td>${!s.is_booked ? `<button class="btn btn-dark btn-sm" onclick="deleteSlot(${s.id})">Remove</button>` : ''}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div></div>`;
+  }
+
+  async function addSlot() {
+    const date = document.getElementById('slot-date').value;
+    const start_time = document.getElementById('slot-start').value;
+    const end_time = document.getElementById('slot-end').value;
+    if (!date || !start_time || !end_time) return toast('Fill all fields', 'error');
+    const data = await api.post('/api/coach/slots', { date, start_time, end_time });
+    if (data?.success) { toast('Slot added!', 'success'); loadSlots(); }
+    else toast(data?.error || 'Failed', 'error');
+  }
+
+  async function deleteSlot(id) {
+    const data = await api.del('/api/coach/slots/' + id);
+    if (data?.success) { toast('Slot removed', 'info'); loadSlots(); }
+    else toast(data?.error || 'Failed', 'error');
+  }
+
+  init();
+</script>
+</body>
+</html>

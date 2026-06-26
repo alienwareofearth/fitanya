@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Refer & Earn — Fitaniya</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <a href="/dashboard" class="sidebar-logo">FIT<span>ANIYA</span></a>
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
+      <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
+      <a href="/dashboard/membership" class="nav-item"><span class="icon">🎫</span>Membership</a>
+      <a href="/dashboard/progress" class="nav-item"><span class="icon">📊</span>Progress</a>
+      <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
+      <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
+      <a href="/dashboard/referral" class="nav-item active"><span class="icon">🎁</span>Refer & Earn</a>
+      <a href="/dashboard/profile" class="nav-item"><span class="icon">👤</span>Profile</a>
+    </nav>
+    <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
+  </aside>
+  <main class="main-content">
+    <div class="page-header mb-32">
+      <h2>Refer & Earn</h2>
+      <p>Invite friends to Fitaniya and earn credits towards your next membership</p>
+    </div>
+
+    <!-- Hero referral card -->
+    <div class="card card-glow mb-32" style="text-align:center;padding:48px;background:linear-gradient(135deg,rgba(255,92,0,0.1),rgba(255,140,66,0.05))">
+      <div style="font-size:48px;margin-bottom:16px">🎁</div>
+      <h3 style="font-family:var(--font-display);font-size:2rem;margin-bottom:8px">Earn <span class="gradient-text" id="reward-amount">₹500</span> Per Referral</h3>
+      <p class="text-dim mb-32">Share your unique code. When a friend joins and pays, you both win!</p>
+      <div style="background:var(--dark);border:1.5px dashed var(--orange);border-radius:var(--radius-sm);padding:20px;display:inline-block;min-width:240px">
+        <div style="font-size:11px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Your Referral Code</div>
+        <div id="ref-code" style="font-family:var(--font-display);font-size:2.4rem;color:var(--orange);letter-spacing:8px">—</div>
+      </div>
+      <div class="flex gap-12 mt-24" style="justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="copyCode()">📋 Copy Code</button>
+        <button class="btn btn-outline" onclick="shareLink()">🔗 Share Link</button>
+        <button class="btn btn-dark" onclick="shareWhatsApp()">💬 WhatsApp</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid mb-32">
+      <div class="stat-card"><div class="stat-label">Friends Referred</div><div class="stat-value orange" id="total-refs">0</div></div>
+      <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value" id="done-refs">0</div></div>
+      <div class="stat-card"><div class="stat-label">Credits Earned</div><div class="stat-value orange" id="credits-earned">₹0</div></div>
+      <div class="stat-card"><div class="stat-label">Credits Available</div><div class="stat-value" id="credits-avail">₹0</div></div>
+    </div>
+
+    <!-- Referral list -->
+    <div class="section-title">Your Referrals</div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Friend</th><th>Joined</th><th>Status</th><th>Reward</th></tr></thead>
+          <tbody id="ref-rows"><tr><td colspan="4" class="text-center text-dim">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script>
+  let referralCode = '';
+
+  async function init() {
+    await requireAuth();
+    const data = await api.get('/api/customer/referrals');
+    if (!data?.success) return;
+
+    referralCode = data.referral_code || '';
+    document.getElementById('ref-code').textContent = referralCode;
+    if (data.config?.reward_value) {
+      document.getElementById('reward-amount').textContent = '₹' + data.config.reward_value;
+    }
+
+    const refs = data.referrals || [];
+    document.getElementById('total-refs').textContent = refs.length;
+    document.getElementById('done-refs').textContent = refs.filter(r => r.reward_credited).length;
+    document.getElementById('credits-earned').textContent = '₹' + (refs.filter(r => r.reward_credited).length * (data.config?.reward_value || 500));
+    document.getElementById('credits-avail').textContent = '₹' + (data.credits || 0);
+
+    const tbody = document.getElementById('ref-rows');
+    if (!refs.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-dim">No referrals yet. Start sharing!</td></tr>';
+    } else {
+      tbody.innerHTML = refs.map(r => `
+        <tr>
+          <td>${r.referee_name}</td>
+          <td>${formatDate(r.joined_at)}</td>
+          <td><span class="badge ${r.status === 'completed' ? 'badge-green' : 'badge-yellow'}">${r.status}</span></td>
+          <td>${r.reward_credited ? '<span class="text-green">✅ Credited</span>' : '<span class="text-dim">Pending</span>'}</td>
+        </tr>
+      `).join('');
+    }
+  }
+
+  function copyCode() {
+    navigator.clipboard.writeText(referralCode);
+    toast('Referral code copied!', 'success');
+  }
+
+  function shareLink() {
+    const url = window.location.origin + '/?ref=' + referralCode;
+    navigator.clipboard.writeText(url);
+    toast('Referral link copied!', 'success');
+  }
+
+  function shareWhatsApp() {
+    const url = window.location.origin + '/?ref=' + referralCode;
+    const msg = encodeURIComponent(`Join me on Fitaniya — India's best online personal training platform! Use my code ${referralCode} or click: ${url}`);
+    window.open('https://wa.me/?text=' + msg, '_blank');
+  }
+
+  init();
+</script>
+</body>
+</html>

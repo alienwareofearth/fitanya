@@ -1,0 +1,43 @@
+{
+  "name": "fitaniya",
+  "version": "1.0.0",
+  "description": "Fitaniya - Premium Online Fitness Training Platform",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --runInBand",
+    "test:unit": "jest tests/unit --runInBand",
+    "test:integration": "jest tests/integration --runInBand"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.5.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^5.0.0",
+    "express-rate-limit": "^7.5.0",
+    "express-session": "^1.18.1",
+    "googleapis": "^173.0.0",
+    "helmet": "^8.0.0",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^9.0.1",
+    "uuid": "^11.0.3"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9",
+    "supertest": "^7.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 30000
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "overrides": {
+    "js-yaml": "^5.1.0"
+  }
+}

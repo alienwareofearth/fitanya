@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discounts — Fitaniya Admin</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <a href="/admin" class="sidebar-logo" style="font-size:20px;padding:22px 20px">FIT<span>ANIYA</span></a>
+    <nav class="sidebar-nav">
+      <a href="/admin" class="nav-item"><span class="icon">📊</span>Dashboard</a>
+      <a href="/admin/packages" class="nav-item"><span class="icon">📦</span>Packages & Prices</a>
+      <a href="/admin/discounts" class="nav-item active"><span class="icon">🏷️</span>Discounts</a>
+      <a href="/admin/coaches" class="nav-item"><span class="icon">🏋️</span>Coaches</a>
+      <a href="/admin/members" class="nav-item"><span class="icon">👥</span>Members</a>
+      <a href="/admin/stories" class="nav-item"><span class="icon">📸</span>Stories</a>
+      <a href="/admin/diet" class="nav-item"><span class="icon">🥗</span>Diet Plans</a>
+      <a href="/admin/settings" class="nav-item"><span class="icon">⚙️</span>Settings</a>
+    </nav>
+    <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
+  </aside>
+  <main class="main-content">
+    <div class="page-header flex-between mb-32">
+      <div><h2>Discount Codes</h2><p>Create and manage discount codes for packages</p></div>
+      <button class="btn btn-primary" onclick="document.getElementById('add-modal').classList.remove('hidden')">+ Create Code</button>
+    </div>
+
+    <div id="discounts-wrap"><div class="spinner"></div></div>
+  </main>
+</div>
+
+<!-- Create Discount Modal -->
+<div class="modal-overlay hidden" id="add-modal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="document.getElementById('add-modal').classList.add('hidden')">×</button>
+    <h3 class="modal-title">Create Discount Code</h3>
+    <div class="form-group"><label>Code *</label><input class="form-control" id="d-code" placeholder="e.g. WELCOME20" style="text-transform:uppercase" /></div>
+    <div class="grid-2 gap-12">
+      <div class="form-group">
+        <label>Type *</label>
+        <select class="form-control" id="d-type" onchange="updateTypeLabel()">
+          <option value="percentage">Percentage (%)</option>
+          <option value="flat">Flat Amount (₹)</option>
+        </select>
+      </div>
+      <div class="form-group"><label id="d-value-label">Discount % *</label><input class="form-control" type="number" id="d-value" placeholder="e.g. 20" /></div>
+    </div>
+    <div class="grid-2 gap-12">
+      <div class="form-group"><label>Max Uses (blank = unlimited)</label><input class="form-control" type="number" id="d-max-uses" placeholder="e.g. 100" /></div>
+      <div class="form-group"><label>Expiry Date (blank = no expiry)</label><input class="form-control" type="date" id="d-expires" /></div>
+    </div>
+    <div class="form-group">
+      <label>Applies To</label>
+      <select class="form-control" id="d-applies">
+        <option value="all">All Packages</option>
+        <option value="specific">Specific Package</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Min Purchase Amount (₹)</label><input class="form-control" type="number" id="d-min" placeholder="0 = no minimum" /></div>
+    <button class="btn btn-primary btn-full" onclick="createDiscount()">Create Discount Code</button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script>
+  function updateTypeLabel() {
+    const t = document.getElementById('d-type').value;
+    document.getElementById('d-value-label').textContent = t === 'percentage' ? 'Discount % *' : 'Flat Amount (₹) *';
+    document.getElementById('d-value').placeholder = t === 'percentage' ? 'e.g. 20' : 'e.g. 500';
+  }
+
+  async function init() {
+    const data = await api.get('/api/admin/discounts');
+    if (!data?.success) { window.location.href = '/login'; return; }
+    const el = document.getElementById('discounts-wrap');
+    if (!data.discounts?.length) {
+      el.innerHTML = '<div class="card"><p class="text-dim">No discount codes yet. Create your first one!</p></div>'; return;
+    }
+    el.innerHTML = `<div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Code</th><th>Type</th><th>Value</th><th>Used / Max</th><th>Expires</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>
+        ${data.discounts.map(d => `<tr>
+          <td style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:2px;color:var(--orange)">${d.code}</td>
+          <td>${d.type === 'percentage' ? 'Percentage' : 'Flat ₹'}</td>
+          <td class="text-white">${d.type === 'percentage' ? d.value + '%' : '₹' + d.value}</td>
+          <td>${d.used_count} / ${d.max_uses || '∞'}</td>
+          <td class="text-dim">${d.expires_at ? formatDate(d.expires_at) : 'Never'}</td>
+          <td><span class="badge ${d.is_active ? 'badge-green' : 'badge-red'}">${d.is_active ? 'Active' : 'Disabled'}</span></td>
+          <td><button class="btn btn-dark btn-sm" onclick="toggleCode(${d.id})">${d.is_active ? 'Disable' : 'Enable'}</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div></div>`;
+  }
+
+  async function createDiscount() {
+    const code = document.getElementById('d-code').value.trim().toUpperCase();
+    const type = document.getElementById('d-type').value;
+    const value = parseFloat(document.getElementById('d-value').value);
+    if (!code || !value) return toast('Fill code and value', 'error');
+
+    const payload = {
+      code, type, value,
+      max_uses: document.getElementById('d-max-uses').value || null,
+      expires_at: document.getElementById('d-expires').value || null,
+      applies_to: document.getElementById('d-applies').value,
+      min_amount: document.getElementById('d-min').value || 0,
+    };
+    const data = await api.post('/api/admin/discounts', payload);
+    if (data?.success) {
+      toast('Discount code created!', 'success');
+      document.getElementById('add-modal').classList.add('hidden');
+      init();
+    } else toast(data?.error || 'Failed', 'error');
+  }
+
+  async function toggleCode(id) {
+    const data = await api.put('/api/admin/discounts/' + id + '/toggle', {});
+    if (data?.success) { toast('Updated!', 'success'); init(); }
+    else toast(data?.error || 'Failed', 'error');
+  }
+
+  init();
+</script>
+</body>
+</html>
