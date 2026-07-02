@@ -1,7 +1,7 @@
 {
-  "name": "fitaniya",
+  "name": "fitanya",
   "version": "1.0.0",
-  "description": "Fitaniya - Premium Online Fitness Training Platform",
+  "description": "Fitanya - Premium Online Fitness Training Platform",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

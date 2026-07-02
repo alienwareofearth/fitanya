@@ -32,12 +32,12 @@ router.put('/profile', async (req, res) => {
   try {
     const db = getDb();
     const userId = req.session.user.id;
-    const { name, phone, occupation, height, waist, thigh, arm, chest, age, weight, address, health_issues, allergies, food_preference, food_specific, prior_experience, fitness_goal } = req.body;
+    const { name, phone, occupation, height, waist, thigh, arm, chest, age, weight, ideal_weight, address, health_issues, allergies, food_preference, food_specific, prior_experience, fitness_goal } = req.body;
 
     await db.execute({ sql: `UPDATE users SET name=?, phone=?, updated_at=datetime('now') WHERE id=?`, args: [name, phone, userId] });
     await db.execute({
-      sql: `UPDATE customer_profiles SET occupation=?, height=?, waist=?, thigh=?, arm=?, chest=?, age=?, weight=?, address=?, health_issues=?, allergies=?, food_preference=?, food_specific=?, prior_experience=?, fitness_goal=?, updated_at=datetime('now') WHERE user_id=?`,
-      args: [occupation, height, waist, thigh, arm, chest, age, weight, address, health_issues, allergies, food_preference, food_specific, prior_experience, fitness_goal, userId],
+      sql: `UPDATE customer_profiles SET occupation=?, height=?, waist=?, thigh=?, arm=?, chest=?, age=?, weight=?, ideal_weight=?, address=?, health_issues=?, allergies=?, food_preference=?, food_specific=?, prior_experience=?, fitness_goal=?, updated_at=datetime('now') WHERE user_id=?`,
+      args: [occupation, height, waist, thigh, arm, chest, age, weight, ideal_weight, address, health_issues, allergies, food_preference, food_specific, prior_experience, fitness_goal, userId],
     });
 
     req.session.user.name = name;
@@ -48,7 +48,7 @@ router.put('/profile', async (req, res) => {
 router.post('/profile/picture', upload.single('photo'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-    const { url } = await uploadBuffer(req.file.buffer, { folder: 'fitaniya/avatars', transformation: [{ width: 400, height: 400, crop: 'fill' }] });
+    const { url } = await uploadBuffer(req.file.buffer, { folder: 'fitanya/avatars', transformation: [{ width: 400, height: 400, crop: 'fill' }] });
     const db = getDb();
     await db.execute({ sql: `UPDATE users SET profile_picture = ? WHERE id = ?`, args: [url, req.session.user.id] });
     req.session.user.profile_picture = url;
@@ -107,18 +107,22 @@ router.post('/progress', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Check if weekly weight logged
+// Check if weight was logged in the last 7 days
 router.get('/progress/weight-check', async (req, res) => {
   try {
     const db = getDb();
-    const now = new Date();
-    const weekNumber = getWeekNumber(now);
-    const year = now.getFullYear();
     const log = await db.execute({
-      sql: `SELECT weight FROM progress_logs WHERE user_id = ? AND week_number = ? AND year = ? AND weight IS NOT NULL`,
-      args: [req.session.user.id, weekNumber, year],
+      sql: `SELECT weight, log_date FROM progress_logs
+            WHERE user_id = ? AND weight IS NOT NULL
+            AND log_date >= date('now', '-7 days')
+            ORDER BY log_date DESC LIMIT 1`,
+      args: [req.session.user.id],
     });
-    res.json({ logged: log.rows.length > 0, week: weekNumber, year });
+    const lastLog = log.rows[0];
+    res.json({
+      logged: log.rows.length > 0,
+      last_logged: lastLog?.log_date || null,
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -201,7 +205,7 @@ router.post('/stories', upload.single('photo'), async (req, res) => {
 
     let photoUrl = null;
     if (req.file) {
-      const uploaded = await uploadBuffer(req.file.buffer, { folder: 'fitaniya/stories' });
+      const uploaded = await uploadBuffer(req.file.buffer, { folder: 'fitanya/stories' });
       photoUrl = uploaded.url;
     }
 

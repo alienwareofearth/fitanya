@@ -8,6 +8,7 @@ const { notify } = require('../services/notifications');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
+const isDev = (process.env.NODE_ENV || 'development') === 'development';
 
 // POST /api/payments/initiate
 router.post('/initiate', async (req, res) => {
@@ -62,6 +63,15 @@ router.post('/initiate', async (req, res) => {
       discount_code_id: discountCodeId,
     };
 
+    // In dev mode skip PhonePe — redirect straight to success
+    if (isDev) {
+      const transactionId = `DEV-${Date.now()}-${req.session?.user?.id || 'guest'}`;
+      req.session.paymentIntent.transaction_id = transactionId;
+      const devRedirect = `${process.env.APP_URL || 'http://localhost:3000'}/payment/success?id=${transactionId}`;
+      console.log(`[payment] DEV mode — auto-approving payment ${transactionId}`);
+      return res.json({ success: true, redirectUrl: devRedirect, transactionId });
+    }
+
     const redirectUrl = `${process.env.APP_URL}/payment/success`;
     const { redirectUrl: phonePeUrl, transactionId } = await initiatePayment({
       amount: finalAmount,
@@ -89,10 +99,14 @@ router.get('/verify/:transactionId', async (req, res) => {
       return res.status(400).json({ error: 'Invalid payment session' });
     }
 
-    const verification = await verifyPayment(transactionId);
-
-    if (!verification.success) {
-      return res.json({ success: false, status: verification.state });
+    // In dev mode any DEV- transaction is auto-approved
+    if (isDev && transactionId.startsWith('DEV-')) {
+      console.log(`[payment] DEV mode — auto-verifying ${transactionId}`);
+    } else {
+      const verification = await verifyPayment(transactionId);
+      if (!verification.success) {
+        return res.json({ success: false, status: verification.state });
+      }
     }
 
     const db = getDb();

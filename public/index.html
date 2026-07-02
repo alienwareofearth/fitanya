@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fitaniya — Transform Your Body, Transform Your Life</title>
+  <title>Fitanya — Transform Your Body, Transform Your Life</title>
   <link rel="stylesheet" href="/css/main.css">
   <style>
     /* ── HERO ─────────────────────────────────────────────────────────── */
@@ -77,12 +77,17 @@
       border-radius: var(--radius);
       padding: 36px 28px;
       transition: all 0.3s;
-      cursor: default;
+      cursor: pointer;
     }
     .style-card:hover {
       border-color: var(--orange);
       transform: translateY(-4px);
       box-shadow: var(--glow);
+    }
+    .style-card.selected {
+      border-color: var(--orange);
+      box-shadow: var(--glow);
+      background: linear-gradient(135deg, rgba(255,107,53,0.12), var(--card));
     }
     .style-icon { font-size: 40px; margin-bottom: 20px; }
     .style-card h3 {
@@ -378,7 +383,7 @@
   <section id="stories" class="packages-section">
     <div class="section-label">Real Results</div>
     <h2 class="section-heading">Transformation <span class="gradient-text">Stories</span></h2>
-    <p class="section-sub">Hear from our members who've changed their lives with Fitaniya.</p>
+    <p class="section-sub">Hear from our members who've changed their lives with Fitanya.</p>
     <div class="stories-grid" id="stories-grid">
       <div style="text-align:center;padding:40px;grid-column:1/-1"><div class="spinner"></div></div>
     </div>
@@ -398,7 +403,7 @@
       <div class="footer-logo">FIT<span>ANIYA</span></div>
       <p class="mt-8">India's premier online personal training platform</p>
     </div>
-    <p>© 2025 Fitaniya. All rights reserved.</p>
+    <p>© 2025 Fitanya. All rights reserved.</p>
   </footer>
 
   <!-- REGISTRATION MODAL -->
@@ -452,7 +457,7 @@
 
         <div class="agreement-text">
           <h4>Personal Training Session Agreement</h4>
-          <p><strong>1. Services:</strong> Fitaniya provides personal training including fitness assessments, workout plans, nutritional guidance and ongoing support.</p>
+          <p><strong>1. Services:</strong> Fitanya provides personal training including fitness assessments, workout plans, nutritional guidance and ongoing support.</p>
           <p style="margin-top:10px"><strong>2. Schedule:</strong> Sessions are 1 hour each, conducted online via Google Meet. Any rescheduling requires 24 hours notice.</p>
           <p style="margin-top:10px"><strong>3. Payment:</strong> Full payment is due before sessions begin. All payments are processed securely via PhonePe.</p>
           <p style="margin-top:10px"><strong>4. Cancellation:</strong> At least 24 hours notice required. Late cancellations may forfeit the session.</p>
@@ -473,11 +478,11 @@
         <div class="form-row">
           <div class="form-group">
             <label>Date of Birth *</label>
-            <input class="form-control" type="date" id="reg-dob" />
+            <input class="form-control" type="date" id="reg-dob" onchange="calcAge(this.value)" />
           </div>
           <div class="form-group">
-            <label>Age *</label>
-            <input class="form-control" type="number" id="reg-age" placeholder="e.g. 28" />
+            <label>Age</label>
+            <input class="form-control" type="number" id="reg-age" placeholder="Auto-filled from DOB" readonly style="opacity:0.7;cursor:default" />
           </div>
         </div>
         <div class="form-group">
@@ -501,8 +506,22 @@
         <h3 class="modal-title">Health & Goals</h3>
         <div class="form-row">
           <div class="form-group">
-            <label>Height (cm) *</label>
-            <input class="form-control" type="number" id="reg-height" placeholder="e.g. 170" />
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <label style="margin:0">Height *</label>
+              <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;font-size:12px">
+                <button type="button" id="ht-cm-btn" onclick="setHeightUnit('cm')"
+                  style="padding:3px 10px;background:var(--orange);color:#fff;border:none;cursor:pointer;font-weight:700">cm</button>
+                <button type="button" id="ht-ft-btn" onclick="setHeightUnit('ft')"
+                  style="padding:3px 10px;background:transparent;color:var(--text-dim);border:none;cursor:pointer;font-weight:700">ft / in</button>
+              </div>
+            </div>
+            <div id="height-cm-wrap">
+              <input class="form-control" type="number" id="reg-height" placeholder="e.g. 170" step="0.1" />
+            </div>
+            <div id="height-ft-wrap" style="display:none;display:flex;gap:8px">
+              <input class="form-control" type="number" id="reg-height-ft" placeholder="Feet" min="1" max="8" style="flex:1" />
+              <input class="form-control" type="number" id="reg-height-in" placeholder="Inches" min="0" max="11" style="flex:1" />
+            </div>
           </div>
           <div class="form-group">
             <label>Weight (kg) *</label>
@@ -624,22 +643,63 @@
 
   <script src="/js/app.js"></script>
   <script>
+    function calcAge(dob) {
+      if (!dob) return;
+      const birth = new Date(dob);
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+      document.getElementById('reg-age').value = age > 0 ? age : '';
+    }
+
+    let _heightUnit = 'cm';
+    function setHeightUnit(unit) {
+      _heightUnit = unit;
+      const isFt = unit === 'ft';
+      document.getElementById('height-cm-wrap').style.display = isFt ? 'none' : '';
+      document.getElementById('height-ft-wrap').style.display = isFt ? 'flex' : 'none';
+      document.getElementById('ht-cm-btn').style.background = isFt ? 'transparent' : 'var(--orange)';
+      document.getElementById('ht-cm-btn').style.color = isFt ? 'var(--text-dim)' : '#fff';
+      document.getElementById('ht-ft-btn').style.background = isFt ? 'var(--orange)' : 'transparent';
+      document.getElementById('ht-ft-btn').style.color = isFt ? '#fff' : 'var(--text-dim)';
+    }
+
+    function getHeightCm() {
+      if (_heightUnit === 'cm') return parseFloat(document.getElementById('reg-height').value) || '';
+      const ft = parseFloat(document.getElementById('reg-height-ft').value) || 0;
+      const inc = parseFloat(document.getElementById('reg-height-in').value) || 0;
+      const cm = ((ft * 12) + inc) * 2.54;
+      return cm > 0 ? Math.round(cm * 10) / 10 : '';
+    }
+
     let selectedPackage = null;
     let currentStep = 0;
     let discountAmount = 0;
 
     // ── Load workout styles
+    let selectedGoal = null;
+
     async function loadStyles() {
       const data = await api.get('/api/public/workout-styles');
       const grid = document.getElementById('styles-grid');
       if (!data?.styles?.length) { grid.innerHTML = '<p class="text-dim">No goals available yet.</p>'; return; }
       grid.innerHTML = data.styles.map(s => `
-        <div class="style-card">
+        <div class="style-card" onclick="selectGoal(${JSON.stringify(s.name)})">
           <div class="style-icon">${s.icon || '💪'}</div>
           <h3>${s.name}</h3>
           <p>${s.description}</p>
         </div>
       `).join('');
+    }
+
+    function selectGoal(name) {
+      selectedGoal = name;
+      document.querySelectorAll('.style-card').forEach(el => {
+        el.classList.toggle('selected', el.querySelector('h3')?.textContent === name);
+      });
+      document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      toast(`Goal set: ${name}. Pick a package below.`, 'success');
     }
 
     // ── Load packages
@@ -702,6 +762,7 @@
       document.getElementById('selected-pkg-info').innerHTML = `
         <strong style="color:var(--white)">${pkg.name} Plan</strong> — ${pkg.sessions} Sessions · ${pkg.days} Days · <span class="text-orange">₹${pkg.price.toLocaleString('en-IN')}</span>
       `;
+      if (selectedGoal) document.getElementById('reg-goal').value = selectedGoal;
       document.getElementById('reg-modal').classList.remove('hidden');
       goToStep(0);
     }
@@ -767,7 +828,7 @@
         age:            document.getElementById('reg-age').value,
         gender:         document.getElementById('reg-gender').value,
         address:        document.getElementById('reg-address').value,
-        height:         document.getElementById('reg-height').value,
+        height:         getHeightCm(),
         weight:         document.getElementById('reg-weight').value,
         waist:          document.getElementById('reg-waist').value,
         thigh:          document.getElementById('reg-thigh').value,

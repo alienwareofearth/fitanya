@@ -8,17 +8,18 @@ let db;
 
 function getDb() {
   if (db) return db;
+  const isDev = (process.env.NODE_ENV || 'development') === 'development';
   const tursoUrl = process.env.TURSO_DATABASE_URL;
   const tursoToken = process.env.TURSO_AUTH_TOKEN;
-  if (tursoUrl && tursoToken) {
+  if (!isDev && tursoUrl && tursoToken) {
     db = createClient({ url: tursoUrl, authToken: tursoToken });
     console.log('[db] Connected to Turso cloud database');
   } else {
     const dataDir = path.join(__dirname, '../../data');
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-    const dbPath = path.join(dataDir, 'fitaniya.db');
+    const dbPath = path.join(dataDir, 'dev_db.json');
     db = createClient({ url: `file:${dbPath}` });
-    console.log(`[db] Using local SQLite at ${dbPath}`);
+    console.log(`[db] Using local dev database at ${dbPath}`);
   }
   return db;
 }
@@ -66,10 +67,16 @@ async function initDb() {
     prior_experience TEXT,
     date_of_birth TEXT,
     fitness_goal TEXT,
+    ideal_weight REAL,
     queries TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`);
+
+  // Migrate: add ideal_weight if it doesn't exist (for existing databases)
+  try {
+    await client.execute(`ALTER TABLE customer_profiles ADD COLUMN ideal_weight REAL`);
+  } catch (_) { /* column already exists */ }
 
   // Coach profiles
   await client.execute(`CREATE TABLE IF NOT EXISTS coach_profiles (

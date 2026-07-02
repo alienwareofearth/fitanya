@@ -141,7 +141,7 @@ router.post('/coaches', async (req, res) => {
     const { v4: uuidv4 } = require('uuid');
     const { name, email, phone, bio, specializations, certifications } = req.body;
     const db = getDb();
-    const password = await bcrypt.hash('Fitaniya@123', 12);
+    const password = await bcrypt.hash('Fitanya@123', 12);
     const referralCode = (name.slice(0, 3) + Math.random().toString(36).slice(2, 5)).toUpperCase();
 
     const user = await db.execute({
@@ -153,7 +153,7 @@ router.post('/coaches', async (req, res) => {
       sql: `INSERT INTO coach_profiles (user_id, bio, specializations, certifications) VALUES (?, ?, ?, ?)`,
       args: [userId, bio, specializations, certifications],
     });
-    res.json({ success: true, message: 'Coach created. Temporary password: Fitaniya@123' });
+    res.json({ success: true, message: 'Coach created. Temporary password: Fitanya@123' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

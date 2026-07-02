@@ -1,6 +1,11 @@
 'use strict';
 
 const nodemailer = require('nodemailer');
+const path = require('path');
+const fs = require('fs');
+
+const useFileTransport = !process.env.SMTP_USER || !process.env.SMTP_PASS;
+const outboxPath = path.join(__dirname, '../../data/dev_emails.json');
 
 let transporter;
 
@@ -14,7 +19,16 @@ function getTransporter() {
   return transporter;
 }
 
-const FROM = `"${process.env.EMAIL_FROM_NAME || 'Fitaniya'}" <${process.env.EMAIL_FROM || 'noreply@fitaniya.com'}>`;
+function writeToOutbox(message) {
+  const dataDir = path.dirname(outboxPath);
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  const outbox = fs.existsSync(outboxPath) ? JSON.parse(fs.readFileSync(outboxPath, 'utf8')) : [];
+  outbox.push({ ...message, sentAt: new Date().toISOString() });
+  fs.writeFileSync(outboxPath, JSON.stringify(outbox, null, 2));
+  console.log(`[email] No SMTP credentials set — wrote "${message.subject}" for ${message.to} to ${outboxPath}`);
+}
+
+const FROM = `"${process.env.EMAIL_FROM_NAME || 'Fitanya'}" <${process.env.EMAIL_FROM || 'noreply@fitanya.com'}>`;
 
 const baseTemplate = (content) => `
 <!DOCTYPE html>
@@ -42,26 +56,27 @@ const baseTemplate = (content) => `
 <body>
   <div class="wrapper">
     <div class="header">
-      <h1>FITANIYA</h1>
+      <h1>FITANYA</h1>
       <p>TRANSFORM · PERFORM · EXCEL</p>
     </div>
     <div class="body">${content}</div>
-    <div class="footer">© ${new Date().getFullYear()} Fitaniya. All rights reserved.</div>
+    <div class="footer">© ${new Date().getFullYear()} Fitanya. All rights reserved.</div>
   </div>
 </body>
 </html>`;
 
 async function sendMail({ to, subject, html, text }) {
+  if (useFileTransport) return writeToOutbox({ from: FROM, to, subject, html, text });
   const mailer = getTransporter();
   return mailer.sendMail({ from: FROM, to, subject, html, text });
 }
 
 async function sendOtp({ to, name, otp }) {
   return sendMail({
-    to, subject: 'Your Fitaniya OTP Verification Code',
+    to, subject: 'Your Fitanya OTP Verification Code',
     html: baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
-      <p>Your one-time password for Fitaniya registration is:</p>
+      <p>Your one-time password for Fitanya registration is:</p>
       <div class="otp">${otp}</div>
       <p style="text-align:center;color:#666;font-size:13px;">This OTP expires in <strong style="color:#ff6b35">10 minutes</strong>. Do not share it with anyone.</p>
     `),
@@ -70,10 +85,10 @@ async function sendOtp({ to, name, otp }) {
 
 async function sendWelcome({ to, name }) {
   return sendMail({
-    to, subject: 'Welcome to Fitaniya! Your journey starts now 🔥',
+    to, subject: 'Welcome to Fitanya! Your journey starts now 🔥',
     html: baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
-      <p>Welcome to <strong>Fitaniya</strong>! Your account is ready and your fitness transformation journey begins today.</p>
+      <p>Welcome to <strong>Fitanya</strong>! Your account is ready and your fitness transformation journey begins today.</p>
       <p>Login to your dashboard to book your first session, track your progress, and connect with your coach.</p>
       <a href="${process.env.APP_URL}/login" class="btn">Go to My Dashboard</a>
     `),
@@ -135,7 +150,7 @@ async function sendPaymentConfirmation({ to, name, payment, packageName }) {
 
 async function sendRegistrationRequest({ to, name, packageName }) {
   return sendMail({
-    to, subject: 'Complete your Fitaniya Registration',
+    to, subject: 'Complete your Fitanya Registration',
     html: baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
       <p>Thank you for choosing the <strong>${packageName}</strong> plan!</p>
@@ -151,7 +166,7 @@ async function sendReferralReward({ to, name, rewardValue }) {
     to, subject: `🎉 You earned ₹${rewardValue} referral reward!`,
     html: baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
-      <p>Great news! Someone you referred has joined Fitaniya and completed their first payment.</p>
+      <p>Great news! Someone you referred has joined Fitanya and completed their first payment.</p>
       <div class="detail-box">
         <p>🎁 <strong>Reward Credited:</strong> ₹${rewardValue}</p>
         <p>💡 Use this credit on your next membership renewal!</p>

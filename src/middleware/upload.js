@@ -27,7 +27,7 @@ const upload = multer({
 async function uploadBuffer(buffer, opts = {}) {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder: 'fitaniya', resource_type: 'image', ...opts },
+      { folder: 'fitanya', resource_type: 'image', ...opts },
       (err, result) => {
         if (err) return reject(err);
         resolve({ url: result.secure_url, public_id: result.public_id });

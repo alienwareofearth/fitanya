@@ -33,7 +33,7 @@ async function createMeetSession({ summary, description, date, startTime, endTim
       attendees: attendeeEmails.map(email => ({ email })),
       conferenceData: {
         createRequest: {
-          requestId: `fitaniya-${Date.now()}`,
+          requestId: `fitanya-${Date.now()}`,
           conferenceSolutionKey: { type: 'hangoutsMeet' },
         },
       },

@@ -56,7 +56,7 @@ app.use(express.urlencoded({ extended: true }));
 // ── Sessions ──────────────────────────────────────────────────────────────────
 app.use(session({
   store: new TursoSessionStore({ ttl: 7 * 24 * 3600 }), // 7 days
-  secret: process.env.SESSION_SECRET || 'fitaniya-dev-secret-change-in-prod',
+  secret: process.env.SESSION_SECRET || 'fitanya-dev-secret-change-in-prod',
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -132,7 +132,7 @@ app.use((err, req, res, next) => {
 async function start() {
   await initDb();
   app.listen(PORT, () => {
-    console.log(`\n🔥 FITANIYA running on http://localhost:${PORT}`);
+    console.log(`\n🔥 FITANYA running on http://localhost:${PORT}`);
     console.log(`   ENV: ${process.env.NODE_ENV || 'development'}`);
   });
 }

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fitaniya
+    name: fitanya
     env: node
     buildCommand: npm install
     startCommand: npm start
@@ -29,9 +29,9 @@ services:
       - key: SMTP_PASS
         sync: false
       - key: EMAIL_FROM
-        value: noreply@fitaniya.com
+        value: noreply@fitanya.com
       - key: EMAIL_FROM_NAME
-        value: Fitaniya
+        value: Fitanya
       - key: PHONEPE_MERCHANT_ID
         sync: false
       - key: PHONEPE_SALT_KEY

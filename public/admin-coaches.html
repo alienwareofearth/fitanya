@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Coaches — Fitaniya Admin</title>
+  <title>Coaches — Fitanya Admin</title>
   <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
@@ -23,7 +23,7 @@
   </aside>
   <main class="main-content">
     <div class="page-header flex-between mb-32">
-      <div><h2>Coaches</h2><p>Add and manage training coaches. Default password: Fitaniya@123</p></div>
+      <div><h2>Coaches</h2><p>Add and manage training coaches. Default password: Fitanya@123</p></div>
       <button class="btn btn-primary" onclick="document.getElementById('add-modal').classList.remove('hidden')">+ Add Coach</button>
     </div>
     <div id="coaches-wrap"><div class="spinner"></div></div>
@@ -34,7 +34,7 @@
   <div class="modal" style="position:relative">
     <button class="modal-close" onclick="document.getElementById('add-modal').classList.add('hidden')">×</button>
     <h3 class="modal-title">Add New Coach</h3>
-    <p class="text-dim mt-4 mb-24">Coach will receive default password: <strong class="text-orange">Fitaniya@123</strong></p>
+    <p class="text-dim mt-4 mb-24">Coach will receive default password: <strong class="text-orange">Fitanya@123</strong></p>
     <div class="form-group"><label>Full Name *</label><input class="form-control" id="c-name" /></div>
     <div class="form-group"><label>Email *</label><input class="form-control" type="email" id="c-email" /></div>
     <div class="form-group"><label>Phone</label><input class="form-control" id="c-phone" /></div>
@@ -79,7 +79,7 @@
     if (!payload.name || !payload.email) return toast('Name and email required', 'error');
     const data = await api.post('/api/admin/coaches', payload);
     if (data?.success) {
-      toast('Coach added! Password: Fitaniya@123', 'success');
+      toast('Coach added! Password: Fitanya@123', 'success');
       document.getElementById('add-modal').classList.add('hidden');
       init();
     } else toast(data?.error || 'Failed', 'error');

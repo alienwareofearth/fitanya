@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Profile — Fitaniya</title>
+  <title>Profile — Fitanya</title>
   <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
@@ -66,7 +66,8 @@
         <div class="form-group"><label>Allergies</label><input class="form-control" id="f-allergies" /></div>
         <div class="grid-2 gap-12">
           <div class="form-group"><label>Height (cm)</label><input class="form-control" type="number" id="f-height" /></div>
-          <div class="form-group"><label>Weight (kg)</label><input class="form-control" type="number" id="f-weight" step="0.1" /></div>
+          <div class="form-group"><label>Starting Weight (kg)</label><input class="form-control" type="number" id="f-weight" step="0.1" /></div>
+          <div class="form-group"><label>Ideal / Goal Weight (kg)</label><input class="form-control" type="number" id="f-ideal-weight" step="0.1" /></div>
           <div class="form-group"><label>Waist"</label><input class="form-control" type="number" id="f-waist" step="0.5" /></div>
           <div class="form-group"><label>Chest"</label><input class="form-control" type="number" id="f-chest" step="0.5" /></div>
         </div>
@@ -97,6 +98,7 @@
     document.getElementById('f-allergies').value = profile?.allergies || '';
     document.getElementById('f-height').value = profile?.height || '';
     document.getElementById('f-weight').value = profile?.weight || '';
+    document.getElementById('f-ideal-weight').value = profile?.ideal_weight || '';
     document.getElementById('f-waist').value = profile?.waist || '';
     document.getElementById('f-chest').value = profile?.chest || '';
 
@@ -120,6 +122,7 @@
       allergies: document.getElementById('f-allergies').value,
       height: document.getElementById('f-height').value,
       weight: document.getElementById('f-weight').value,
+      ideal_weight: document.getElementById('f-ideal-weight').value,
       waist: document.getElementById('f-waist').value,
       chest: document.getElementById('f-chest').value,
     };

@@ -95,8 +95,8 @@ router.post('/book', requireAuth, async (req, res) => {
 
     // Create Google Meet
     const { meetLink, eventId } = await createMeetSession({
-      summary: `Fitaniya Session — ${customerData.name} with ${coachData.name}`,
-      description: `Personal training session via Fitaniya`,
+      summary: `Fitanya Session — ${customerData.name} with ${coachData.name}`,
+      description: `Personal training session via Fitanya`,
       date: slotData.date,
       startTime: slotData.start_time,
       endTime: slotData.end_time,

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login — Fitaniya</title>
+  <title>Login — Fitanya</title>
   <link rel="stylesheet" href="/css/main.css">
   <style>
     body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--black); }
@@ -57,12 +57,12 @@
         <input class="form-control" type="password" id="password" placeholder="Your password" autocomplete="current-password" />
       </div>
 
-      <button class="btn btn-primary btn-full mt-8" onclick="doLogin()">Login to Fitaniya →</button>
+      <button class="btn btn-primary btn-full mt-8" onclick="doLogin()">Login to Fitanya →</button>
 
       <div class="divider"><span>OR</span></div>
 
       <p class="text-center text-small text-dim">
-        New to Fitaniya? <a href="/#packages" class="text-orange">Choose a Plan & Get Started</a>
+        New to Fitanya? <a href="/#packages" class="text-orange">Choose a Plan & Get Started</a>
       </p>
     </div>
   </div>
@@ -87,7 +87,7 @@
       btn.disabled = true; btn.textContent = 'Logging in...';
 
       const data = await api.post('/api/auth/login', { email, password });
-      btn.disabled = false; btn.textContent = 'Login to Fitaniya →';
+      btn.disabled = false; btn.textContent = 'Login to Fitanya →';
 
       if (data?.success) {
         toast('Welcome back! 🔥', 'success');

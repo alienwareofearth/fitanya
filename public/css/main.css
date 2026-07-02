@@ -1,4 +1,4 @@
-/* ── FITANIYA DESIGN SYSTEM ─────────────────────────────────────────────── */
+/* ── FITANYA DESIGN SYSTEM ─────────────────────────────────────────────── */
 
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
@@ -553,6 +553,7 @@ tr:hover td { background: rgba(255,92,0,0.03); }
 .text-orange { color: var(--orange); }
 .text-green  { color: var(--green); }
 .text-red    { color: var(--red); }
+.text-white  { color: var(--white); }
 .text-dim    { color: var(--text-dim); }
 .text-small  { font-size: 13px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
