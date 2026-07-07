@@ -9,6 +9,17 @@ const { notify } = require('../services/notifications');
 
 const router = express.Router();
 
+const TZ_LABELS = { 'Asia/Kolkata': 'IST', 'America/New_York': 'EST', 'America/Chicago': 'CST', 'America/Los_Angeles': 'PST', 'Europe/London': 'GMT', 'Asia/Dubai': 'GST' };
+
+function formatForTz(dateStr, timeStr, tz) {
+  const timezone = tz || 'Asia/Kolkata';
+  const dt = new Date(`${dateStr}T${timeStr}:00+05:30`);
+  const time = dt.toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: true });
+  const date = dt.toLocaleDateString('en-US', { timeZone: timezone, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const label = TZ_LABELS[timezone] || timezone;
+  return { time, date, label };
+}
+
 // GET /api/bookings/slots?coach_id=&date=
 router.get('/slots', requireAuth, async (req, res) => {
   try {
@@ -97,7 +108,7 @@ router.post('/book', requireAuth, async (req, res) => {
     if (mem.sessions_used >= mem.sessions_total) return res.status(400).json({ error: 'No sessions remaining' });
 
     // Get user and coach details for Meet
-    const customer = await db.execute({ sql: `SELECT name, email FROM users WHERE id = ?`, args: [userId] });
+    const customer = await db.execute({ sql: `SELECT name, email, timezone FROM users WHERE id = ?`, args: [userId] });
     const coach    = await db.execute({ sql: `SELECT name, email FROM users WHERE id = ?`, args: [slotData.coach_id] });
 
     const customerData = customer.rows[0];
@@ -139,10 +150,13 @@ router.post('/book', requireAuth, async (req, res) => {
       await notify.newCustomer(slotData.coach_id, customerData.name);
     }
 
+    const tz = customerData.timezone || 'Asia/Kolkata';
+    const startFmt = formatForTz(slotData.date, slotData.start_time, tz);
+    const endFmt   = formatForTz(slotData.date, slotData.end_time, tz);
     const bookingInfo = {
-      date: slotData.date,
-      start_time: slotData.start_time,
-      end_time: slotData.end_time,
+      date: startFmt.date,
+      start_time: `${startFmt.time} ${startFmt.label}`,
+      end_time: `${endFmt.time} ${endFmt.label}`,
       coach_name: coachData.name,
     };
 

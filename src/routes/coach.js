@@ -236,7 +236,7 @@ router.post('/book', async (req, res) => {
     if (mem.sessions_used >= mem.sessions_total) return res.status(400).json({ error: 'No sessions remaining for this customer' });
 
     const [customerRow, coachRow] = await Promise.all([
-      db.execute({ sql: `SELECT name, email FROM users WHERE id = ?`, args: [customer_id] }),
+      db.execute({ sql: `SELECT name, email, timezone FROM users WHERE id = ?`, args: [customer_id] }),
       db.execute({ sql: `SELECT name, email FROM users WHERE id = ?`, args: [coachId] }),
     ]);
     const customerData = customerRow.rows[0];
@@ -261,7 +261,12 @@ router.post('/book', async (req, res) => {
       await db.execute({ sql: `UPDATE memberships SET coach_id = ? WHERE id = ?`, args: [coachId, mem.id] });
     }
 
-    const bookingInfo = { date: slotData.date, start_time: slotData.start_time, end_time: slotData.end_time, coach_name: coachData.name };
+    const TZ_LABELS = { 'Asia/Kolkata': 'IST', 'America/New_York': 'EST', 'America/Chicago': 'CST', 'America/Los_Angeles': 'PST', 'Europe/London': 'GMT', 'Asia/Dubai': 'GST' };
+    const tz = customerData.timezone || 'Asia/Kolkata';
+    const fmtTime = (t) => { const dt = new Date(`${slotData.date}T${t}:00+05:30`); return dt.toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: true }); };
+    const fmtDate = () => { const dt = new Date(`${slotData.date}T${slotData.start_time}:00+05:30`); return dt.toLocaleDateString('en-US', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); };
+    const tzLabel = TZ_LABELS[tz] || tz;
+    const bookingInfo = { date: fmtDate(), start_time: `${fmtTime(slotData.start_time)} ${tzLabel}`, end_time: `${fmtTime(slotData.end_time)} ${tzLabel}`, coach_name: coachData.name };
     await sendBookingConfirmation({ to: customerData.email, name: customerData.name, booking: bookingInfo, meetLink });
     await notify.sessionBooked(parseInt(customer_id), slotData.date, slotData.start_time);
 
