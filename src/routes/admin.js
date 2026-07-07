@@ -138,22 +138,29 @@ router.get('/coaches', async (req, res) => {
 router.post('/coaches', async (req, res) => {
   try {
     const bcrypt = require('bcryptjs');
-    const { v4: uuidv4 } = require('uuid');
+    const { sendCoachInvite } = require('../services/email');
     const { name, email, phone, bio, specializations, certifications } = req.body;
     const db = getDb();
-    const password = await bcrypt.hash('Fitanya@123', 12);
+
+    // Generate a readable temp password
+    const tempPassword = 'Fit@' + Math.random().toString(36).slice(2, 8).toUpperCase();
+    const hashedPassword = await bcrypt.hash(tempPassword, 12);
     const referralCode = (name.slice(0, 3) + Math.random().toString(36).slice(2, 5)).toUpperCase();
 
     const user = await db.execute({
       sql: `INSERT INTO users (name, email, phone, password, role, referral_code) VALUES (?, ?, ?, ?, 'coach', ?) RETURNING id`,
-      args: [name, email, phone, password, referralCode],
+      args: [name, email, phone, hashedPassword, referralCode],
     });
     const userId = user.rows[0].id;
     await db.execute({
       sql: `INSERT INTO coach_profiles (user_id, bio, specializations, certifications) VALUES (?, ?, ?, ?)`,
       args: [userId, bio, specializations, certifications],
     });
-    res.json({ success: true, message: 'Coach created. Temporary password: Fitanya@123' });
+
+    // Send invite email with credentials
+    await sendCoachInvite({ to: email, name, tempPassword });
+
+    res.json({ success: true, tempPassword, message: `Coach created and invite sent to ${email}` });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

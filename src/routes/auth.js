@@ -131,6 +131,13 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
+    // Master admin from .env — no DB entry required
+    if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD &&
+        email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+      req.session.user = { id: 0, name: 'Admin', email, role: 'admin' };
+      return res.json({ success: true, redirect: '/admin' });
+    }
+
     const db = getDb();
     const result = await db.execute({ sql: `SELECT * FROM users WHERE email = ? AND is_active = 1`, args: [email] });
     if (!result.rows.length) return res.status(401).json({ error: 'Invalid credentials' });

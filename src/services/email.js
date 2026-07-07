@@ -184,8 +184,26 @@ async function sendReferralReward({ to, name, rewardValue }) {
   });
 }
 
+async function sendCoachInvite({ to, name, tempPassword }) {
+  return sendMail({
+    to, subject: 'You\'ve been added as a Coach on Fitanya!',
+    html: baseTemplate(`
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>You've been added as a fitness coach on <strong>Fitanya</strong>. Here are your login credentials:</p>
+      <div class="detail-box">
+        <p>🌐 <strong>Login URL:</strong> <a href="${process.env.APP_URL}/login" style="color:#ff6b35">${process.env.APP_URL}/login</a></p>
+        <p>📧 <strong>Email:</strong> ${to}</p>
+        <p>🔑 <strong>Temporary Password:</strong> <span style="color:#ff6b35;font-size:18px;font-weight:700">${tempPassword}</span></p>
+      </div>
+      <p>Please log in and update your password from your profile settings.</p>
+      <a href="${process.env.APP_URL}/login" class="btn">Login to Coach Dashboard</a>
+      <p style="color:#666;font-size:13px;margin-top:16px">If you have any questions, contact your admin.</p>
+    `),
+  });
+}
+
 module.exports = {
   sendMail, sendOtp, sendWelcome, sendBookingConfirmation,
   sendSessionReminder, sendPaymentConfirmation, sendRegistrationRequest,
-  sendReferralReward,
+  sendReferralReward, sendCoachInvite,
 };

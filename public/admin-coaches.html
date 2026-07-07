@@ -8,13 +8,14 @@
 <body>
 <div class="app-layout">
   <aside class="sidebar">
-    <a href="/admin" class="sidebar-logo" style="font-size:20px;padding:22px 20px">FIT<span>ANIYA</span></a>
+    <a href="/admin" class="sidebar-logo" style="font-size:20px;padding:22px 20px">FIT<span>ANIYA</span> <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-ui);display:block;margin-top:2px">ADMIN</span></a>
     <nav class="sidebar-nav">
       <a href="/admin" class="nav-item"><span class="icon">📊</span>Dashboard</a>
       <a href="/admin/packages" class="nav-item"><span class="icon">📦</span>Packages & Prices</a>
       <a href="/admin/discounts" class="nav-item"><span class="icon">🏷️</span>Discounts</a>
       <a href="/admin/coaches" class="nav-item active"><span class="icon">🏋️</span>Coaches</a>
       <a href="/admin/members" class="nav-item"><span class="icon">👥</span>Members</a>
+      <a href="/admin/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
       <a href="/admin/stories" class="nav-item"><span class="icon">📸</span>Stories</a>
       <a href="/admin/diet" class="nav-item"><span class="icon">🥗</span>Diet Plans</a>
       <a href="/admin/settings" class="nav-item"><span class="icon">⚙️</span>Settings</a>
@@ -23,66 +24,106 @@
   </aside>
   <main class="main-content">
     <div class="page-header flex-between mb-32">
-      <div><h2>Coaches</h2><p>Add and manage training coaches. Default password: Fitanya@123</p></div>
-      <button class="btn btn-primary" onclick="document.getElementById('add-modal').classList.remove('hidden')">+ Add Coach</button>
+      <div><h2>Coaches</h2><p>Add coaches — they receive login credentials by email automatically.</p></div>
+      <button class="btn btn-primary" onclick="openAddModal()">+ Add Coach</button>
     </div>
     <div id="coaches-wrap"><div class="spinner"></div></div>
   </main>
 </div>
 
+<!-- Add Coach Modal -->
 <div class="modal-overlay hidden" id="add-modal">
   <div class="modal" style="position:relative">
-    <button class="modal-close" onclick="document.getElementById('add-modal').classList.add('hidden')">×</button>
+    <button class="modal-close" onclick="closeAddModal()">×</button>
     <h3 class="modal-title">Add New Coach</h3>
-    <p class="text-dim mt-4 mb-24">Coach will receive default password: <strong class="text-orange">Fitanya@123</strong></p>
-    <div class="form-group"><label>Full Name *</label><input class="form-control" id="c-name" /></div>
-    <div class="form-group"><label>Email *</label><input class="form-control" type="email" id="c-email" /></div>
-    <div class="form-group"><label>Phone</label><input class="form-control" id="c-phone" /></div>
-    <div class="form-group"><label>Bio</label><textarea class="form-control" id="c-bio" rows="2"></textarea></div>
-    <div class="form-group"><label>Specializations</label><input class="form-control" id="c-spec" placeholder="e.g. Fat Loss, HIIT, Strength Training" /></div>
-    <div class="form-group"><label>Certifications</label><input class="form-control" id="c-cert" placeholder="e.g. ACSM, NSCA, ACE" /></div>
-    <button class="btn btn-primary btn-full" onclick="addCoach()">Add Coach</button>
+    <p class="text-dim mt-4 mb-24">An email with login credentials will be sent to the coach automatically.</p>
+    <div class="form-row">
+      <div class="form-group"><label>Full Name *</label><input class="form-control" id="c-name" placeholder="Coach name" /></div>
+      <div class="form-group"><label>Email *</label><input class="form-control" type="email" id="c-email" placeholder="coach@email.com" /></div>
+    </div>
+    <div class="form-group"><label>Phone</label><input class="form-control" id="c-phone" placeholder="+91 9999999999" /></div>
+    <div class="form-group"><label>Bio</label><textarea class="form-control" id="c-bio" rows="2" placeholder="Short coach bio..."></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>Specializations</label><input class="form-control" id="c-spec" placeholder="e.g. Fat Loss, HIIT" /></div>
+      <div class="form-group"><label>Certifications</label><input class="form-control" id="c-cert" placeholder="e.g. ACSM, ACE" /></div>
+    </div>
+    <button class="btn btn-primary btn-full" id="add-btn" onclick="addCoach()">Create Coach & Send Invite</button>
+  </div>
+</div>
+
+<!-- Credentials Modal (shown after creation) -->
+<div class="modal-overlay hidden" id="creds-modal">
+  <div class="modal" style="position:relative;max-width:420px">
+    <h3 class="modal-title" style="color:var(--green)">Coach Created!</h3>
+    <p class="text-dim mt-8 mb-24">An invite email has been sent. Here are the credentials in case you need to share them manually:</p>
+    <div class="card" style="background:var(--dark)">
+      <div class="flex-between mb-12"><span class="text-dim">Email</span><span id="cred-email" class="text-white" style="font-weight:600"></span></div>
+      <div class="flex-between"><span class="text-dim">Temp Password</span><span id="cred-pass" style="color:var(--orange);font-size:1.2rem;font-weight:700;letter-spacing:2px"></span></div>
+    </div>
+    <p class="text-small text-dim mt-16">The coach must change this password after their first login.</p>
+    <button class="btn btn-primary btn-full mt-24" onclick="document.getElementById('creds-modal').classList.add('hidden')">Done</button>
   </div>
 </div>
 
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
+  function openAddModal() { document.getElementById('add-modal').classList.remove('hidden'); }
+  function closeAddModal() { document.getElementById('add-modal').classList.add('hidden'); }
+
   async function init() {
     const data = await api.get('/api/admin/coaches');
     if (!data?.success) { window.location.href = '/login'; return; }
     const el = document.getElementById('coaches-wrap');
-    if (!data.coaches?.length) { el.innerHTML = '<div class="card"><p class="text-dim">No coaches yet.</p></div>'; return; }
+    if (!data.coaches?.length) {
+      el.innerHTML = '<div class="card"><p class="text-dim">No coaches yet. Add your first coach above.</p></div>';
+      return;
+    }
     el.innerHTML = `<div class="card"><div class="table-wrap"><table>
       <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Specializations</th><th>Status</th></tr></thead>
       <tbody>
         ${data.coaches.map(c => `<tr>
           <td style="font-weight:600;color:var(--white)">${c.name}</td>
           <td class="text-dim">${c.email}</td>
-          <td class="text-dim">${c.phone||'—'}</td>
-          <td class="text-dim">${c.specializations||'—'}</td>
-          <td><span class="badge ${c.is_active?'badge-green':'badge-red'}">${c.is_active?'Active':'Inactive'}</span></td>
+          <td class="text-dim">${c.phone || '—'}</td>
+          <td class="text-dim">${c.specializations || '—'}</td>
+          <td><span class="badge ${c.is_active ? 'badge-green' : 'badge-red'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
         </tr>`).join('')}
       </tbody>
     </table></div></div>`;
   }
 
   async function addCoach() {
+    const btn = document.getElementById('add-btn');
     const payload = {
-      name: document.getElementById('c-name').value,
-      email: document.getElementById('c-email').value,
-      phone: document.getElementById('c-phone').value,
-      bio: document.getElementById('c-bio').value,
-      specializations: document.getElementById('c-spec').value,
-      certifications: document.getElementById('c-cert').value,
+      name: document.getElementById('c-name').value.trim(),
+      email: document.getElementById('c-email').value.trim(),
+      phone: document.getElementById('c-phone').value.trim(),
+      bio: document.getElementById('c-bio').value.trim(),
+      specializations: document.getElementById('c-spec').value.trim(),
+      certifications: document.getElementById('c-cert').value.trim(),
     };
     if (!payload.name || !payload.email) return toast('Name and email required', 'error');
-    const data = await api.post('/api/admin/coaches', payload);
-    if (data?.success) {
-      toast('Coach added! Password: Fitanya@123', 'success');
-      document.getElementById('add-modal').classList.add('hidden');
-      init();
-    } else toast(data?.error || 'Failed', 'error');
+    btn.disabled = true; btn.textContent = 'Creating...';
+    try {
+      const data = await api.post('/api/admin/coaches', payload);
+      if (data?.success) {
+        closeAddModal();
+        // Show credentials modal
+        document.getElementById('cred-email').textContent = payload.email;
+        document.getElementById('cred-pass').textContent = data.tempPassword;
+        document.getElementById('creds-modal').classList.remove('hidden');
+        // Clear form
+        ['c-name','c-email','c-phone','c-bio','c-spec','c-cert'].forEach(id => document.getElementById(id).value = '');
+        init();
+      } else {
+        toast(data?.error || 'Failed to create coach', 'error');
+      }
+    } catch (e) {
+      toast('Network error', 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Create Coach & Send Invite';
+    }
   }
 
   init();

@@ -117,6 +117,7 @@ app.get('/admin/stories',       (req, res) => res.sendFile(path.join(pages, 'adm
 app.get('/admin/discounts',     (req, res) => res.sendFile(path.join(pages, 'admin-discounts.html')));
 app.get('/admin/diet',          (req, res) => res.sendFile(path.join(pages, 'admin-diet.html')));
 app.get('/admin/settings',      (req, res) => res.sendFile(path.join(pages, 'admin-settings.html')));
+app.get('/admin/schedule',      (req, res) => res.sendFile(path.join(pages, 'admin-schedule.html')));
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
