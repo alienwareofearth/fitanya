@@ -636,6 +636,8 @@
         </div>
       </div>
       <button class="btn btn-primary btn-full mt-24" onclick="proceedToPayment()">Pay with PhonePe →</button>
+      <button class="btn btn-outline btn-full mt-8" onclick="payLater()" style="opacity:0.7">Pay Later</button>
+      <p class="text-center text-small text-dim mt-8">Your account is created. You can pay anytime from the dashboard.</p>
     </div>
   </div>
 
@@ -769,6 +771,12 @@
 
     function closeModal() { document.getElementById('reg-modal').classList.add('hidden'); }
     function closePayModal() { document.getElementById('pay-modal').classList.add('hidden'); }
+
+    function payLater() {
+      closePayModal();
+      toast('Account created! Login and pay from your dashboard when ready.', 'success');
+      setTimeout(() => { window.location.href = '/login'; }, 2000);
+    }
 
     // ── Step navigation
     function goToStep(n) {
