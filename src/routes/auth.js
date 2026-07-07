@@ -4,7 +4,7 @@ const express = require('express');
 const bcrypt  = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const { getDb }      = require('../config/database');
-const { sendOtp, sendWelcome } = require('../services/email');
+const { sendOtp, sendWelcome, sendPasswordReset } = require('../services/email');
 const { notify }     = require('../services/notifications');
 
 const router = express.Router();
@@ -180,6 +180,36 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('[auth] login error:', err);
     res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// POST /api/auth/forgot-password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    const db = getDb();
+    const result = await db.execute({ sql: `SELECT id, name FROM users WHERE email = ? AND is_active = 1`, args: [email] });
+    // Always respond success to prevent email enumeration
+    if (!result.rows.length) return res.json({ success: true });
+
+    const user = result.rows[0];
+    // Generate a readable random password: 2 words + 4 digits
+    const words = ['Fit', 'Run', 'Burn', 'Push', 'Jump', 'Flex', 'Lift', 'Core'];
+    const word1 = words[Math.floor(Math.random() * words.length)];
+    const word2 = words[Math.floor(Math.random() * words.length)];
+    const digits = Math.floor(1000 + Math.random() * 9000);
+    const newPassword = `${word1}${word2}${digits}`;
+
+    const hashed = await bcrypt.hash(newPassword, 12);
+    await db.execute({ sql: `UPDATE users SET password = ? WHERE id = ?`, args: [hashed, user.id] });
+    await sendPasswordReset({ to: email, name: user.name, newPassword });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[auth] forgot-password error:', err);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 });
 

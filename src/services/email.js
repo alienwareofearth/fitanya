@@ -188,6 +188,22 @@ async function sendReferralReward({ to, name, rewardValue }) {
   });
 }
 
+async function sendPasswordReset({ to, name, newPassword }) {
+  return sendMail({
+    to, subject: 'Your Fitanya Password Has Been Reset',
+    html: baseTemplate(`
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>We received a request to reset your Fitanya password. Here is your new temporary password:</p>
+      <div class="detail-box" style="text-align:center">
+        <p style="font-size:24px;font-weight:700;color:#ff6b35;letter-spacing:4px;margin:8px 0">${newPassword}</p>
+      </div>
+      <p>Login with this password and change it immediately from your profile settings.</p>
+      <a href="${process.env.APP_URL}/login" class="btn">Login to Fitanya</a>
+      <p style="color:#666;font-size:13px;margin-top:16px">If you did not request a password reset, please contact support immediately.</p>
+    `),
+  });
+}
+
 async function sendCoachInvite({ to, name, tempPassword }) {
   return sendMail({
     to, subject: 'You\'ve been added as a Coach on Fitanya!',
@@ -209,5 +225,5 @@ async function sendCoachInvite({ to, name, tempPassword }) {
 module.exports = {
   sendMail, sendOtp, sendWelcome, sendBookingConfirmation,
   sendSessionReminder, sendPaymentConfirmation, sendRegistrationRequest,
-  sendReferralReward, sendCoachInvite,
+  sendReferralReward, sendCoachInvite, sendPasswordReset,
 };
