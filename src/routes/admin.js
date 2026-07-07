@@ -94,7 +94,7 @@ router.put('/packages/:id', async (req, res) => {
     const db = getDb();
     await db.execute({
       sql: `UPDATE packages SET name=?, sessions=?, days=?, price=?, description=?, features=?, is_active=?, updated_at=datetime('now') WHERE id=?`,
-      args: [name, sessions, days, price, description, features, is_active, req.params.id],
+      args: [name, parseInt(sessions), parseInt(days), parseFloat(price), description, features || null, parseInt(is_active), req.params.id],
     });
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }

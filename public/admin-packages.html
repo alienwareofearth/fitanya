@@ -117,20 +117,36 @@
 
   async function savePackage() {
     const id = document.getElementById('pkg-id').value;
+    const name = document.getElementById('pkg-name').value.trim();
+    const sessions = document.getElementById('pkg-sessions').value;
+    const days = document.getElementById('pkg-days').value;
+    const price = document.getElementById('pkg-price').value;
+    if (!name || !sessions || !days || !price) return toast('Fill all required fields', 'error');
     const payload = {
-      name: document.getElementById('pkg-name').value,
-      sessions: parseInt(document.getElementById('pkg-sessions').value),
-      days: parseInt(document.getElementById('pkg-days').value),
-      price: parseFloat(document.getElementById('pkg-price').value),
+      name,
+      sessions: parseInt(sessions),
+      days: parseInt(days),
+      price: parseFloat(price),
       description: document.getElementById('pkg-desc').value,
+      features: null,
       is_active: parseInt(document.getElementById('pkg-active').value),
     };
-    const data = id ? await api.put('/api/admin/packages/' + id, payload) : await api.post('/api/admin/packages', payload);
-    if (data?.success) {
-      toast('Package saved!', 'success');
-      document.getElementById('pkg-modal').classList.add('hidden');
-      loadPackages();
-    } else toast(data?.error || 'Failed', 'error');
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      const data = id
+        ? await api.put('/api/admin/packages/' + id, payload)
+        : await api.post('/api/admin/packages', payload);
+      if (data?.success) {
+        toast('Package saved!', 'success');
+        document.getElementById('pkg-modal').classList.add('hidden');
+        loadPackages();
+      } else toast(data?.error || 'Save failed', 'error');
+    } catch (e) {
+      toast('Network error', 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save Package';
+    }
   }
 
   async function loadStyles() {
