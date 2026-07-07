@@ -591,7 +591,7 @@
               <h4>Session with ${b.coach_name}</h4>
               <p>${formatSessionTime(b.start_time, b.date)} – ${formatSessionTime(b.end_time, b.date)}</p>
             </div>
-            ${b.meet_link && !isMeetExpired(b.date, b.start_time) ? `<a href="${b.meet_link}" target="_blank" class="btn btn-primary btn-sm">Join Meet</a>` : ''}
+            ${!b.is_completed && b.status !== 'cancelled' && !isMeetExpired(b.date, b.start_time) ? `<a href="${b.meet_link || 'https://meet.jit.si/fitanya-' + b.id}" target="_blank" class="btn btn-primary btn-sm">Join Meet</a>` : ''}
           </div>
         `;
       }).join('');
