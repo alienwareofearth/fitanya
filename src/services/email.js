@@ -3,7 +3,10 @@
 const path = require('path');
 const fs = require('fs');
 
-const BREVO_API_KEY = process.env.BREVO_API_KEY;
+// Key 1: OTP, welcome, coach invite (registration flow)
+// Key 2: session booking confirmations, payment confirmations (transactional flow)
+const BREVO_KEY_1 = process.env.BREVO_API_KEY;
+const BREVO_KEY_2 = process.env.BREVO_API_KEY_2 || process.env.BREVO_API_KEY; // fallback to key 1 if not set
 const outboxPath = path.join(__dirname, '../../data/dev_emails.json');
 
 function writeToOutbox(message) {
@@ -53,16 +56,14 @@ const baseTemplate = (content) => `
 </body>
 </html>`;
 
-async function sendMail({ to, subject, html, text }) {
-  if (!BREVO_API_KEY) return writeToOutbox({ from: FROM_EMAIL, to, subject, html, text });
+// channel: 'auth' uses key 1 (OTP/welcome/invite), 'transact' uses key 2 (booking/payment)
+async function sendMail({ to, subject, html, text, channel = 'auth' }) {
+  const apiKey = channel === 'transact' ? BREVO_KEY_2 : BREVO_KEY_1;
+  if (!apiKey) return writeToOutbox({ from: FROM_EMAIL, to, subject, html, text });
 
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
-    headers: {
-      'accept': 'application/json',
-      'api-key': BREVO_API_KEY,
-      'content-type': 'application/json',
-    },
+    headers: { 'accept': 'application/json', 'api-key': apiKey, 'content-type': 'application/json' },
     body: JSON.stringify({
       sender: { name: FROM_NAME, email: FROM_EMAIL },
       to: [{ email: to }],
@@ -105,6 +106,7 @@ async function sendWelcome({ to, name }) {
 
 async function sendBookingConfirmation({ to, name, booking, meetLink }) {
   return sendMail({
+    channel: 'transact',
     to, subject: `Session Confirmed — ${booking.date} at ${booking.start_time}`,
     html: baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
@@ -124,6 +126,7 @@ async function sendBookingConfirmation({ to, name, booking, meetLink }) {
 
 async function sendSessionReminder({ to, name, booking, meetLink }) {
   return sendMail({
+    channel: 'transact',
     to, subject: `Reminder: Your session is tomorrow at ${booking.start_time}`,
     html: baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
@@ -140,6 +143,7 @@ async function sendSessionReminder({ to, name, booking, meetLink }) {
 
 async function sendPaymentConfirmation({ to, name, payment, packageName }) {
   return sendMail({
+    channel: 'transact',
     to, subject: `Payment Confirmed — ₹${payment.final_amount} for ${packageName}`,
     html: baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>

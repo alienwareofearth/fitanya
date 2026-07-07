@@ -39,10 +39,7 @@ async function createMeetSession({ summary, description, date, startTime, endTim
       },
       reminders: {
         useDefault: false,
-        overrides: [
-          { method: 'email',  minutes: 24 * 60 },
-          { method: 'popup',  minutes: 30 },
-        ],
+        overrides: [{ method: 'popup', minutes: 30 }],
       },
     };
 
@@ -50,18 +47,15 @@ async function createMeetSession({ summary, description, date, startTime, endTim
       calendarId: 'primary',
       resource: event,
       conferenceDataVersion: 1,
-      sendUpdates: 'all',
+      sendUpdates: 'none', // we send our own emails via Brevo
     });
 
-    const meetLink = response.data.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri || '';
+    const meetLink = response.data.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri;
+    if (!meetLink) throw new Error('Google Meet link not returned by Calendar API');
     return { meetLink, eventId: response.data.id };
   } catch (err) {
     console.error('[google-meet] Failed to create event:', err.message);
-    // Return a placeholder if Google API not configured
-    return {
-      meetLink: `https://meet.google.com/placeholder-${Date.now()}`,
-      eventId: `placeholder-${Date.now()}`,
-    };
+    throw err; // surface the error so booking fails cleanly rather than storing a broken link
   }
 }
 

@@ -144,12 +144,12 @@ router.post('/book', requireAuth, async (req, res) => {
       coach_name: coachData.name,
     };
 
-    // Send emails
+    // Email only to customer; coach gets in-app notification only
     await sendBookingConfirmation({ to: customerData.email, name: customerData.name, booking: bookingInfo, meetLink });
-    await sendBookingConfirmation({ to: coachData.email, name: coachData.name, booking: bookingInfo, meetLink });
 
-    // Notifications
+    // In-app notifications
     await notify.sessionBooked(userId, slotData.date, slotData.start_time);
+    await notify.newBookingForCoach(slotData.coach_id, customerData.name, slotData.date, slotData.start_time);
 
     res.json({ success: true, booking_id: booking.rows[0].id, meetLink });
   } catch (err) {

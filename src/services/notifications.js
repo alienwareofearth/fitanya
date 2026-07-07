@@ -97,6 +97,10 @@ const notify = {
   sessionNoteReminder: (coachId, customerName) =>
     createNotification({ userId: coachId, type: 'notes', title: 'Add Session Notes 📝',
       body: `Please add notes for your session with ${customerName}`, link: '/coach/sessions' }),
+
+  newBookingForCoach: (coachId, customerName, date, time) =>
+    createNotification({ userId: coachId, type: 'booking', title: 'New Session Booked 📅',
+      body: `${customerName} booked a session on ${date} at ${time}`, link: '/coach/sessions' }),
 };
 
 module.exports = { createNotification, getUnreadCount, getUserNotifications, markRead, notify };

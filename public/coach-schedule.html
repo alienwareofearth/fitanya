@@ -82,14 +82,18 @@
   const HOURS = ['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'];
 
   async function init() {
-    const data = await api.get('/api/coach/my-schedule');
-    if (!data?.success) { window.location.href = '/login'; return; }
-    // Load all slots including past for the calendar dots
-    const allData = await api.get('/api/coach/all-slots');
-    allSlots = (allData?.slots || []).concat(data.slots || []);
-    // Deduplicate
-    const seen = new Set();
-    allSlots = allSlots.filter(s => { if (seen.has(s.id)) return false; seen.add(s.id); return true; });
+    // Single call — init returns profile (timezone) + all slots
+    const initData = await api.get('/api/coach/init');
+    if (!initData?.success) { window.location.href = '/login'; return; }
+    window.__userTz = initData.coach?.timezone || 'Asia/Kolkata';
+    allSlots = initData.sessions || [];
+    // Also fetch upcoming schedule slots for the calendar
+    const slotsData = await api.get('/api/coach/all-slots');
+    const calSlots = slotsData?.slots || [];
+    // Merge: use calSlots as base (has slot metadata), overlay session meet_link
+    const meetBySlotId = {};
+    allSlots.forEach(s => { if (s.slot_id) meetBySlotId[s.slot_id] = s.meet_link; });
+    allSlots = calSlots.map(s => ({ ...s, meet_link: meetBySlotId[s.id] || s.meet_link }));
     buildSlotsByDate();
     const now = new Date();
     viewYear = now.getFullYear();
@@ -157,7 +161,10 @@
       const slot = daySlots.find(s => s.start_time === h);
       if (slot) {
         if (slot.is_booked) {
-          return `<div class="hour-block booked" title="Booked — cannot remove">${fmtH(h)}<div style="font-size:10px;margin-top:2px">${slot.customer_name||'Booked'}</div></div>`;
+          const meetBtn = slot.meet_link
+            ? `<a href="${slot.meet_link}" target="_blank" style="display:block;margin-top:4px;font-size:10px;color:#4ade80;text-decoration:none">▶ Join Meet</a>`
+            : '';
+          return `<div class="hour-block booked" title="${slot.customer_name||'Booked'}">${fmtH(h)}<div style="font-size:10px;margin-top:2px">${slot.customer_name||'Booked'}</div>${meetBtn}</div>`;
         } else {
           return `<div class="hour-block open" onclick="removeSlot(${slot.id},'${dateStr}')" title="Click to remove">${fmtH(h)}<div style="font-size:10px;margin-top:2px">Open ✕</div></div>`;
         }

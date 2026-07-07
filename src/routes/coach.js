@@ -154,7 +154,7 @@ router.get('/all-slots', async (req, res) => {
   try {
     const db = getDb();
     const slots = await db.execute({
-      sql: `SELECT ss.*, b.id as booking_id, u.name as customer_name
+      sql: `SELECT ss.*, b.id as booking_id, b.meet_link, u.name as customer_name
             FROM schedule_slots ss
             LEFT JOIN bookings b ON b.slot_id = ss.id AND b.status != 'cancelled'
             LEFT JOIN users u ON u.id = b.customer_id
@@ -163,6 +163,50 @@ router.get('/all-slots', async (req, res) => {
       args: [req.session.user.id],
     });
     res.json({ success: true, slots: slots.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/coach/init — combined profile + sessions in one query to reduce DB round-trips
+router.get('/init', async (req, res) => {
+  try {
+    const db = getDb();
+    const coachId = req.session.user.id;
+    const [profile, sessions, customers] = await Promise.all([
+      db.execute({
+        sql: `SELECT u.id, u.name, u.email, u.phone, u.timezone, u.profile_picture,
+                     cp.bio, cp.specializations
+              FROM users u LEFT JOIN coach_profiles cp ON cp.user_id = u.id WHERE u.id = ?`,
+        args: [coachId],
+      }),
+      db.execute({
+        sql: `SELECT b.id, b.is_completed, b.meet_link, b.status,
+                     ss.date, ss.start_time, ss.end_time,
+                     u.name as customer_name, sn.id as has_notes
+              FROM bookings b
+              JOIN schedule_slots ss ON ss.id = b.slot_id
+              JOIN users u ON u.id = b.customer_id
+              LEFT JOIN session_notes sn ON sn.booking_id = b.id
+              WHERE b.coach_id = ? ORDER BY ss.date DESC`,
+        args: [coachId],
+      }),
+      db.execute({
+        sql: `SELECT DISTINCT u.id, u.name, u.email, u.phone, u.profile_picture,
+                     cp.fitness_goal, cp.food_preference,
+                     m.sessions_used, m.sessions_total, m.status as membership_status
+              FROM users u
+              LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+              LEFT JOIN memberships m ON m.user_id = u.id AND m.status = 'active'
+              WHERE u.role = 'customer' AND (m.coach_id = ? OR u.assigned_coach_id = ?)
+              ORDER BY u.name`,
+        args: [coachId, coachId],
+      }),
+    ]);
+    res.json({
+      success: true,
+      coach: profile.rows[0],
+      sessions: sessions.rows,
+      customers: customers.rows,
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

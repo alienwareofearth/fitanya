@@ -70,10 +70,9 @@
   let allClients = [];
 
   async function init() {
-    const profileData = await api.get('/api/coach/profile');
-    window.__userTz = profileData?.coach?.timezone || 'Asia/Kolkata';
-    const data = await api.get('/api/coach/my-customers');
+    const data = await api.get('/api/coach/init');
     if (!data?.success) { window.location.href = '/login'; return; }
+    window.__userTz = data.coach?.timezone || 'Asia/Kolkata';
     allClients = data.customers || [];
     const el = document.getElementById('clients-list');
     if (!allClients.length) {
