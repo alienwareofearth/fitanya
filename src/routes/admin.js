@@ -175,6 +175,10 @@ router.delete('/coaches/:id', async (req, res) => {
     await db.execute({ sql: `DELETE FROM schedule_slots WHERE coach_id = ?`, args: [coachId] });
     await db.execute({ sql: `UPDATE memberships SET coach_id = NULL WHERE coach_id = ?`, args: [coachId] });
     await db.execute({ sql: `UPDATE users SET assigned_coach_id = NULL WHERE assigned_coach_id = ?`, args: [coachId] });
+    await db.execute({ sql: `DELETE FROM notifications WHERE user_id = ?`, args: [coachId] });
+    await db.execute({ sql: `UPDATE stories SET reviewed_by = NULL WHERE reviewed_by = ?`, args: [coachId] });
+    await db.execute({ sql: `DELETE FROM stories WHERE user_id = ?`, args: [coachId] });
+    await db.execute({ sql: `DELETE FROM referrals WHERE referrer_id = ? OR referee_id = ?`, args: [coachId, coachId] });
     await db.execute({ sql: `DELETE FROM coach_profiles WHERE user_id = ?`, args: [coachId] });
     await db.execute({ sql: `DELETE FROM users WHERE id = ? AND role = 'coach'`, args: [coachId] });
     res.json({ success: true });
