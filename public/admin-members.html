@@ -147,7 +147,7 @@
     document.getElementById('reassign-member-id').value = memberId;
     document.getElementById('reassign-member-name').textContent = memberName;
     const sel = document.getElementById('reassign-coach-id');
-    sel.innerHTML = allCoaches.map(c =>
+    sel.innerHTML = allCoaches.filter(c => c.is_active).map(c =>
       `<option value="${c.id}" ${String(c.id) === String(currentCoachId) ? 'selected' : ''}>${c.name}</option>`
     ).join('');
     document.getElementById('reassign-modal').classList.remove('hidden');

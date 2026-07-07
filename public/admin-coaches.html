@@ -82,14 +82,22 @@
     el.innerHTML = `<div class="card"><div class="table-wrap"><table>
       <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Specializations</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>
-        ${data.coaches.map(c => `<tr>
-          <td style="font-weight:600;color:var(--white)">${c.name}</td>
-          <td class="text-dim">${c.email}</td>
-          <td class="text-dim">${c.phone || '—'}</td>
-          <td class="text-dim">${c.specializations || '—'}</td>
-          <td><span class="badge ${c.is_active ? 'badge-green' : 'badge-red'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
-          <td><button class="btn btn-dark btn-sm" style="color:#f87171" onclick="removeCoach(${c.id},'${c.name.replace(/'/g,"\\'")}')">Remove</button></td>
-        </tr>`).join('')}
+        ${data.coaches.map(c => {
+          const n = c.name.replace(/'/g,"\\'");
+          return `<tr style="${c.is_active ? '' : 'opacity:0.6'}">
+            <td style="font-weight:600;color:var(--white)">${c.name}</td>
+            <td class="text-dim">${c.email}</td>
+            <td class="text-dim">${c.phone || '—'}</td>
+            <td class="text-dim">${c.specializations || '—'}</td>
+            <td><span class="badge ${c.is_active ? 'badge-green' : 'badge-red'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
+            <td class="flex gap-8" style="flex-wrap:nowrap">
+              ${c.is_active
+                ? `<button class="btn btn-dark btn-sm" style="color:#fbbf24" onclick="deactivateCoach(${c.id},'${n}')">Deactivate</button>`
+                : `<button class="btn btn-dark btn-sm" style="color:#4ade80" onclick="reactivateCoach(${c.id},'${n}')">Reactivate</button>`}
+              <button class="btn btn-dark btn-sm" style="color:#f87171" onclick="removeCoach(${c.id},'${n}')">Remove</button>
+            </td>
+          </tr>`;
+        }).join('')}
       </tbody>
     </table></div></div>`;
   }
@@ -128,9 +136,23 @@
   }
 
   async function removeCoach(id, name) {
-    if (!confirm(`Remove coach "${name}"? Their clients will be unassigned but all session history is kept.`)) return;
-    const data = await api.delete('/api/admin/coaches/' + id);
-    if (data?.success) { toast('Coach removed', 'success'); init(); }
+    if (!confirm(`Permanently remove coach "${name}"?\n\nThis will delete ALL their data — sessions, bookings, slots, and account. This cannot be undone.`)) return;
+    const data = await api.del('/api/admin/coaches/' + id);
+    if (data?.success) { toast('Coach permanently removed', 'success'); init(); }
+    else toast(data?.error || 'Failed', 'error');
+  }
+
+  async function deactivateCoach(id, name) {
+    if (!confirm(`Deactivate coach "${name}"?\n\nAll data is kept. They will not be able to log in.`)) return;
+    const data = await api.post('/api/admin/coaches/' + id + '/deactivate', {});
+    if (data?.success) { toast('Coach deactivated', 'success'); init(); }
+    else toast(data?.error || 'Failed', 'error');
+  }
+
+  async function reactivateCoach(id, name) {
+    if (!confirm(`Reactivate coach "${name}"?`)) return;
+    const data = await api.post('/api/admin/coaches/' + id + '/reactivate', {});
+    if (data?.success) { toast('Coach reactivated', 'success'); init(); }
     else toast(data?.error || 'Failed', 'error');
   }
 

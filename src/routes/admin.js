@@ -131,7 +131,7 @@ router.get('/coaches', async (req, res) => {
   const result = await db.execute(`
     SELECT u.id, u.name, u.email, u.phone, u.is_active, u.created_at, cp.bio, cp.specializations
     FROM users u LEFT JOIN coach_profiles cp ON cp.user_id = u.id
-    WHERE u.role = 'coach' AND u.is_active = 1 ORDER BY u.created_at DESC`);
+    WHERE u.role = 'coach' ORDER BY u.is_active DESC, u.created_at DESC`);
   res.json({ success: true, coaches: result.rows });
 });
 
@@ -165,17 +165,38 @@ router.post('/coaches', async (req, res) => {
 });
 
 // Admin remove coach
+// Hard delete — removes coach + ALL their data (bookings, slots, notes)
 router.delete('/coaches/:id', async (req, res) => {
   try {
     const db = getDb();
     const coachId = parseInt(req.params.id);
-    // Deactivate (not delete) to preserve booking history FK references
-    await db.execute({ sql: `UPDATE users SET is_active = 0 WHERE id = ? AND role = 'coach'`, args: [coachId] });
-    // Unassign from future memberships and user assignments
+    await db.execute({ sql: `DELETE FROM session_notes WHERE coach_id = ?`, args: [coachId] });
+    await db.execute({ sql: `DELETE FROM bookings WHERE coach_id = ?`, args: [coachId] });
+    await db.execute({ sql: `DELETE FROM schedule_slots WHERE coach_id = ?`, args: [coachId] });
     await db.execute({ sql: `UPDATE memberships SET coach_id = NULL WHERE coach_id = ?`, args: [coachId] });
     await db.execute({ sql: `UPDATE users SET assigned_coach_id = NULL WHERE assigned_coach_id = ?`, args: [coachId] });
-    // Clear coach profile details
-    await db.execute({ sql: `UPDATE coach_profiles SET bio = NULL, specializations = NULL, certifications = NULL WHERE user_id = ?`, args: [coachId] });
+    await db.execute({ sql: `DELETE FROM coach_profiles WHERE user_id = ?`, args: [coachId] });
+    await db.execute({ sql: `DELETE FROM users WHERE id = ? AND role = 'coach'`, args: [coachId] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Soft deactivate — keeps all data, just blocks login
+router.post('/coaches/:id/deactivate', async (req, res) => {
+  try {
+    const db = getDb();
+    const coachId = parseInt(req.params.id);
+    await db.execute({ sql: `UPDATE users SET is_active = 0 WHERE id = ? AND role = 'coach'`, args: [coachId] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Reactivate
+router.post('/coaches/:id/reactivate', async (req, res) => {
+  try {
+    const db = getDb();
+    const coachId = parseInt(req.params.id);
+    await db.execute({ sql: `UPDATE users SET is_active = 1 WHERE id = ? AND role = 'coach'`, args: [coachId] });
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
