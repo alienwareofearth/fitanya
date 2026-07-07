@@ -50,3 +50,11 @@ services:
         sync: false
       - key: GOOGLE_REFRESH_TOKEN
         sync: false
+      - key: APP_URL
+        sync: false
+      - key: APP_NAME
+        value: Fitanya
+      - key: SMS_GATEWAY_URL
+        sync: false
+      - key: SMS_GATEWAY_TOKEN
+        sync: false
