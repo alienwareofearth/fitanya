@@ -67,7 +67,7 @@ router.get('/my-schedule', async (req, res) => {
   try {
     const db = getDb();
     const slots = await db.execute({
-      sql: `SELECT ss.*, b.id as booking_id, u.name as customer_name,
+      sql: `SELECT ss.*, b.id as booking_id, b.meet_link, b.is_completed, u.name as customer_name,
             sn.id as notes_id
             FROM schedule_slots ss
             LEFT JOIN bookings b ON b.slot_id = ss.id AND b.status != 'cancelled'

@@ -36,46 +36,55 @@
 <script src="/js/app.js"></script>
 <script>
   async function init() {
-    const [profileData, schedData, custData, sessData] = await Promise.all([
-      api.get('/api/customer/profile'),
+    const [initData, schedData] = await Promise.all([
+      api.get('/api/coach/init'),
       api.get('/api/coach/my-schedule'),
-      api.get('/api/coach/my-customers'),
-      api.get('/api/coach/sessions'),
     ]);
-    if (!profileData?.success) { window.location.href = '/login'; return; }
-    if (profileData.user.role !== 'coach' && profileData.user.role !== 'admin') {
-      window.location.href = '/dashboard'; return;
-    }
-    const user = profileData.user;
+    if (!initData?.success) { window.location.href = '/login'; return; }
+
+    const coach = initData.coach;
+    window.__userTz = coach?.timezone || 'Asia/Kolkata';
+
     document.getElementById('coach-greeting').innerHTML = `
-      <div class="greeting-name">${getGreeting()}, Coach <span class="gradient-text">${user.name.split(' ')[0]}!</span></div>
+      <div class="greeting-name">${getGreeting()}, Coach <span class="gradient-text">${(coach?.name||'').split(' ')[0]}!</span></div>
       <div class="greeting-quote">${getDailyQuote()}</div>
     `;
 
     const today = new Date().toISOString().split('T')[0];
     const slots = schedData?.slots || [];
     const todaySlots = slots.filter(s => s.date === today);
-    const upcoming = slots.filter(s => s.date > today);
-    const notesPending = (sessData?.sessions || []).filter(s => s.is_completed && !s.has_notes).length;
+    const upcoming  = slots.filter(s => s.date > today);
+    const sessions  = initData.sessions || [];
+    const notesPending = sessions.filter(s => s.is_completed && !s.has_notes).length;
 
-    document.getElementById('s-customers').textContent = custData?.customers?.length || 0;
-    document.getElementById('s-today').textContent = todaySlots.length;
-    document.getElementById('s-upcoming').textContent = upcoming.length;
-    document.getElementById('s-notes').textContent = notesPending;
+    document.getElementById('s-customers').textContent = initData.customers?.length || 0;
+    document.getElementById('s-today').textContent    = todaySlots.filter(s => s.booking_id).length;
+    document.getElementById('s-upcoming').textContent = upcoming.filter(s => s.booking_id).length;
+    document.getElementById('s-notes').textContent    = notesPending;
 
+    const bookedToday = todaySlots.filter(s => s.booking_id);
     const el = document.getElementById('today-sessions');
-    if (!todaySlots.length) {
-      el.innerHTML = '<div class="card"><p class="text-dim">No sessions today.</p></div>'; return;
+    if (!bookedToday.length) {
+      el.innerHTML = '<div class="card"><p class="text-dim">No sessions booked for today.</p></div>';
+      return;
     }
-    el.innerHTML = todaySlots.map(s => `
-      <div class="card mb-16 flex-between">
+    el.innerHTML = bookedToday.map(s => `
+      <div class="card mb-12" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
         <div>
-          <div class="text-white" style="font-weight:600">${s.customer_name || 'Available Slot'}</div>
-          <div class="text-dim text-small">${formatTime(s.start_time)} – ${formatTime(s.end_time)}</div>
+          <div class="text-white" style="font-weight:600;font-size:1rem">${s.customer_name || 'Client'}</div>
+          <div class="text-dim text-small mt-2">${formatSessionTime(s.start_time, s.date)} – ${formatSessionTime(s.end_time, s.date)} <span style="opacity:.5">${tzLabel()}</span></div>
         </div>
-        <div class="flex gap-8">
-          ${s.booking_id ? `<span class="badge badge-orange">Booked</span>` : '<span class="badge badge-green">Open</span>'}
-          ${s.booking_id && !s.notes_id ? `<a href="/coach/sessions" class="btn btn-primary btn-sm">Add Notes</a>` : ''}
+        <div class="flex gap-8" style="flex-wrap:wrap">
+          ${s.meet_link
+            ? `<a href="${s.meet_link}" target="_blank" class="btn btn-primary btn-sm" style="display:flex;align-items:center;gap:6px">
+                <span>▶</span> Join Meet
+               </a>`
+            : '<span class="text-dim text-small">No link</span>'}
+          ${s.is_completed
+            ? `<span class="badge badge-green">Done</span>`
+            : (!s.notes_id
+                ? `<a href="/coach/sessions" class="btn btn-dark btn-sm">Add Notes</a>`
+                : '')}
         </div>
       </div>
     `).join('');
