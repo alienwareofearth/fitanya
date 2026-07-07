@@ -47,6 +47,26 @@
   </div>
 </div>
 
+<!-- Assign Package Modal -->
+<div class="modal-overlay hidden" id="pkg-modal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="document.getElementById('pkg-modal').classList.add('hidden')">×</button>
+    <h3 class="modal-title">Assign Package</h3>
+    <p class="text-dim mt-4 mb-24">Member: <strong class="text-white" id="pkg-member-name"></strong></p>
+    <input type="hidden" id="pkg-member-id" />
+    <div class="form-group">
+      <label>Package</label>
+      <select class="form-control" id="pkg-select"></select>
+    </div>
+    <div class="form-group">
+      <label>Start Date</label>
+      <input class="form-control" type="date" id="pkg-start" />
+    </div>
+    <p class="text-dim text-small mb-16">Any existing active membership will be expired and replaced with this one.</p>
+    <button class="btn btn-primary btn-full" onclick="doAssignPackage()">Assign Package</button>
+  </div>
+</div>
+
 <!-- Reassign Coach Modal -->
 <div class="modal-overlay hidden" id="reassign-modal">
   <div class="modal" style="position:relative">
@@ -65,16 +85,18 @@
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
-  let allMembers = [], allCoaches = [];
+  let allMembers = [], allCoaches = [], allPackages = [];
 
   async function init() {
-    const [membersData, coachesData] = await Promise.all([
+    const [membersData, coachesData, pkgData] = await Promise.all([
       api.get('/api/admin/members'),
       api.get('/api/admin/coaches'),
+      api.get('/api/admin/packages'),
     ]);
     if (!membersData?.success) { window.location.href = '/login'; return; }
     allMembers = membersData.members || [];
     allCoaches = coachesData?.coaches || [];
+    allPackages = (pkgData?.packages || []).filter(p => p.is_active);
     renderMembers(allMembers);
   }
 
@@ -92,10 +114,11 @@
           <td id="coach-cell-${m.id}">${m.coach_name || '<span class="text-dim">Unassigned</span>'}</td>
           <td>${m.sessions_used != null ? m.sessions_used + '/' + m.sessions_total : '—'}</td>
           <td><span class="badge ${m.membership_status === 'active' ? 'badge-green' : 'badge-yellow'}">${m.membership_status || 'no plan'}</span></td>
-          <td><div class="flex gap-8">
+          <td><div class="flex gap-8" style="flex-wrap:wrap">
             ${m.membership_status === 'active'
               ? `<button class="btn btn-dark btn-sm" onclick="openAddSessions(${m.id},'${m.name.replace(/'/g,"\\'")}',${m.sessions_used||0},${m.sessions_total||0})">+ Sessions</button>`
               : `<button class="btn btn-dark btn-sm" onclick="assignTrial(${m.id}, this)">Give Trial</button>`}
+            <button class="btn btn-dark btn-sm" style="color:var(--orange)" onclick="openAssignPackage(${m.id},'${m.name.replace(/'/g,"\\'")}')">Add Package</button>
             <button class="btn btn-dark btn-sm" onclick="openReassign(${m.id},'${m.name.replace(/'/g,"\\'")}','${m.coach_id||''}')">Assign Coach</button>
           </div></td>
         </tr>`).join('')}
@@ -167,6 +190,36 @@
       } else toast(data?.error || 'Failed', 'error');
     } finally {
       btn.disabled = false; btn.textContent = 'Save Assignment';
+    }
+  }
+
+  function openAssignPackage(memberId, memberName) {
+    document.getElementById('pkg-member-id').value = memberId;
+    document.getElementById('pkg-member-name').textContent = memberName;
+    document.getElementById('pkg-start').value = new Date().toISOString().split('T')[0];
+    const sel = document.getElementById('pkg-select');
+    sel.innerHTML = allPackages.map(p =>
+      `<option value="${p.id}">${p.name} — ${p.sessions} sessions / ${p.days} days (₹${p.price})</option>`
+    ).join('');
+    document.getElementById('pkg-modal').classList.remove('hidden');
+  }
+
+  async function doAssignPackage() {
+    const memberId = document.getElementById('pkg-member-id').value;
+    const packageId = document.getElementById('pkg-select').value;
+    const startDate = document.getElementById('pkg-start').value;
+    if (!packageId) return toast('Select a package', 'error');
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = 'Assigning...';
+    try {
+      const data = await api.post('/api/admin/members/' + memberId + '/assign-package', { package_id: packageId, start_date: startDate });
+      if (data?.success) {
+        toast('Package assigned!', 'success');
+        document.getElementById('pkg-modal').classList.add('hidden');
+        init();
+      } else toast(data?.error || 'Failed', 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Assign Package';
     }
   }
 

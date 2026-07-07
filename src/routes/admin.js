@@ -256,6 +256,35 @@ router.post('/members/:id/assign-trial', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Admin assign any package to a member
+router.post('/members/:id/assign-package', async (req, res) => {
+  try {
+    const { package_id, start_date } = req.body;
+    const memberId = parseInt(req.params.id);
+    const db = getDb();
+
+    const pkg = await db.execute({ sql: `SELECT * FROM packages WHERE id = ? AND is_active = 1`, args: [parseInt(package_id)] });
+    if (!pkg.rows.length) return res.status(400).json({ error: 'Package not found' });
+    const p = pkg.rows[0];
+
+    const startD = start_date || new Date().toISOString().split('T')[0];
+    const endD = new Date(new Date(startD).getTime() + p.days * 86400000).toISOString().split('T')[0];
+
+    // Expire any existing active membership first
+    await db.execute({
+      sql: `UPDATE memberships SET status = 'expired' WHERE user_id = ? AND status = 'active'`,
+      args: [memberId],
+    });
+
+    await db.execute({
+      sql: `INSERT INTO memberships (user_id, package_id, sessions_total, sessions_used, start_date, end_date, status, is_trial)
+            VALUES (?, ?, ?, 0, ?, ?, 'active', 0)`,
+      args: [memberId, p.id, p.sessions, startD, endD],
+    });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Admin edit membership sessions
 router.post('/members/:id/add-sessions', async (req, res) => {
   try {
