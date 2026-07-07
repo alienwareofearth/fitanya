@@ -789,13 +789,22 @@
       const name = document.getElementById('reg-name').value.trim();
       const email = document.getElementById('reg-email').value.trim();
       if (!name || !email) return toast('Please enter your name and email', 'error');
-      const data = await api.post('/api/auth/send-otp', { name, email });
-      if (data?.success) {
-        document.getElementById('otp-email-display').textContent = email;
-        goToStep(1);
-        toast('OTP sent to your email!', 'success');
-      } else {
-        toast(data?.error || 'Failed to send OTP', 'error');
+      const btn = event.target;
+      btn.disabled = true; btn.textContent = 'Sending…';
+      try {
+        const data = await api.post('/api/auth/send-otp', { name, email });
+        if (data?.success) {
+          document.getElementById('otp-email-display').textContent = email;
+          goToStep(1);
+          toast('OTP sent to your email!', 'success');
+        } else {
+          toast(data?.error || 'Failed to send OTP', 'error');
+        }
+      } catch (err) {
+        toast('Network error — please try again', 'error');
+        console.error('[sendOtp]', err);
+      } finally {
+        btn.disabled = false; btn.textContent = 'Send OTP →';
       }
     }
 
