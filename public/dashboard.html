@@ -578,9 +578,9 @@
         return;
       }
       el.innerHTML = upcoming.map(b => {
-        const d = new Date(b.date + 'T12:00:00');
-        const day = d.getDate();
-        const month = d.toLocaleString('en-IN', { month: 'short' }).toUpperCase();
+        const localDt = new Date(`${b.date}T${b.start_time}:00+05:30`);
+        const day = localDt.toLocaleString('en-US', { timeZone: window.__userTz, day: 'numeric' });
+        const month = localDt.toLocaleString('en-US', { timeZone: window.__userTz, month: 'short' }).toUpperCase();
         return `
           <div class="upcoming-card">
             <div class="session-date">

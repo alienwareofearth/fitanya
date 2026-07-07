@@ -206,14 +206,16 @@
       el.innerHTML = '<div class="card"><p class="text-dim">No bookings yet.</p></div>'; return;
     }
     el.innerHTML = data.bookings.map(b => {
-      const d = new Date(b.date + 'T12:00:00');
+      const localDt = new Date(`${b.date}T${b.start_time}:00+05:30`);
+      const localDay = localDt.toLocaleString('en-US', { timeZone: window.__userTz, day: 'numeric' });
+      const localMon = localDt.toLocaleString('en-US', { timeZone: window.__userTz, month: 'short' }).toUpperCase();
       const status = b.is_completed ? 'badge-green' : b.status === 'cancelled' ? 'badge-red' : 'badge-orange';
       const label = b.is_completed ? 'Completed' : b.status === 'cancelled' ? 'Cancelled' : 'Confirmed';
       return `
         <div class="booking-row">
           <div class="booking-date-box">
-            <div class="booking-day">${d.getDate()}</div>
-            <div class="booking-mon">${d.toLocaleString('en-IN',{month:'short'})}</div>
+            <div class="booking-day">${localDay}</div>
+            <div class="booking-mon">${localMon}</div>
           </div>
           <div style="flex:1">
             <div style="color:var(--white);font-weight:600">Session with ${b.coach_name}</div>
