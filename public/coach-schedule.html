@@ -4,7 +4,30 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Schedule — Fitanya</title>
   <link rel="stylesheet" href="/css/main.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <style>
+    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+    .cal-header { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:4px; }
+    .cal-day-label { text-align:center; font-size:11px; font-weight:700; color:var(--text-dim); padding:6px 0; letter-spacing:0.5px; }
+    .cal-cell { aspect-ratio:1; border-radius:10px; background:var(--muted); display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; border:2px solid transparent; transition:all 0.15s; position:relative; min-height:52px; }
+    .cal-cell:hover { border-color:var(--orange); }
+    .cal-cell.today { border-color:var(--orange); background:rgba(255,107,53,0.15); }
+    .cal-cell.selected { background:var(--orange); }
+    .cal-cell.selected .cal-num { color:#fff; }
+    .cal-cell.past { opacity:0.35; cursor:default; pointer-events:none; }
+    .cal-cell.empty { background:transparent; cursor:default; }
+    .cal-num { font-size:14px; font-weight:700; color:var(--white); }
+    .cal-dots { display:flex; gap:3px; margin-top:3px; }
+    .cal-dot { width:6px; height:6px; border-radius:50%; }
+    .dot-green { background:#22c55e; }
+    .dot-orange { background:var(--orange); }
+    .hour-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+    @media(max-width:600px) { .hour-grid { grid-template-columns:repeat(3,1fr); } }
+    .hour-block { padding:10px 8px; border-radius:8px; text-align:center; cursor:pointer; font-size:13px; font-weight:600; border:2px solid transparent; transition:all 0.15s; }
+    .hour-block.free { background:var(--muted); color:var(--text-dim); border-color:var(--border); }
+    .hour-block.free:hover { border-color:var(--orange); color:var(--white); }
+    .hour-block.open { background:rgba(34,197,94,0.15); color:#22c55e; border-color:#22c55e; }
+    .hour-block.booked { background:rgba(255,107,53,0.15); color:var(--orange); border-color:var(--orange); cursor:not-allowed; }
+  </style>
 </head>
 <body>
 <div class="app-layout">
@@ -13,69 +36,181 @@
     <nav class="sidebar-nav">
       <a href="/coach" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
       <a href="/coach/schedule" class="nav-item active"><span class="icon">📅</span>My Schedule</a>
-      <a href="/coach/customers" class="nav-item"><span class="icon">👥</span>My Customers</a>
-      <a href="/coach/sessions" class="nav-item"><span class="icon">📝</span>Session Notes</a>
+      <a href="/coach/customers" class="nav-item"><span class="icon">👥</span>My Members</a>
+      <a href="/coach/sessions" class="nav-item"><span class="icon">📝</span>Sessions</a>
     </nav>
     <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
   </aside>
   <main class="main-content">
-    <div class="page-header mb-32"><h2>My Schedule</h2><p>Open and manage your available training slots</p></div>
-    <div class="card mb-32">
-      <div class="section-title">Add New Slot</div>
-      <div class="flex gap-16 flex-wrap">
-        <div class="form-group" style="flex:1;min-width:160px"><label>Date</label><input class="form-control" id="slot-date" readonly /></div>
-        <div class="form-group" style="flex:1;min-width:140px"><label>Start Time</label><input class="form-control" id="slot-start" type="time" /></div>
-        <div class="form-group" style="flex:1;min-width:140px"><label>End Time</label><input class="form-control" id="slot-end" type="time" /></div>
-        <div class="form-group" style="display:flex;align-items:flex-end"><button class="btn btn-primary" onclick="addSlot()">Add Slot</button></div>
+    <div class="page-header mb-24"><h2>My Schedule</h2><p>Click a date then toggle hour blocks to open or close your availability</p></div>
+
+    <!-- Calendar -->
+    <div class="card mb-24">
+      <div class="flex-between mb-20">
+        <button class="btn btn-dark btn-sm" onclick="prevMonth()">← Prev</button>
+        <div style="font-family:var(--font-display);font-size:1.3rem;color:var(--white)" id="cal-title"></div>
+        <button class="btn btn-dark btn-sm" onclick="nextMonth()">Next →</button>
       </div>
+      <div class="cal-header">
+        <div class="cal-day-label">MON</div><div class="cal-day-label">TUE</div><div class="cal-day-label">WED</div>
+        <div class="cal-day-label">THU</div><div class="cal-day-label">FRI</div><div class="cal-day-label">SAT</div><div class="cal-day-label">SUN</div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
     </div>
-    <div class="section-title">My Upcoming Slots</div>
-    <div id="slots-wrap"><div class="spinner"></div></div>
+
+    <!-- Hour picker for selected day -->
+    <div class="card hidden" id="hour-picker">
+      <div class="flex-between mb-16">
+        <div>
+          <div style="font-family:var(--font-display);font-size:1.1rem;color:var(--white)" id="picker-date-label"></div>
+          <div class="text-dim text-small mt-4">Click a slot to add or remove it from your availability</div>
+        </div>
+        <div class="flex gap-16 text-small">
+          <span><span class="cal-dot dot-green" style="display:inline-block;vertical-align:middle;margin-right:4px"></span>Open</span>
+          <span><span class="cal-dot dot-orange" style="display:inline-block;vertical-align:middle;margin-right:4px"></span>Booked</span>
+        </div>
+      </div>
+      <div class="hour-grid" id="hour-grid"></div>
+    </div>
   </main>
 </div>
 <div id="toast-container"></div>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="/js/app.js"></script>
 <script>
+  let viewYear, viewMonth, selectedDate, allSlots = [], slotsByDate = {};
+  const HOURS = ['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'];
+
   async function init() {
-    flatpickr('#slot-date', { minDate: 'today', dateFormat: 'Y-m-d' });
-    document.getElementById('slot-start').value = '06:00';
-    document.getElementById('slot-end').value = '07:00';
-    loadSlots();
-  }
-
-  async function loadSlots() {
     const data = await api.get('/api/coach/my-schedule');
-    const el = document.getElementById('slots-wrap');
-    if (!data?.slots?.length) { el.innerHTML = '<div class="card"><p class="text-dim">No upcoming slots. Add some above!</p></div>'; return; }
-    el.innerHTML = `<div class="card"><div class="table-wrap"><table>
-      <thead><tr><th>Date</th><th>Time</th><th>Status</th><th>Customer</th><th>Action</th></tr></thead>
-      <tbody>
-        ${data.slots.map(s => `<tr>
-          <td>${formatDate(s.date)}</td>
-          <td>${formatTime(s.start_time)} – ${formatTime(s.end_time)}</td>
-          <td><span class="badge ${s.is_booked ? 'badge-orange' : 'badge-green'}">${s.is_booked ? 'Booked' : 'Open'}</span></td>
-          <td>${s.customer_name || '—'}</td>
-          <td>${!s.is_booked ? `<button class="btn btn-dark btn-sm" onclick="deleteSlot(${s.id})">Remove</button>` : ''}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table></div></div>`;
+    if (!data?.success) { window.location.href = '/login'; return; }
+    // Load all slots including past for the calendar dots
+    const allData = await api.get('/api/coach/all-slots');
+    allSlots = (allData?.slots || []).concat(data.slots || []);
+    // Deduplicate
+    const seen = new Set();
+    allSlots = allSlots.filter(s => { if (seen.has(s.id)) return false; seen.add(s.id); return true; });
+    buildSlotsByDate();
+    const now = new Date();
+    viewYear = now.getFullYear();
+    viewMonth = now.getMonth();
+    renderCalendar();
   }
 
-  async function addSlot() {
-    const date = document.getElementById('slot-date').value;
-    const start_time = document.getElementById('slot-start').value;
-    const end_time = document.getElementById('slot-end').value;
-    if (!date || !start_time || !end_time) return toast('Fill all fields', 'error');
+  function buildSlotsByDate() {
+    slotsByDate = {};
+    allSlots.forEach(s => {
+      if (!slotsByDate[s.date]) slotsByDate[s.date] = [];
+      slotsByDate[s.date].push(s);
+    });
+  }
+
+  function renderCalendar() {
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    document.getElementById('cal-title').textContent = `${months[viewMonth]} ${viewYear}`;
+    const grid = document.getElementById('cal-grid');
+    const today = new Date().toISOString().split('T')[0];
+    const firstDay = new Date(viewYear, viewMonth, 1);
+    let startDow = firstDay.getDay(); // 0=Sun
+    startDow = startDow === 0 ? 6 : startDow - 1; // Convert to Mon=0
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    let html = '';
+    for (let i = 0; i < startDow; i++) html += '<div class="cal-cell empty"></div>';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const pad = n => String(n).padStart(2,'0');
+      const dateStr = `${viewYear}-${pad(viewMonth+1)}-${pad(d)}`;
+      const isPast = dateStr < today;
+      const isToday = dateStr === today;
+      const isSelected = dateStr === selectedDate;
+      const daySlots = slotsByDate[dateStr] || [];
+      const hasOpen = daySlots.some(s => !s.is_booked);
+      const hasBooked = daySlots.some(s => s.is_booked);
+      let cls = 'cal-cell';
+      if (isPast) cls += ' past';
+      if (isToday) cls += ' today';
+      if (isSelected) cls += ' selected';
+      let dots = '';
+      if (hasOpen) dots += '<div class="cal-dot dot-green"></div>';
+      if (hasBooked) dots += '<div class="cal-dot dot-orange"></div>';
+      html += `<div class="${cls}" onclick="selectDay('${dateStr}')">
+        <div class="cal-num">${d}</div>
+        <div class="cal-dots">${dots}</div>
+      </div>`;
+    }
+    grid.innerHTML = html;
+  }
+
+  function selectDay(dateStr) {
+    selectedDate = dateStr;
+    renderCalendar();
+    renderHourPicker(dateStr);
+  }
+
+  function renderHourPicker(dateStr) {
+    const picker = document.getElementById('hour-picker');
+    picker.classList.remove('hidden');
+    const d = new Date(dateStr + 'T00:00:00');
+    document.getElementById('picker-date-label').textContent = d.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    const daySlots = slotsByDate[dateStr] || [];
+    const html = HOURS.map(h => {
+      const endH = String(parseInt(h) + 1).padStart(2,'0') + ':00';
+      const slot = daySlots.find(s => s.start_time === h);
+      if (slot) {
+        if (slot.is_booked) {
+          return `<div class="hour-block booked" title="Booked — cannot remove">${fmtH(h)}<div style="font-size:10px;margin-top:2px">${slot.customer_name||'Booked'}</div></div>`;
+        } else {
+          return `<div class="hour-block open" onclick="removeSlot(${slot.id},'${dateStr}')" title="Click to remove">${fmtH(h)}<div style="font-size:10px;margin-top:2px">Open ✕</div></div>`;
+        }
+      } else {
+        return `<div class="hour-block free" onclick="addSlot('${dateStr}','${h}','${endH}')" title="Click to add">${fmtH(h)}<div style="font-size:10px;margin-top:2px">+ Add</div></div>`;
+      }
+    }).join('');
+    document.getElementById('hour-grid').innerHTML = html;
+  }
+
+  function fmtH(t) {
+    const [h] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+    return `${h12}:00 ${ampm}`;
+  }
+
+  async function addSlot(date, start_time, end_time) {
     const data = await api.post('/api/coach/slots', { date, start_time, end_time });
-    if (data?.success) { toast('Slot added!', 'success'); loadSlots(); }
-    else toast(data?.error || 'Failed', 'error');
+    if (data?.success) {
+      toast('Slot added!', 'success');
+      await refreshSlots();
+      renderHourPicker(date);
+    } else toast(data?.error || 'Failed', 'error');
   }
 
-  async function deleteSlot(id) {
+  async function removeSlot(id, date) {
     const data = await api.del('/api/coach/slots/' + id);
-    if (data?.success) { toast('Slot removed', 'info'); loadSlots(); }
-    else toast(data?.error || 'Failed', 'error');
+    if (data?.success) {
+      toast('Slot removed', 'info');
+      await refreshSlots();
+      renderHourPicker(date);
+    } else toast(data?.error || 'Failed', 'error');
+  }
+
+  async function refreshSlots() {
+    const [upcoming, all] = await Promise.all([
+      api.get('/api/coach/my-schedule'),
+      api.get('/api/coach/all-slots'),
+    ]);
+    allSlots = [...(upcoming?.slots||[]), ...(all?.slots||[])];
+    const seen = new Set();
+    allSlots = allSlots.filter(s => { if (seen.has(s.id)) return false; seen.add(s.id); return true; });
+    buildSlotsByDate();
+    renderCalendar();
+  }
+
+  function prevMonth() {
+    viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+    renderCalendar();
+  }
+  function nextMonth() {
+    viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    renderCalendar();
   }
 
   init();

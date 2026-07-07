@@ -113,7 +113,7 @@ router.post('/discounts', async (req, res) => {
     const db = getDb();
     await db.execute({
       sql: `INSERT INTO discount_codes (code, type, value, min_amount, max_uses, expires_at, applies_to, package_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [code.toUpperCase(), type, value, min_amount || 0, max_uses, expires_at, applies_to || 'all', package_id],
+      args: [code.toUpperCase(), type, parseFloat(value), parseFloat(min_amount) || 0, max_uses || null, expires_at || null, applies_to || 'all', package_id || null],
     });
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }

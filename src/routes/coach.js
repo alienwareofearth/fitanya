@@ -104,4 +104,83 @@ router.get('/sessions', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// GET /api/coach/all-slots — all slots including past (for calendar display)
+router.get('/all-slots', async (req, res) => {
+  try {
+    const db = getDb();
+    const slots = await db.execute({
+      sql: `SELECT ss.*, b.id as booking_id, u.name as customer_name
+            FROM schedule_slots ss
+            LEFT JOIN bookings b ON b.slot_id = ss.id AND b.status != 'cancelled'
+            LEFT JOIN users u ON u.id = b.customer_id
+            WHERE ss.coach_id = ? AND ss.date >= date('now', '-60 days')
+            ORDER BY ss.date, ss.start_time`,
+      args: [req.session.user.id],
+    });
+    res.json({ success: true, slots: slots.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/coach/book — coach books a session on behalf of a customer
+router.post('/book', async (req, res) => {
+  try {
+    const { customer_id, slot_id } = req.body;
+    const coachId = req.session.user.id;
+    const db = getDb();
+    const { createMeetSession } = require('../services/googleMeet');
+    const { sendBookingConfirmation } = require('../services/email');
+    const { notify } = require('../services/notifications');
+
+    const slot = await db.execute({
+      sql: `SELECT * FROM schedule_slots WHERE id = ? AND coach_id = ? AND is_booked = 0 AND is_active = 1`,
+      args: [slot_id, coachId],
+    });
+    if (!slot.rows.length) return res.status(400).json({ error: 'Slot not available' });
+    const slotData = slot.rows[0];
+
+    const membership = await db.execute({
+      sql: `SELECT * FROM memberships WHERE user_id = ? AND status = 'active' AND (coach_id = ? OR coach_id IS NULL) ORDER BY created_at DESC LIMIT 1`,
+      args: [customer_id, coachId],
+    });
+    if (!membership.rows.length) return res.status(400).json({ error: 'Customer has no active membership' });
+    const mem = membership.rows[0];
+    if (mem.sessions_used >= mem.sessions_total) return res.status(400).json({ error: 'No sessions remaining for this customer' });
+
+    const [customerRow, coachRow] = await Promise.all([
+      db.execute({ sql: `SELECT name, email FROM users WHERE id = ?`, args: [customer_id] }),
+      db.execute({ sql: `SELECT name, email FROM users WHERE id = ?`, args: [coachId] }),
+    ]);
+    const customerData = customerRow.rows[0];
+    const coachData = coachRow.rows[0];
+
+    const { meetLink, eventId } = await createMeetSession({
+      summary: `Fitanya Session — ${customerData.name} with ${coachData.name}`,
+      description: 'Personal training session via Fitanya',
+      date: slotData.date,
+      startTime: slotData.start_time,
+      endTime: slotData.end_time,
+      attendeeEmails: [customerData.email, coachData.email],
+    });
+
+    await db.execute({
+      sql: `INSERT INTO bookings (membership_id, customer_id, coach_id, slot_id, meet_link, google_event_id) VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [mem.id, customer_id, coachId, slot_id, meetLink, eventId],
+    });
+    await db.execute({ sql: `UPDATE schedule_slots SET is_booked = 1 WHERE id = ?`, args: [slot_id] });
+    await db.execute({ sql: `UPDATE memberships SET sessions_used = sessions_used + 1 WHERE id = ?`, args: [mem.id] });
+    if (!mem.coach_id) {
+      await db.execute({ sql: `UPDATE memberships SET coach_id = ? WHERE id = ?`, args: [coachId, mem.id] });
+    }
+
+    const bookingInfo = { date: slotData.date, start_time: slotData.start_time, end_time: slotData.end_time, coach_name: coachData.name };
+    await sendBookingConfirmation({ to: customerData.email, name: customerData.name, booking: bookingInfo, meetLink });
+    await notify.sessionBooked(parseInt(customer_id), slotData.date, slotData.start_time);
+
+    res.json({ success: true, meetLink });
+  } catch (err) {
+    console.error('[coach] book error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
