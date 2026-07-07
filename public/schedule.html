@@ -57,12 +57,12 @@
     <!-- Book a session -->
     <div class="card mb-32">
       <div class="section-title">Book a New Session</div>
-      <div class="form-group">
-        <label>Select Date</label>
-        <input class="form-control" id="slot-date" placeholder="Pick a date" readonly style="max-width:260px" />
+      <div class="form-group" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <input class="form-control" id="slot-date" placeholder="Filter by date (optional)" readonly style="max-width:260px" />
+        <button class="btn btn-dark btn-sm" onclick="clearDateFilter()" id="clear-date-btn" style="display:none">✕ Clear filter</button>
       </div>
       <div id="slots-wrap">
-        <p class="text-dim text-small">Choose a date to see available slots.</p>
+        <div class="spinner"></div>
       </div>
       <div id="book-confirm" class="hidden" style="margin-top:24px">
         <div class="card" style="background:var(--dark);margin-bottom:16px" id="selected-slot-preview"></div>
@@ -94,30 +94,68 @@
     flatpickr('#slot-date', {
       minDate: 'today',
       dateFormat: 'Y-m-d',
-      onChange: ([date]) => loadSlots(date.toISOString().split('T')[0]),
+      onChange: ([date]) => {
+        document.getElementById('clear-date-btn').style.display = '';
+        loadSlots(date.toISOString().split('T')[0]);
+      },
     });
 
+    // Load all upcoming slots immediately — no date selection needed
+    loadSlots();
     loadMyBookings();
   }
 
-  async function loadSlots(date) {
+  function clearDateFilter() {
+    document.getElementById('slot-date')._flatpickr.clear();
+    document.getElementById('clear-date-btn').style.display = 'none';
+    loadSlots();
+  }
+
+  async function loadSlots(date = null) {
     document.getElementById('slots-wrap').innerHTML = '<div class="spinner"></div>';
     clearSelection();
-    const data = await api.get('/api/bookings/slots?date=' + date);
+    const url = date ? '/api/bookings/slots?date=' + date : '/api/bookings/slots';
+    const data = await api.get(url);
     if (!data?.slots?.length) {
-      document.getElementById('slots-wrap').innerHTML = '<p class="text-dim">No available slots on this date. Try another day.</p>';
+      document.getElementById('slots-wrap').innerHTML = date
+        ? '<p class="text-dim">No available slots on this date. Try another day.</p>'
+        : '<p class="text-dim">No upcoming slots available yet. Check back soon.</p>';
       return;
     }
-    document.getElementById('slots-wrap').innerHTML = `
-      <div class="slot-grid">
-        ${data.slots.map(s => `
-          <div class="slot-btn" onclick="selectSlot(${JSON.stringify(s).replace(/"/g,'&quot;')})">
-            <div class="slot-time">${formatSessionTime(s.start_time, s.date)}</div>
-            <div class="slot-coach">Coach: ${s.coach_name}</div>
+
+    if (date) {
+      // Single date: flat grid
+      document.getElementById('slots-wrap').innerHTML = `
+        <div class="slot-grid">
+          ${data.slots.map(s => `
+            <div class="slot-btn" onclick="selectSlot(${JSON.stringify(s).replace(/"/g,'&quot;')})">
+              <div class="slot-time">${formatSessionTime(s.start_time, s.date)}</div>
+              <div class="slot-coach">Coach: ${s.coach_name}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      // All upcoming: group by date
+      const grouped = {};
+      data.slots.forEach(s => { (grouped[s.date] = grouped[s.date] || []).push(s); });
+      document.getElementById('slots-wrap').innerHTML = Object.entries(grouped).map(([d, slots]) => {
+        const label = new Date(d + 'T12:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' });
+        return `
+          <div style="margin-top:20px">
+            <div class="text-dim text-small" style="font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">${label}</div>
+            <div class="slot-grid">
+              ${slots.map(s => `
+                <div class="slot-btn" onclick="selectSlot(${JSON.stringify(s).replace(/"/g,'&quot;')})">
+                  <div class="slot-time">${formatSessionTime(s.start_time, s.date)}</div>
+                  <div class="slot-coach">Coach: ${s.coach_name}</div>
+                </div>
+              `).join('')}
+            </div>
           </div>
-        `).join('')}
-      </div>
-    `;
+        `;
+      }).join('');
+    }
   }
 
   function selectSlot(slot) {
@@ -146,9 +184,9 @@
     const data = await api.post('/api/bookings/book', { slot_id: selectedSlot.id, membership_id: membership.id });
     if (data?.success) {
       toast('Session booked! 🎉 Check your email for Meet link.', 'success');
-      clearSelection();
       document.getElementById('slot-date')._flatpickr.clear();
-      document.getElementById('slots-wrap').innerHTML = '<p class="text-dim text-small">Choose a date to see available slots.</p>';
+      document.getElementById('clear-date-btn').style.display = 'none';
+      loadSlots();
       loadMyBookings();
     } else {
       toast(data?.error || 'Booking failed', 'error');
