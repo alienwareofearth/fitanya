@@ -49,7 +49,9 @@ router.get('/slots', requireAuth, async (req, res) => {
 
     if (filteredCoachId) coachFilter = `AND ss.coach_id = ${parseInt(filteredCoachId)}`;
 
-    const dateFilter = date ? `AND ss.date = '${date.replace(/[^0-9-]/g, '')}'` : `AND ss.date >= date('now')`;
+    // Filter out past slots (including past times on today's date). Times stored in IST.
+    const pastFilter = `AND (ss.date > date('now', '+05:30') OR (ss.date = date('now', '+05:30') AND ss.start_time > time('now', '+05:30')))`;
+    const dateFilter = date ? `AND ss.date = '${date.replace(/[^0-9-]/g, '')}' ${pastFilter}` : pastFilter;
 
     const slots = await db.execute({
       sql: `SELECT ss.*, u.name as coach_name

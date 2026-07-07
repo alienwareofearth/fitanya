@@ -214,7 +214,7 @@
             <div class="text-dim text-small">${formatSessionDate(b.date, b.start_time)} · ${formatSessionTime(b.start_time, b.date)} – ${formatSessionTime(b.end_time, b.date)} ${tzLabel()}</div>
           </div>
           <span class="badge ${status}">${label}</span>
-          ${b.meet_link && !b.is_completed && b.status !== 'cancelled' ? `<a href="${b.meet_link}" target="_blank" class="btn btn-primary btn-sm">Join Meet</a>` : ''}
+          ${b.meet_link && !b.is_completed && b.status !== 'cancelled' && !isMeetExpired(b.date, b.start_time) ? `<a href="${b.meet_link}" target="_blank" class="btn btn-primary btn-sm">Join Meet</a>` : ''}
           ${!b.is_completed && b.status !== 'cancelled' ? `<button class="btn btn-dark btn-sm" onclick="cancelBooking(${b.id})">Cancel</button>` : ''}
         </div>
       `;

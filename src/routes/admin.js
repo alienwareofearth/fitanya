@@ -313,6 +313,43 @@ router.post('/members/:id/reassign-coach', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ── Bookings ──────────────────────────────────────────────────────────────────
+router.get('/bookings', async (req, res) => {
+  try {
+    const db = getDb();
+    const result = await db.execute(`
+      SELECT b.id, b.status, b.is_completed, b.meet_link,
+             ss.date, ss.start_time, ss.end_time, ss.id as slot_id,
+             cu.name as customer_name, cu.email as customer_email,
+             co.name as coach_name
+      FROM bookings b
+      JOIN schedule_slots ss ON ss.id = b.slot_id
+      JOIN users cu ON cu.id = b.customer_id
+      JOIN users co ON co.id = b.coach_id
+      WHERE b.status != 'cancelled'
+      ORDER BY ss.date DESC, ss.start_time DESC`);
+    res.json({ success: true, bookings: result.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/bookings/:id', async (req, res) => {
+  try {
+    const db = getDb();
+    const id = parseInt(req.params.id);
+    // Get booking details first
+    const b = await db.execute({ sql: `SELECT * FROM bookings WHERE id = ?`, args: [id] });
+    if (!b.rows.length) return res.status(404).json({ error: 'Booking not found' });
+    const booking = b.rows[0];
+    // Cancel the booking
+    await db.execute({ sql: `UPDATE bookings SET status = 'cancelled' WHERE id = ?`, args: [id] });
+    // Free up the slot
+    await db.execute({ sql: `UPDATE schedule_slots SET is_booked = 0 WHERE id = ?`, args: [booking.slot_id] });
+    // Decrement sessions used on the membership
+    await db.execute({ sql: `UPDATE memberships SET sessions_used = MAX(0, sessions_used - 1) WHERE id = ?`, args: [booking.membership_id] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ── Schedule Slots ────────────────────────────────────────────────────────────
 router.get('/slots', async (req, res) => {
   const db = getDb();

@@ -149,6 +149,13 @@ function formatSessionDate(dateStr, timeStr) {
   } catch { return formatDate(dateStr); }
 }
 
+// Returns true if the session started more than 1 hour ago (times stored in IST)
+function isMeetExpired(dateStr, startTime) {
+  if (!dateStr || !startTime) return false;
+  const sessionStart = new Date(`${dateStr}T${startTime}:00+05:30`);
+  return Date.now() > sessionStart.getTime() + 60 * 60 * 1000;
+}
+
 function tzLabel() {
   const tz = window.__userTz;
   if (tz === 'Asia/Kolkata') return 'IST';

@@ -28,17 +28,29 @@
       <button class="btn btn-primary" onclick="openAddModal()">+ Add Slot</button>
     </div>
 
-    <!-- Filter by coach -->
-    <div class="card mb-24" style="padding:16px">
-      <div class="flex gap-16" style="align-items:center;flex-wrap:wrap">
-        <span class="text-dim text-small">Filter by coach:</span>
-        <select class="form-control" id="filter-coach" onchange="loadSlots()" style="width:220px">
-          <option value="">All Coaches</option>
-        </select>
-      </div>
+    <!-- Tabs -->
+    <div class="flex gap-8 mb-24">
+      <button class="btn btn-primary btn-sm" id="tab-slots" onclick="showTab('slots')">Upcoming Slots</button>
+      <button class="btn btn-dark btn-sm" id="tab-bookings" onclick="showTab('bookings')">All Bookings</button>
     </div>
 
-    <div id="slots-wrap"><div class="spinner"></div></div>
+    <!-- Slots tab -->
+    <div id="view-slots">
+      <div class="card mb-24" style="padding:16px">
+        <div class="flex gap-16" style="align-items:center;flex-wrap:wrap">
+          <span class="text-dim text-small">Filter by coach:</span>
+          <select class="form-control" id="filter-coach" onchange="loadSlots()" style="width:220px">
+            <option value="">All Coaches</option>
+          </select>
+        </div>
+      </div>
+      <div id="slots-wrap"><div class="spinner"></div></div>
+    </div>
+
+    <!-- Bookings tab -->
+    <div id="view-bookings" style="display:none">
+      <div id="bookings-wrap"><div class="spinner"></div></div>
+    </div>
   </main>
 </div>
 
@@ -82,6 +94,14 @@
   let coaches = [];
   let bulkSlots = [];
 
+  function showTab(tab) {
+    document.getElementById('view-slots').style.display = tab === 'slots' ? '' : 'none';
+    document.getElementById('view-bookings').style.display = tab === 'bookings' ? '' : 'none';
+    document.getElementById('tab-slots').className = tab === 'slots' ? 'btn btn-primary btn-sm' : 'btn btn-dark btn-sm';
+    document.getElementById('tab-bookings').className = tab === 'bookings' ? 'btn btn-primary btn-sm' : 'btn btn-dark btn-sm';
+    if (tab === 'bookings') loadBookings();
+  }
+
   async function init() {
     const data = await api.get('/api/admin/coaches');
     if (!data?.success) { window.location.href = '/login'; return; }
@@ -94,9 +114,7 @@
       slotEl.innerHTML += `<option value="${c.id}">${c.name}</option>`;
     });
 
-    // Default date to today
     document.getElementById('slot-date').value = new Date().toISOString().split('T')[0];
-
     await loadSlots();
   }
 
@@ -212,6 +230,35 @@
     const data = await api.del(`/api/admin/slots/${id}`);
     if (data?.success) { toast('Slot deleted', 'success'); loadSlots(); }
     else toast('Failed to delete', 'error');
+  }
+
+  async function loadBookings() {
+    const el = document.getElementById('bookings-wrap');
+    el.innerHTML = '<div class="spinner"></div>';
+    const data = await api.get('/api/admin/bookings');
+    if (!data?.success) { el.innerHTML = '<p class="text-dim">Failed to load.</p>'; return; }
+    if (!data.bookings?.length) { el.innerHTML = '<div class="card"><p class="text-dim">No bookings yet.</p></div>'; return; }
+
+    el.innerHTML = `<div class="card" style="padding:0"><div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Time</th><th>Member</th><th>Coach</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>
+        ${data.bookings.map(b => `<tr>
+          <td style="color:var(--white)">${b.date}</td>
+          <td class="text-dim">${b.start_time} – ${b.end_time}</td>
+          <td style="font-weight:600;color:var(--white)">${b.customer_name}</td>
+          <td class="text-dim">${b.coach_name}</td>
+          <td><span class="badge ${b.is_completed ? 'badge-green' : 'badge-orange'}">${b.is_completed ? 'Completed' : 'Upcoming'}</span></td>
+          <td><button class="btn btn-dark btn-sm" style="color:#f87171" onclick="deleteBooking(${b.id},'${b.customer_name.replace(/'/g,"\\'")}')">Delete</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div></div>`;
+  }
+
+  async function deleteBooking(id, name) {
+    if (!confirm(`Delete booking for "${name}"? The slot will be freed and their session count reduced.`)) return;
+    const data = await api.del('/api/admin/bookings/' + id);
+    if (data?.success) { toast('Booking deleted', 'success'); loadBookings(); }
+    else toast(data?.error || 'Failed', 'error');
   }
 
   init();
