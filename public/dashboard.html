@@ -567,7 +567,12 @@
         </div>`;
         return;
       }
-      const upcoming = data.bookings.filter(b => !b.is_completed && b.status !== 'cancelled' && !isMeetExpired(b.date, b.start_time)).slice(0, 3);
+      // Show upcoming: not completed, not cancelled, date is today or future — sort soonest first
+      const todayIST = new Date(Date.now() + 5.5 * 3600000).toISOString().split('T')[0];
+      const upcoming = data.bookings
+        .filter(b => !b.is_completed && b.status !== 'cancelled' && b.date >= todayIST)
+        .sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.start_time.localeCompare(b.start_time))
+        .slice(0, 3);
       if (!upcoming.length) {
         el.innerHTML = `<p class="text-dim">No upcoming sessions. <a href="/dashboard/schedule" class="text-orange">Book one!</a></p>`;
         return;
