@@ -1,23 +1,10 @@
 'use strict';
 
-const nodemailer = require('nodemailer');
 const path = require('path');
 const fs = require('fs');
 
-const useFileTransport = !process.env.SMTP_USER || !process.env.SMTP_PASS;
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const outboxPath = path.join(__dirname, '../../data/dev_emails.json');
-
-let transporter;
-
-function getTransporter() {
-  if (transporter) return transporter;
-  transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
-    port: parseInt(process.env.SMTP_PORT || '587', 10),
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-  });
-  return transporter;
-}
 
 function writeToOutbox(message) {
   const dataDir = path.dirname(outboxPath);
@@ -25,10 +12,11 @@ function writeToOutbox(message) {
   const outbox = fs.existsSync(outboxPath) ? JSON.parse(fs.readFileSync(outboxPath, 'utf8')) : [];
   outbox.push({ ...message, sentAt: new Date().toISOString() });
   fs.writeFileSync(outboxPath, JSON.stringify(outbox, null, 2));
-  console.log(`[email] No SMTP credentials set — wrote "${message.subject}" for ${message.to} to ${outboxPath}`);
+  console.log(`[email] No BREVO_API_KEY set — wrote "${message.subject}" for ${message.to} to ${outboxPath}`);
 }
 
-const FROM = `"${process.env.EMAIL_FROM_NAME || 'Fitanya'}" <${process.env.EMAIL_FROM || 'noreply@fitanya.com'}>`;
+const FROM_EMAIL = process.env.EMAIL_FROM || 'noreply@fitanya.com';
+const FROM_NAME  = process.env.EMAIL_FROM_NAME || 'Fitanya';
 
 const baseTemplate = (content) => `
 <!DOCTYPE html>
@@ -66,9 +54,29 @@ const baseTemplate = (content) => `
 </html>`;
 
 async function sendMail({ to, subject, html, text }) {
-  if (useFileTransport) return writeToOutbox({ from: FROM, to, subject, html, text });
-  const mailer = getTransporter();
-  return mailer.sendMail({ from: FROM, to, subject, html, text });
+  if (!BREVO_API_KEY) return writeToOutbox({ from: FROM_EMAIL, to, subject, html, text });
+
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'api-key': BREVO_API_KEY,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: FROM_NAME, email: FROM_EMAIL },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+      textContent: text,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(`Brevo API error: ${err.message || response.status}`);
+  }
+  return response.json();
 }
 
 async function sendOtp({ to, name, otp }) {
