@@ -14,7 +14,7 @@ router.get('/profile', async (req, res) => {
     const db = getDb();
     const userId = req.session.user.id;
     const [user, profile, membership] = await Promise.all([
-      db.execute({ sql: `SELECT id, name, email, phone, profile_picture, referral_code, reward_credits, created_at FROM users WHERE id = ?`, args: [userId] }),
+      db.execute({ sql: `SELECT id, name, email, phone, role, profile_picture, referral_code, reward_credits, created_at FROM users WHERE id = ?`, args: [userId] }),
       db.execute({ sql: `SELECT * FROM customer_profiles WHERE user_id = ?`, args: [userId] }),
       db.execute({
         sql: `SELECT m.*, p.name as package_name, p.sessions, u.name as coach_name
