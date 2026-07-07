@@ -396,11 +396,13 @@ router.delete('/bookings/:id', async (req, res) => {
     const b = await db.execute({ sql: `SELECT * FROM bookings WHERE id = ?`, args: [id] });
     if (!b.rows.length) return res.status(404).json({ error: 'Booking not found' });
     const booking = b.rows[0];
-    // Cancel the booking
-    await db.execute({ sql: `UPDATE bookings SET status = 'cancelled' WHERE id = ?`, args: [id] });
-    // Free up the slot
+    // Delete session notes first (FK references bookings)
+    await db.execute({ sql: `DELETE FROM session_notes WHERE booking_id = ?`, args: [id] });
+    // Hard delete the booking — member will see nothing
+    await db.execute({ sql: `DELETE FROM bookings WHERE id = ?`, args: [id] });
+    // Free the slot back into the pool
     await db.execute({ sql: `UPDATE schedule_slots SET is_booked = 0 WHERE id = ?`, args: [booking.slot_id] });
-    // Decrement sessions used on the membership
+    // Refund the session back to membership
     await db.execute({ sql: `UPDATE memberships SET sessions_used = MAX(0, sessions_used - 1) WHERE id = ?`, args: [booking.membership_id] });
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
