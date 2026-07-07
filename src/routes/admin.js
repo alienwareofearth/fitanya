@@ -195,6 +195,30 @@ router.get('/members/:id', async (req, res) => {
   res.json({ success: true, member: user.rows[0], progress: profile.rows, bookings: bookings.rows });
 });
 
+// Admin assign free trial to a member
+router.post('/members/:id/assign-trial', async (req, res) => {
+  try {
+    const db = getDb();
+    const memberId = parseInt(req.params.id);
+
+    const existing = await db.execute({
+      sql: `SELECT id FROM memberships WHERE user_id = ? AND is_trial = 1`,
+      args: [memberId],
+    });
+    if (existing.rows.length) return res.status(400).json({ error: 'Member already has a trial membership' });
+
+    const trialPkg = await db.execute(`SELECT id FROM packages WHERE name = 'Free Trial' LIMIT 1`);
+    if (!trialPkg.rows.length) return res.status(500).json({ error: 'Free Trial package not found' });
+
+    await db.execute({
+      sql: `INSERT INTO memberships (user_id, package_id, sessions_total, sessions_used, start_date, end_date, status, is_trial)
+            VALUES (?, ?, 1, 0, date('now'), date('now', '+30 days'), 'active', 1)`,
+      args: [memberId, trialPkg.rows[0].id],
+    });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Admin edit membership sessions
 router.post('/members/:id/add-sessions', async (req, res) => {
   try {

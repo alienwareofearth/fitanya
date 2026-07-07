@@ -93,7 +93,9 @@
           <td>${m.sessions_used != null ? m.sessions_used + '/' + m.sessions_total : '—'}</td>
           <td><span class="badge ${m.membership_status === 'active' ? 'badge-green' : 'badge-yellow'}">${m.membership_status || 'no plan'}</span></td>
           <td><div class="flex gap-8">
-            ${m.membership_status === 'active' ? `<button class="btn btn-dark btn-sm" onclick="openAddSessions(${m.id},'${m.name.replace(/'/g,"\\'")}',${m.sessions_used||0},${m.sessions_total||0})">+ Sessions</button>` : ''}
+            ${m.membership_status === 'active'
+              ? `<button class="btn btn-dark btn-sm" onclick="openAddSessions(${m.id},'${m.name.replace(/'/g,"\\'")}',${m.sessions_used||0},${m.sessions_total||0})">+ Sessions</button>`
+              : `<button class="btn btn-dark btn-sm" onclick="assignTrial(${m.id}, this)">Give Trial</button>`}
             <button class="btn btn-dark btn-sm" onclick="openReassign(${m.id},'${m.name.replace(/'/g,"\\'")}','${m.coach_id||''}')">Assign Coach</button>
           </div></td>
         </tr>`).join('')}
@@ -104,6 +106,15 @@
   function filterMembers() {
     const q = document.getElementById('search').value.toLowerCase();
     renderMembers(allMembers.filter(m => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)));
+  }
+
+  async function assignTrial(memberId, btn) {
+    btn.disabled = true; btn.textContent = 'Assigning...';
+    try {
+      const data = await api.post('/api/admin/members/' + memberId + '/assign-trial', {});
+      if (data?.success) { toast('Trial membership assigned!', 'success'); init(); }
+      else toast(data?.error || 'Failed', 'error');
+    } finally { btn.disabled = false; btn.textContent = 'Give Trial'; }
   }
 
   function openAddSessions(memberId, memberName, used, total) {
