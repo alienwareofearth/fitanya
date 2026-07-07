@@ -16,34 +16,40 @@ router.get('/slots', requireAuth, async (req, res) => {
     const db = getDb();
     const userId = req.session.user.id;
 
-    // Check if customer has completed 1st session (coach-lock logic)
+    // Determine coach filter: after 1st completed session, lock to assigned coach
+    let coachFilter = '';
+    let filteredCoachId = null;
+
     const completedSessions = await db.execute({
       sql: `SELECT COUNT(*) as count FROM bookings WHERE customer_id = ? AND is_completed = 1`,
       args: [userId],
     });
 
-    let coachFilter = '';
-    let args = [];
-
     if (completedSessions.rows[0].count > 0) {
-      // Has completed sessions — check for assigned coach
       const membership = await db.execute({
-        sql: `SELECT coach_id FROM memberships WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`,
+        sql: `SELECT m.coach_id FROM memberships m
+              JOIN users u ON u.id = m.user_id
+              WHERE m.user_id = ? AND m.status = 'active'
+              ORDER BY m.created_at DESC LIMIT 1`,
         args: [userId],
       });
-      const assignedCoachId = membership.rows[0]?.coach_id;
-      if (assignedCoachId) {
-        coachFilter = `AND ss.coach_id = ?`;
-        args = [assignedCoachId];
+      filteredCoachId = membership.rows[0]?.coach_id || null;
+      if (!filteredCoachId) {
+        // Fall back to users.assigned_coach_id
+        const user = await db.execute({ sql: `SELECT assigned_coach_id FROM users WHERE id = ?`, args: [userId] });
+        filteredCoachId = user.rows[0]?.assigned_coach_id || null;
       }
     } else if (coach_id) {
-      coachFilter = `AND ss.coach_id = ?`;
-      args = [coach_id];
+      filteredCoachId = parseInt(coach_id);
+    } else {
+      // No coach specified and no completed sessions — check if user has an assigned coach
+      const user = await db.execute({ sql: `SELECT assigned_coach_id FROM users WHERE id = ?`, args: [userId] });
+      filteredCoachId = user.rows[0]?.assigned_coach_id || null;
     }
 
-    const dateFilter = date ? `AND ss.date = ?` : `AND ss.date >= date('now')`;
-    if (date) args.push(date);
-    args = [userId, ...args];
+    if (filteredCoachId) coachFilter = `AND ss.coach_id = ${parseInt(filteredCoachId)}`;
+
+    const dateFilter = date ? `AND ss.date = '${date.replace(/[^0-9-]/g, '')}'` : `AND ss.date >= date('now')`;
 
     const slots = await db.execute({
       sql: `SELECT ss.*, u.name as coach_name
@@ -51,9 +57,11 @@ router.get('/slots', requireAuth, async (req, res) => {
             JOIN users u ON u.id = ss.coach_id
             WHERE ss.is_booked = 0 AND ss.is_active = 1
             ${dateFilter} ${coachFilter}
-            AND ss.id NOT IN (SELECT slot_id FROM bookings WHERE customer_id = ? AND status != 'cancelled')
+            AND ss.id NOT IN (
+              SELECT slot_id FROM bookings WHERE customer_id = ? AND status != 'cancelled'
+            )
             ORDER BY ss.date, ss.start_time`,
-      args,
+      args: [userId],
     });
 
     res.json({ success: true, slots: slots.rows });
