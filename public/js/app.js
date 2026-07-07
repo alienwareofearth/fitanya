@@ -180,16 +180,37 @@ async function loadNotifCount() {
 
 // ── Sidebar mobile toggle ─────────────────────────────────────────────────
 function initSidebarToggle() {
-  const toggle = document.getElementById('sidebar-toggle');
   const sidebar = document.querySelector('.sidebar');
-  if (toggle && sidebar) {
-    toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
-    document.addEventListener('click', e => {
-      if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
-        sidebar.classList.remove('open');
-      }
-    });
+  if (!sidebar) return;
+
+  // Inject hamburger button if not already in HTML
+  let toggle = document.getElementById('sidebar-toggle');
+  if (!toggle) {
+    toggle = document.createElement('button');
+    toggle.id = 'sidebar-toggle';
+    toggle.setAttribute('aria-label', 'Open menu');
+    toggle.innerHTML = '<span></span><span></span><span></span>';
+    document.body.appendChild(toggle);
   }
+
+  // Inject backdrop overlay
+  let backdrop = document.getElementById('sidebar-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.id = 'sidebar-backdrop';
+    document.body.appendChild(backdrop);
+  }
+
+  const open  = () => { sidebar.classList.add('open'); backdrop.classList.add('visible'); };
+  const close = () => { sidebar.classList.remove('open'); backdrop.classList.remove('visible'); };
+
+  toggle.addEventListener('click', e => { e.stopPropagation(); sidebar.classList.contains('open') ? close() : open(); });
+  backdrop.addEventListener('click', close);
+
+  // Close sidebar when a nav link is tapped on mobile
+  sidebar.querySelectorAll('a, button').forEach(el => {
+    el.addEventListener('click', () => { if (window.innerWidth <= 768) close(); });
+  });
 }
 
 // ── Set active nav item ────────────────────────────────────────────────────
