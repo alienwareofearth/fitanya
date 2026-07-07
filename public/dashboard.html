@@ -578,7 +578,7 @@
         return;
       }
       el.innerHTML = upcoming.map(b => {
-        const d = new Date(b.date);
+        const d = new Date(b.date + 'T12:00:00');
         const day = d.getDate();
         const month = d.toLocaleString('en-IN', { month: 'short' }).toUpperCase();
         return `
