@@ -192,6 +192,23 @@ router.get('/members/:id', async (req, res) => {
   res.json({ success: true, member: user.rows[0], progress: profile.rows, bookings: bookings.rows });
 });
 
+// Admin edit membership sessions
+router.post('/members/:id/add-sessions', async (req, res) => {
+  try {
+    const { sessions_to_add } = req.body;
+    const add = parseInt(sessions_to_add);
+    if (!add || add < 1) return res.status(400).json({ error: 'Enter a valid number of sessions to add' });
+    const db = getDb();
+    const result = await db.execute({
+      sql: `UPDATE memberships SET sessions_total = sessions_total + ?, updated_at = datetime('now')
+            WHERE user_id = ? AND status = 'active'`,
+      args: [add, parseInt(req.params.id)],
+    });
+    if (result.rowsAffected === 0) return res.status(400).json({ error: 'No active membership found for this member' });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Admin reassign coach
 router.post('/members/:id/reassign-coach', async (req, res) => {
   try {

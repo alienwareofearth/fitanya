@@ -31,6 +31,22 @@
   </main>
 </div>
 
+<!-- Add Sessions Modal -->
+<div class="modal-overlay hidden" id="sessions-modal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="document.getElementById('sessions-modal').classList.add('hidden')">×</button>
+    <h3 class="modal-title">Add Sessions</h3>
+    <p class="text-dim mt-4 mb-24">Member: <strong class="text-white" id="sessions-member-name"></strong></p>
+    <p class="text-dim mb-16">Current: <strong class="text-white" id="sessions-current"></strong></p>
+    <input type="hidden" id="sessions-member-id" />
+    <div class="form-group">
+      <label>Sessions to Add</label>
+      <input class="form-control" type="number" id="sessions-to-add" min="1" placeholder="e.g. 4" />
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doAddSessions()">Add Sessions</button>
+  </div>
+</div>
+
 <!-- Reassign Coach Modal -->
 <div class="modal-overlay hidden" id="reassign-modal">
   <div class="modal" style="position:relative">
@@ -76,7 +92,12 @@
           <td id="coach-cell-${m.id}">${m.coach_name || '<span class="text-dim">Unassigned</span>'}</td>
           <td>${m.sessions_used != null ? m.sessions_used + '/' + m.sessions_total : '—'}</td>
           <td><span class="badge ${m.membership_status === 'active' ? 'badge-green' : 'badge-yellow'}">${m.membership_status || 'no plan'}</span></td>
-          <td>${m.membership_status === 'active' ? `<button class="btn btn-dark btn-sm" onclick="openReassign(${m.id},'${m.name.replace(/'/g,"\\'")}','${m.coach_id||''}')">Assign Coach</button>` : '<span class="text-dim text-small">No membership</span>'}</td>
+          <td>${m.membership_status === 'active'
+            ? `<div class="flex gap-8">
+                <button class="btn btn-dark btn-sm" onclick="openAddSessions(${m.id},'${m.name.replace(/'/g,"\\'")}',${m.sessions_used||0},${m.sessions_total||0})">+ Sessions</button>
+                <button class="btn btn-dark btn-sm" onclick="openReassign(${m.id},'${m.name.replace(/'/g,"\\'")}','${m.coach_id||''}')">Assign Coach</button>
+               </div>`
+            : '<span class="text-dim text-small">No membership</span>'}</td>
         </tr>`).join('')}
       </tbody>
     </table></div></div>`;
@@ -85,6 +106,32 @@
   function filterMembers() {
     const q = document.getElementById('search').value.toLowerCase();
     renderMembers(allMembers.filter(m => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)));
+  }
+
+  function openAddSessions(memberId, memberName, used, total) {
+    document.getElementById('sessions-member-id').value = memberId;
+    document.getElementById('sessions-member-name').textContent = memberName;
+    document.getElementById('sessions-current').textContent = used + ' used / ' + total + ' total';
+    document.getElementById('sessions-to-add').value = '';
+    document.getElementById('sessions-modal').classList.remove('hidden');
+  }
+
+  async function doAddSessions() {
+    const memberId = document.getElementById('sessions-member-id').value;
+    const toAdd = document.getElementById('sessions-to-add').value;
+    if (!toAdd || parseInt(toAdd) < 1) return toast('Enter a valid number', 'error');
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      const data = await api.post('/api/admin/members/' + memberId + '/add-sessions', { sessions_to_add: parseInt(toAdd) });
+      if (data?.success) {
+        toast('Sessions added!', 'success');
+        document.getElementById('sessions-modal').classList.add('hidden');
+        init();
+      } else toast(data?.error || 'Failed', 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Add Sessions';
+    }
   }
 
   function openReassign(memberId, memberName, currentCoachId) {
