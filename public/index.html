@@ -468,7 +468,18 @@
         <div class="form-row">
           <div class="form-group">
             <label>Phone Number *</label>
-            <input class="form-control" id="reg-phone" placeholder="+91 9999999999" />
+            <div class="flex gap-8">
+              <select class="form-control" id="reg-phone-code" style="width:100px;flex-shrink:0">
+                <option value="+91">🇮🇳 +91</option>
+                <option value="+1">🇺🇸 +1</option>
+                <option value="+44">🇬🇧 +44</option>
+                <option value="+971">🇦🇪 +971</option>
+                <option value="+65">🇸🇬 +65</option>
+                <option value="+60">🇲🇾 +60</option>
+                <option value="+61">🇦🇺 +61</option>
+              </select>
+              <input class="form-control" id="reg-phone" placeholder="9999999999" style="flex:1" />
+            </div>
           </div>
           <div class="form-group">
             <label>Occupation *</label>
@@ -839,7 +850,7 @@
 
       const payload = {
         password,
-        phone:          document.getElementById('reg-phone').value,
+        phone:          document.getElementById('reg-phone-code').value + document.getElementById('reg-phone').value.trim(),
         occupation:     document.getElementById('reg-occupation').value,
         date_of_birth:  document.getElementById('reg-dob').value,
         age:            document.getElementById('reg-age').value,
@@ -914,7 +925,7 @@
     async function proceedToPayment() {
       const customerName = document.getElementById('reg-name').value;
       const customerEmail = document.getElementById('reg-email').value;
-      const customerPhone = document.getElementById('reg-phone').value;
+      const customerPhone = document.getElementById('reg-phone-code').value + document.getElementById('reg-phone').value.trim();
       const discountCode = document.getElementById('discount-code').value;
       const useCredits = document.getElementById('use-credits').checked;
 
