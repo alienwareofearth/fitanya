@@ -16,7 +16,8 @@ function getAuthClient() {
 function jitsiFallback() {
   const seg = () => Math.random().toString(36).slice(2, 6);
   const roomId = `fitanya-${seg()}-${seg()}-${seg()}`;
-  return { meetLink: `https://meet.jit.si/${roomId}`, eventId: `jitsi-${roomId}` };
+  const config = '#config.lobby.enabled=false&config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false';
+  return { meetLink: `https://meet.jit.si/${roomId}${config}`, eventId: `jitsi-${roomId}` };
 }
 
 async function createMeetSession({ summary, description, date, startTime, endTime, attendeeEmails }) {
