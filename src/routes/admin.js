@@ -170,7 +170,7 @@ router.get('/members', async (req, res) => {
   const result = await db.execute(`
     SELECT u.id, u.name, u.email, u.phone, u.created_at, u.is_active,
            cp.fitness_goal, cp.food_preference,
-           m.status as membership_status, m.sessions_total, m.sessions_used,
+           m.status as membership_status, m.sessions_total, m.sessions_used, m.coach_id,
            p.name as package_name, coach.name as coach_name
     FROM users u
     LEFT JOIN customer_profiles cp ON cp.user_id = u.id
@@ -197,10 +197,11 @@ router.post('/members/:id/reassign-coach', async (req, res) => {
   try {
     const { coach_id } = req.body;
     const db = getDb();
-    await db.execute({
+    const result = await db.execute({
       sql: `UPDATE memberships SET coach_id = ? WHERE user_id = ? AND status = 'active'`,
-      args: [coach_id, req.params.id],
+      args: [parseInt(coach_id), parseInt(req.params.id)],
     });
+    if (result.rowsAffected === 0) return res.status(400).json({ error: 'No active membership found for this member' });
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
