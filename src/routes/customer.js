@@ -24,7 +24,7 @@ router.get('/profile', async (req, res) => {
         args: [userId],
       }),
     ]);
-    res.json({ success: true, user: user.rows[0], profile: profile.rows[0], membership: membership.rows[0] });
+    res.json({ success: true, user: user.rows[0], profile: profile.rows[0], membership: membership.rows[0], prev_login: req.session.user.prev_login || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

@@ -196,6 +196,12 @@
   </style>
 </head>
 <body>
+  <!-- LAST LOGIN BANNER -->
+  <div id="last-login-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:1000;background:linear-gradient(90deg,#1a1a1a,#222);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;justify-content:space-between">
+    <span style="font-size:13px;color:var(--text-dim)">Last login: <span id="last-login-time" style="color:var(--white);font-weight:600"></span></span>
+    <button onclick="dismissLoginBanner()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:18px;line-height:1">×</button>
+  </div>
+
   <!-- WEIGHT CHECK POPUP (every 7 days) -->
   <div class="weight-popup hidden" id="weight-popup">
     <div class="weight-popup-inner" style="position:relative">
@@ -376,7 +382,8 @@
     async function initDashboard() {
       const data = await requireAuth();
       if (!data) return;
-      const { user, profile, membership } = data;
+      const { user, profile, membership, prev_login } = data;
+      showLastLoginBanner(prev_login);
       _profile = profile;
 
       // Greeting
@@ -479,14 +486,39 @@
       ).join('');
     }
 
+    function showLastLoginBanner(prevLogin) {
+      if (!prevLogin) return;
+      const banner = document.getElementById('last-login-banner');
+      const dt = new Date(prevLogin + 'Z');
+      document.getElementById('last-login-time').textContent = dt.toLocaleString('en-IN', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true,
+      });
+      banner.style.display = 'flex';
+      setTimeout(dismissLoginBanner, 60000);
+    }
+
+    function dismissLoginBanner() {
+      const b = document.getElementById('last-login-banner');
+      b.style.opacity = '0'; b.style.transition = 'opacity 0.5s';
+      setTimeout(() => b.style.display = 'none', 500);
+    }
+
     function closeWeightPopup() {
       document.getElementById('weight-popup').classList.add('hidden');
+      // Remember we showed it this week — don't show again for 7 days
+      localStorage.setItem('weight_popup_shown', Date.now().toString());
     }
 
     async function checkWeightPopup() {
+      // Don't show if already shown within the last 7 days
+      const lastShown = localStorage.getItem('weight_popup_shown');
+      if (lastShown && Date.now() - parseInt(lastShown) < 7 * 24 * 3600 * 1000) return;
+
       const data = await api.get('/api/customer/progress/weight-check');
       if (data && !data.logged) {
         document.getElementById('weight-popup').classList.remove('hidden');
+        localStorage.setItem('weight_popup_shown', Date.now().toString());
       }
     }
 

@@ -146,9 +146,18 @@ router.post('/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
+    const prevLogin = user.last_login_at || null;
+
+    // Update last_login_at to now
+    await db.execute({
+      sql: `UPDATE users SET last_login_at = datetime('now') WHERE id = ?`,
+      args: [user.id],
+    });
+
     req.session.user = {
       id: user.id, name: user.name, email: user.email,
       role: user.role, profile_picture: user.profile_picture,
+      prev_login: prevLogin,
     };
 
     const redirectMap = { admin: '/admin', coach: '/coach', customer: '/dashboard' };

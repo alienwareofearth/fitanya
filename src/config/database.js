@@ -78,6 +78,11 @@ async function initDb() {
     await client.execute(`ALTER TABLE customer_profiles ADD COLUMN ideal_weight REAL`);
   } catch (_) { /* column already exists */ }
 
+  // Migrate: add last_login_at to users
+  try {
+    await client.execute(`ALTER TABLE users ADD COLUMN last_login_at TEXT`);
+  } catch (_) { /* column already exists */ }
+
   // Coach profiles
   await client.execute(`CREATE TABLE IF NOT EXISTS coach_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
