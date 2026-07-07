@@ -32,7 +32,7 @@ router.put('/profile', async (req, res) => {
   try {
     const db = getDb();
     const userId = req.session.user.id;
-    const { name, phone, occupation, height, waist, thigh, arm, chest, age, weight, ideal_weight, address, health_issues, allergies, food_preference, food_specific, prior_experience, fitness_goal } = req.body;
+    const { name, phone, timezone, occupation, height, waist, thigh, arm, chest, age, weight, ideal_weight, address, health_issues, allergies, food_preference, food_specific, prior_experience, fitness_goal } = req.body;
 
     const VALID_TZ = ['Asia/Kolkata', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London', 'Asia/Dubai'];
     const tz = VALID_TZ.includes(timezone) ? timezone : 'Asia/Kolkata';
