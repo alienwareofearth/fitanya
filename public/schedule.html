@@ -136,11 +136,17 @@
         </div>
       `;
     } else {
-      // All upcoming: group by date
+      // All upcoming: group by member's LOCAL date (not stored IST date)
       const grouped = {};
-      data.slots.forEach(s => { (grouped[s.date] = grouped[s.date] || []).push(s); });
-      document.getElementById('slots-wrap').innerHTML = Object.entries(grouped).map(([d, slots]) => {
-        const label = new Date(d + 'T12:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' });
+      data.slots.forEach(s => {
+        const localDate = new Date(`${s.date}T${s.start_time}:00+05:30`)
+          .toLocaleDateString('en-CA', { timeZone: window.__userTz }); // gives YYYY-MM-DD
+        (grouped[localDate] = grouped[localDate] || []).push(s);
+      });
+      document.getElementById('slots-wrap').innerHTML = Object.entries(grouped)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([d, slots]) => {
+        const label = new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short' });
         return `
           <div style="margin-top:20px">
             <div class="text-dim text-small" style="font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">${label}</div>
