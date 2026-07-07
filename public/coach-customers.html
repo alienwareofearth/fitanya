@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Members — Fitanya</title>
+  <title>My Clients — Fitanya</title>
   <link rel="stylesheet" href="/css/main.css">
   <style>
-    .members-layout { display:grid; grid-template-columns:320px 1fr; gap:24px; align-items:start; }
-    @media(max-width:900px) { .members-layout { grid-template-columns:1fr; } }
-    .member-card { padding:16px; border-radius:12px; background:var(--muted); cursor:pointer; border:2px solid transparent; transition:all 0.15s; margin-bottom:10px; }
-    .member-card:hover, .member-card.active { border-color:var(--orange); background:rgba(255,107,53,0.08); }
+    .clients-layout { display:grid; grid-template-columns:320px 1fr; gap:24px; align-items:start; }
+    @media(max-width:900px) { .clients-layout { grid-template-columns:1fr; } }
+    .client-card { padding:16px; border-radius:12px; background:var(--muted); cursor:pointer; border:2px solid transparent; transition:all 0.15s; margin-bottom:10px; }
+    .client-card:hover, .client-card.active { border-color:var(--orange); background:rgba(255,107,53,0.08); }
     .detail-section { background:var(--muted); border-radius:12px; padding:20px; margin-bottom:16px; }
     .stat-row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
     .stat-box { background:var(--dark); border-radius:10px; padding:14px; text-align:center; }
@@ -29,23 +29,23 @@
     <nav class="sidebar-nav">
       <a href="/coach" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
       <a href="/coach/schedule" class="nav-item"><span class="icon">📅</span>My Schedule</a>
-      <a href="/coach/customers" class="nav-item active"><span class="icon">👥</span>My Members</a>
+      <a href="/coach/customers" class="nav-item active"><span class="icon">👥</span>My Clients</a>
       <a href="/coach/sessions" class="nav-item"><span class="icon">📝</span>Sessions</a>
     </nav>
     <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
   </aside>
   <main class="main-content">
-    <div class="page-header mb-24"><h2>My Members</h2><p>View member profiles, progress and book sessions on their behalf</p></div>
-    <div class="members-layout">
-      <!-- Member List -->
+    <div class="page-header mb-24"><h2>My Clients</h2><p>View client profiles, progress and book sessions on their behalf</p></div>
+    <div class="clients-layout">
+      <!-- Client List -->
       <div>
-        <div id="members-list"><div class="spinner"></div></div>
+        <div id="clients-list"><div class="spinner"></div></div>
       </div>
       <!-- Detail Panel -->
       <div id="detail-panel">
         <div class="card" style="padding:48px;text-align:center">
           <div style="font-size:48px;margin-bottom:12px">👥</div>
-          <p class="text-dim">Select a member to view their details</p>
+          <p class="text-dim">Select a client to view their details</p>
         </div>
       </div>
     </div>
@@ -57,36 +57,36 @@
   <div class="modal" style="position:relative;max-width:480px">
     <button class="modal-close" onclick="document.getElementById('book-modal').classList.add('hidden')">×</button>
     <h3 class="modal-title">Book Session for <span id="bm-name"></span></h3>
-    <p class="text-dim mt-4 mb-24">Select one of your available slots to book for this member.</p>
+    <p class="text-dim mt-4 mb-24">Select one of your available slots to book for this client.</p>
     <div id="bm-slots"><div class="spinner"></div></div>
-    <input type="hidden" id="bm-customer-id" />
+    <input type="hidden" id="bm-client-id" />
   </div>
 </div>
 
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
-  let allMembers = [];
+  let allClients = [];
 
   async function init() {
     const data = await api.get('/api/coach/my-customers');
     if (!data?.success) { window.location.href = '/login'; return; }
-    allMembers = data.customers || [];
-    const el = document.getElementById('members-list');
-    if (!allMembers.length) {
-      el.innerHTML = '<div class="card"><p class="text-dim">No members assigned yet.</p></div>';
+    allClients = data.customers || [];
+    const el = document.getElementById('clients-list');
+    if (!allClients.length) {
+      el.innerHTML = '<div class="card"><p class="text-dim">No clients assigned yet.</p></div>';
       return;
     }
-    el.innerHTML = allMembers.map(m => `
-      <div class="member-card" id="mc-${m.id}" onclick="selectMember(${m.id})">
+    el.innerHTML = allClients.map(c => `
+      <div class="client-card" id="cc-${c.id}" onclick="selectClient(${c.id})">
         <div class="flex gap-12" style="align-items:center">
-          <div style="width:44px;height:44px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff;flex-shrink:0">${m.name.charAt(0).toUpperCase()}</div>
+          <div style="width:44px;height:44px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff;flex-shrink:0">${c.name.charAt(0).toUpperCase()}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.name}</div>
-            <div class="text-dim text-small">${m.email}</div>
+            <div style="font-weight:600;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.name}</div>
+            <div class="text-dim text-small">${c.email}</div>
             <div class="flex gap-6 mt-4">
-              <span class="badge ${m.membership_status === 'active' ? 'badge-green' : 'badge-yellow'}">${m.membership_status||'pending'}</span>
-              <span class="text-small text-dim">${m.sessions_used}/${m.sessions_total} sessions</span>
+              <span class="badge ${c.membership_status === 'active' ? 'badge-green' : 'badge-yellow'}">${c.membership_status || 'no plan'}</span>
+              ${c.sessions_total != null ? `<span class="text-small text-dim">${c.sessions_used}/${c.sessions_total} sessions</span>` : ''}
             </div>
           </div>
         </div>
@@ -94,20 +94,28 @@
     `).join('');
   }
 
-  async function selectMember(id) {
-    document.querySelectorAll('.member-card').forEach(c => c.classList.remove('active'));
-    document.getElementById('mc-' + id)?.classList.add('active');
+  async function selectClient(id) {
+    document.querySelectorAll('.client-card').forEach(c => c.classList.remove('active'));
+    document.getElementById('cc-' + id)?.classList.add('active');
     document.getElementById('detail-panel').innerHTML = '<div class="spinner"></div>';
     const data = await api.get('/api/coach/customer/' + id + '/progress');
-    if (!data?.success) { document.getElementById('detail-panel').innerHTML = '<div class="card"><p class="text-dim text-center">Failed to load member details</p></div>'; return; }
+    if (!data?.success) {
+      document.getElementById('detail-panel').innerHTML = '<div class="card"><p class="text-dim text-center">Failed to load client details</p></div>';
+      return;
+    }
     renderDetail(id, data);
+  }
+
+  function val(v, suffix) {
+    if (v === null || v === undefined || v === '') return '—';
+    return suffix ? v + ' ' + suffix : v;
   }
 
   function renderDetail(id, data) {
     const p = data.profile || {};
     const progress = data.progress || [];
     const bookings = data.bookings || [];
-    const lastWeight = progress.find(l => l.weight)?.weight;
+    const lastLog = progress.find(l => l.weight);
     const upcoming = bookings.filter(b => !b.is_completed);
     const past = bookings.filter(b => b.is_completed);
 
@@ -115,16 +123,16 @@
       <div class="detail-section">
         <div class="flex-between mb-16">
           <div class="flex gap-14" style="align-items:center">
-            <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--orange),#f7931e);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff">${p.name?.charAt(0)||'?'}</div>
+            <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--orange),#f7931e);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff">${p.name?.charAt(0) || '?'}</div>
             <div>
-              <div style="font-family:var(--font-display);font-size:1.3rem;color:var(--white)">${p.name||'—'}</div>
-              <div class="text-dim text-small">${p.email||'—'} · ${p.phone||'—'}</div>
+              <div style="font-family:var(--font-display);font-size:1.3rem;color:var(--white)">${p.name || '—'}</div>
+              <div class="text-dim text-small">${p.email || '—'} · ${p.phone || '—'}</div>
             </div>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="openBookModal(${id},'${p.name}')">Book Session</button>
+          <button class="btn btn-primary btn-sm" onclick="openBookModal(${id},'${(p.name||'').replace(/'/g,"\\'")}')">Book Session</button>
         </div>
         <div class="stat-row">
-          <div class="stat-box"><div class="stat-box-val">${lastWeight ? lastWeight + ' kg' : '—'}</div><div class="stat-box-lbl">Current Weight</div></div>
+          <div class="stat-box"><div class="stat-box-val">${lastLog?.weight ? lastLog.weight + ' kg' : '—'}</div><div class="stat-box-lbl">Current Weight</div></div>
           <div class="stat-box"><div class="stat-box-val">${upcoming.length}</div><div class="stat-box-lbl">Upcoming</div></div>
           <div class="stat-box"><div class="stat-box-val">${past.length}</div><div class="stat-box-lbl">Completed</div></div>
         </div>
@@ -133,12 +141,14 @@
       <div class="detail-section">
         <div class="section-title mb-12">Profile & Goals</div>
         <div class="info-grid">
-          <div class="info-row"><div class="info-lbl">Fitness Goal</div><div class="info-val">${p.fitness_goal||'—'}</div></div>
-          <div class="info-row"><div class="info-lbl">Food Preference</div><div class="info-val">${p.food_preference||'—'}</div></div>
-          <div class="info-row"><div class="info-lbl">Age</div><div class="info-val">${p.age||'—'}</div></div>
-          <div class="info-row"><div class="info-lbl">Gender</div><div class="info-val">${p.gender||'—'}</div></div>
-          <div class="info-row"><div class="info-lbl">Height</div><div class="info-val">${p.height ? p.height + ' cm' : '—'}</div></div>
-          <div class="info-row"><div class="info-lbl">Ideal Weight</div><div class="info-val">${p.ideal_weight ? p.ideal_weight + ' kg' : '—'}</div></div>
+          <div class="info-row"><div class="info-lbl">Fitness Goal</div><div class="info-val">${val(p.fitness_goal)}</div></div>
+          <div class="info-row"><div class="info-lbl">Food Preference</div><div class="info-val">${val(p.food_preference)}</div></div>
+          <div class="info-row"><div class="info-lbl">Age</div><div class="info-val">${val(p.age)}</div></div>
+          <div class="info-row"><div class="info-lbl">Gender</div><div class="info-val">${val(p.gender)}</div></div>
+          <div class="info-row"><div class="info-lbl">Height</div><div class="info-val">${val(p.height, 'cm')}</div></div>
+          <div class="info-row"><div class="info-lbl">Ideal Weight</div><div class="info-val">${val(p.ideal_weight, 'kg')}</div></div>
+          <div class="info-row"><div class="info-lbl">Current Weight</div><div class="info-val">${val(p.weight, 'kg')}</div></div>
+          <div class="info-row"><div class="info-lbl">Prior Experience</div><div class="info-val">${val(p.prior_experience)}</div></div>
           ${p.health_issues ? `<div class="info-row" style="grid-column:span 2"><div class="info-lbl">Health Issues</div><div class="info-val">${p.health_issues}</div></div>` : ''}
           ${p.allergies ? `<div class="info-row" style="grid-column:span 2"><div class="info-lbl">Allergies</div><div class="info-val">${p.allergies}</div></div>` : ''}
         </div>
@@ -147,37 +157,38 @@
       <div class="detail-section">
         <div class="section-title mb-12">Body Measurements</div>
         <div class="info-grid">
-          <div class="info-row"><div class="info-lbl">Waist</div><div class="info-val">${p.waist ? p.waist + ' cm' : '—'}</div></div>
-          <div class="info-row"><div class="info-lbl">Chest</div><div class="info-val">${p.chest ? p.chest + ' cm' : '—'}</div></div>
-          <div class="info-row"><div class="info-lbl">Arm</div><div class="info-val">${p.arm ? p.arm + ' cm' : '—'}</div></div>
-          <div class="info-row"><div class="info-lbl">Thigh</div><div class="info-val">${p.thigh ? p.thigh + ' cm' : '—'}</div></div>
+          <div class="info-row"><div class="info-lbl">Waist</div><div class="info-val">${val(p.waist, 'cm')}</div></div>
+          <div class="info-row"><div class="info-lbl">Chest</div><div class="info-val">${val(p.chest, 'cm')}</div></div>
+          <div class="info-row"><div class="info-lbl">Arm</div><div class="info-val">${val(p.arm, 'cm')}</div></div>
+          <div class="info-row"><div class="info-lbl">Thigh</div><div class="info-val">${val(p.thigh, 'cm')}</div></div>
         </div>
       </div>
 
       ${progress.length ? `
       <div class="detail-section">
-        <div class="section-title mb-12">Recent Progress Logs</div>
+        <div class="section-title mb-12">Progress Logs</div>
         <div class="progress-mini">
-          ${progress.slice(0,6).map(l => `
+          ${progress.slice(0, 8).map(l => `
             <div class="prog-row">
               <span class="text-dim text-small">${formatDate(l.log_date)}</span>
               <div class="flex gap-16">
                 ${l.weight ? `<span class="text-small"><span class="text-dim">Weight</span> <strong class="text-white">${l.weight} kg</strong></span>` : ''}
-                ${l.waist ? `<span class="text-small"><span class="text-dim">Waist</span> <strong class="text-white">${l.waist}</strong></span>` : ''}
+                ${l.waist ? `<span class="text-small"><span class="text-dim">Waist</span> <strong class="text-white">${l.waist} cm</strong></span>` : ''}
+                ${l.chest ? `<span class="text-small"><span class="text-dim">Chest</span> <strong class="text-white">${l.chest} cm</strong></span>` : ''}
               </div>
             </div>
           `).join('')}
         </div>
-      </div>` : ''}
+      </div>` : '<div class="detail-section"><p class="text-dim text-center">No progress logs yet</p></div>'}
 
       ${bookings.length ? `
       <div class="detail-section">
         <div class="section-title mb-12">Session History</div>
-        ${bookings.slice(0,8).map(b => `
+        ${bookings.slice(0, 8).map(b => `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
             <div>
               <div class="text-white text-small" style="font-weight:600">${formatDate(b.date)} · ${formatTime(b.start_time)}</div>
-              ${b.notes ? `<div class="text-dim text-small mt-2">${b.notes.substring(0,60)}...</div>` : ''}
+              ${b.notes ? `<div class="text-dim text-small mt-2">${b.notes.substring(0, 80)}</div>` : ''}
             </div>
             <span class="badge ${b.is_completed ? 'badge-green' : 'badge-orange'}">${b.is_completed ? 'Done' : 'Upcoming'}</span>
           </div>
@@ -186,9 +197,9 @@
     `;
   }
 
-  async function openBookModal(customerId, name) {
+  async function openBookModal(clientId, name) {
     document.getElementById('bm-name').textContent = name;
-    document.getElementById('bm-customer-id').value = customerId;
+    document.getElementById('bm-client-id').value = clientId;
     document.getElementById('book-modal').classList.remove('hidden');
     document.getElementById('bm-slots').innerHTML = '<div class="spinner"></div>';
     const data = await api.get('/api/coach/my-schedule');
@@ -197,8 +208,7 @@
       document.getElementById('bm-slots').innerHTML = '<p class="text-dim text-center">No open slots available. Add slots from <a href="/coach/schedule" class="text-orange">My Schedule</a>.</p>';
       return;
     }
-    // Group by date
-    const grouped = openSlots.reduce((a, s) => { (a[s.date] = a[s.date]||[]).push(s); return a; }, {});
+    const grouped = openSlots.reduce((a, s) => { (a[s.date] = a[s.date] || []).push(s); return a; }, {});
     document.getElementById('bm-slots').innerHTML = Object.entries(grouped).map(([date, slots]) => `
       <div class="mb-16">
         <div class="text-dim text-small mb-8">${formatDate(date)}</div>
@@ -210,12 +220,12 @@
   }
 
   async function bookForClient(slotId) {
-    const customerId = document.getElementById('bm-customer-id').value;
-    const data = await api.post('/api/coach/book', { customer_id: customerId, slot_id: slotId });
+    const clientId = document.getElementById('bm-client-id').value;
+    const data = await api.post('/api/coach/book', { customer_id: clientId, slot_id: slotId });
     if (data?.success) {
       document.getElementById('book-modal').classList.add('hidden');
-      toast('Session booked! Confirmation sent to member.', 'success');
-      selectMember(customerId);
+      toast('Session booked! Confirmation sent to client.', 'success');
+      selectClient(clientId);
     } else toast(data?.error || 'Booking failed', 'error');
   }
 

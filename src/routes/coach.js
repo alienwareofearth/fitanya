@@ -74,17 +74,25 @@ router.delete('/slots/:id', async (req, res) => {
 router.get('/customer/:id/progress', async (req, res) => {
   try {
     const db = getDb();
-    // Verify this customer belongs to this coach
+    const coachId = req.session.user.id;
+    // Verify this client is assigned to this coach (via membership or direct assignment)
     const check = await db.execute({
-      sql: `SELECT id FROM memberships WHERE user_id = ? AND coach_id = ?`,
-      args: [req.params.id, req.session.user.id],
+      sql: `SELECT u.id FROM users u
+            LEFT JOIN memberships m ON m.user_id = u.id AND m.status = 'active'
+            WHERE u.id = ? AND (m.coach_id = ? OR u.assigned_coach_id = ?)
+            LIMIT 1`,
+      args: [req.params.id, coachId, coachId],
     });
     if (!check.rows.length) return res.status(403).json({ error: 'Access denied' });
 
     const [profile, progress, bookings] = await Promise.all([
-      db.execute({ sql: `SELECT u.name, u.email, cp.* FROM users u LEFT JOIN customer_profiles cp ON cp.user_id = u.id WHERE u.id = ?`, args: [req.params.id] }),
+      db.execute({
+        sql: `SELECT u.id, u.name, u.email, u.phone, cp.* FROM users u
+              LEFT JOIN customer_profiles cp ON cp.user_id = u.id WHERE u.id = ?`,
+        args: [req.params.id],
+      }),
       db.execute({ sql: `SELECT * FROM progress_logs WHERE user_id = ? ORDER BY year DESC, week_number DESC LIMIT 20`, args: [req.params.id] }),
-      db.execute({ sql: `SELECT b.*, ss.date, ss.start_time, sn.notes FROM bookings b JOIN schedule_slots ss ON ss.id = b.slot_id LEFT JOIN session_notes sn ON sn.booking_id = b.id WHERE b.customer_id = ? AND b.coach_id = ? ORDER BY ss.date DESC`, args: [req.params.id, req.session.user.id] }),
+      db.execute({ sql: `SELECT b.*, ss.date, ss.start_time, sn.notes FROM bookings b JOIN schedule_slots ss ON ss.id = b.slot_id LEFT JOIN session_notes sn ON sn.booking_id = b.id WHERE b.customer_id = ? AND b.coach_id = ? ORDER BY ss.date DESC`, args: [req.params.id, coachId] }),
     ]);
     res.json({ success: true, profile: profile.rows[0], progress: progress.rows, bookings: bookings.rows });
   } catch (err) { res.status(500).json({ error: err.message }); }
