@@ -236,6 +236,45 @@ router.post('/members/:id/add-sessions', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Admin: regenerate Meet links for bookings that have broken/placeholder links
+router.post('/fix-meet-links', async (_req, res) => {
+  try {
+    const { createMeetSession } = require('../services/googleMeet');
+    const db = getDb();
+    // Find bookings with placeholder or jitsi links that are not yet completed/cancelled
+    const broken = await db.execute(`
+      SELECT b.id, b.customer_id, b.coach_id, ss.date, ss.start_time, ss.end_time,
+             cu.name as customer_name, cu.email as customer_email,
+             co.name as coach_name, co.email as coach_email
+      FROM bookings b
+      JOIN schedule_slots ss ON ss.id = b.slot_id
+      JOIN users cu ON cu.id = b.customer_id
+      JOIN users co ON co.id = b.coach_id
+      WHERE b.is_completed = 0 AND b.status != 'cancelled'
+        AND (b.meet_link IS NULL OR b.meet_link LIKE '%placeholder%' OR b.meet_link = '')
+    `);
+    let fixed = 0;
+    for (const b of broken.rows) {
+      try {
+        const { meetLink, eventId } = await createMeetSession({
+          summary: `Fitanya Session — ${b.customer_name} with ${b.coach_name}`,
+          description: 'Personal training session via Fitanya',
+          date: b.date, startTime: b.start_time, endTime: b.end_time,
+          attendeeEmails: [b.customer_email, b.coach_email],
+        });
+        await db.execute({
+          sql: `UPDATE bookings SET meet_link = ?, google_event_id = ? WHERE id = ?`,
+          args: [meetLink, eventId, b.id],
+        });
+        fixed++;
+      } catch (e) {
+        console.error(`[fix-meet] booking ${b.id}:`, e.message);
+      }
+    }
+    res.json({ success: true, total: broken.rows.length, fixed });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Admin reassign coach
 router.post('/members/:id/reassign-coach', async (req, res) => {
   try {
