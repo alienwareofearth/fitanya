@@ -80,7 +80,7 @@
       return;
     }
     el.innerHTML = `<div class="card"><div class="table-wrap"><table>
-      <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Specializations</th><th>Status</th></tr></thead>
+      <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Specializations</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>
         ${data.coaches.map(c => `<tr>
           <td style="font-weight:600;color:var(--white)">${c.name}</td>
@@ -88,6 +88,7 @@
           <td class="text-dim">${c.phone || '—'}</td>
           <td class="text-dim">${c.specializations || '—'}</td>
           <td><span class="badge ${c.is_active ? 'badge-green' : 'badge-red'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
+          <td><button class="btn btn-dark btn-sm" style="color:#f87171" onclick="removeCoach(${c.id},'${c.name.replace(/'/g,"\\'")}')">Remove</button></td>
         </tr>`).join('')}
       </tbody>
     </table></div></div>`;
@@ -124,6 +125,13 @@
     } finally {
       btn.disabled = false; btn.textContent = 'Create Coach & Send Invite';
     }
+  }
+
+  async function removeCoach(id, name) {
+    if (!confirm(`Remove coach "${name}"? Their clients will be unassigned but all session history is kept.`)) return;
+    const data = await api.delete('/api/admin/coaches/' + id);
+    if (data?.success) { toast('Coach removed', 'success'); init(); }
+    else toast(data?.error || 'Failed', 'error');
   }
 
   init();

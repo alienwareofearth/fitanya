@@ -164,6 +164,20 @@ router.post('/coaches', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Admin remove coach
+router.delete('/coaches/:id', async (req, res) => {
+  try {
+    const db = getDb();
+    const coachId = parseInt(req.params.id);
+    // Unassign from memberships and users before deleting
+    await db.execute({ sql: `UPDATE memberships SET coach_id = NULL WHERE coach_id = ?`, args: [coachId] });
+    await db.execute({ sql: `UPDATE users SET assigned_coach_id = NULL WHERE assigned_coach_id = ?`, args: [coachId] });
+    await db.execute({ sql: `DELETE FROM coach_profiles WHERE user_id = ?`, args: [coachId] });
+    await db.execute({ sql: `DELETE FROM users WHERE id = ? AND role = 'coach'`, args: [coachId] });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ── Members ───────────────────────────────────────────────────────────────────
 router.get('/members', async (req, res) => {
   const db = getDb();
