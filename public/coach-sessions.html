@@ -21,6 +21,7 @@
       <a href="/coach/schedule" class="nav-item"><span class="icon">📅</span>My Schedule</a>
       <a href="/coach/customers" class="nav-item"><span class="icon">👥</span>My Clients</a>
       <a href="/coach/sessions" class="nav-item active"><span class="icon">📝</span>Sessions</a>
+      <a href="/coach/profile" class="nav-item"><span class="icon">👤</span>My Profile</a>
     </nav>
     <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
   </aside>
@@ -59,6 +60,8 @@
   let sessions = [];
 
   async function init() {
+    const profileData = await api.get('/api/coach/profile');
+    window.__userTz = profileData?.coach?.timezone || 'Asia/Kolkata';
     const data = await api.get('/api/coach/sessions');
     if (!data?.success) { window.location.href = '/login'; return; }
     sessions = data.sessions || [];
@@ -93,7 +96,7 @@
       <div class="flex-between mb-12">
         <div>
           <div style="font-weight:700;color:var(--white);font-size:1rem">${s.customer_name}</div>
-          <div class="text-dim text-small mt-2">${formatDate(s.date)} · ${formatTime(s.start_time)}</div>
+          <div class="text-dim text-small mt-2">${formatSessionDate(s.date, s.start_time)} · ${formatSessionTime(s.start_time, s.date)} ${tzLabel()}</div>
         </div>
         <div class="flex gap-8 flex-wrap" style="justify-content:flex-end">
           ${isPast ? '<span class="badge badge-green">Completed</span>' : '<span class="badge badge-orange">Upcoming</span>'}

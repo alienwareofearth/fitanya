@@ -93,6 +93,11 @@ async function initDb() {
     await client.execute(`ALTER TABLE users ADD COLUMN assigned_coach_id INTEGER REFERENCES users(id)`);
   } catch (_) { /* column already exists */ }
 
+  // Migrate: add timezone to users
+  try {
+    await client.execute(`ALTER TABLE users ADD COLUMN timezone TEXT NOT NULL DEFAULT 'Asia/Kolkata'`);
+  } catch (_) { /* column already exists */ }
+
   // Migrate: add is_trial flag to packages
   try {
     await client.execute(`ALTER TABLE packages ADD COLUMN is_trial INTEGER NOT NULL DEFAULT 0`);

@@ -7,6 +7,41 @@ const { requireCoach } = require('../middleware/auth');
 const router = express.Router();
 router.use(requireCoach);
 
+// GET /api/coach/profile
+router.get('/profile', async (req, res) => {
+  try {
+    const db = getDb();
+    const user = await db.execute({
+      sql: `SELECT u.id, u.name, u.email, u.phone, u.timezone, u.profile_picture,
+                   cp.bio, cp.specializations, cp.certifications
+            FROM users u LEFT JOIN coach_profiles cp ON cp.user_id = u.id
+            WHERE u.id = ?`,
+      args: [req.session.user.id],
+    });
+    res.json({ success: true, coach: user.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PUT /api/coach/profile
+router.put('/profile', async (req, res) => {
+  try {
+    const { name, phone, timezone, bio, specializations } = req.body;
+    const VALID_TZ = ['Asia/Kolkata', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London', 'Asia/Dubai'];
+    const tz = VALID_TZ.includes(timezone) ? timezone : 'Asia/Kolkata';
+    const db = getDb();
+    await db.execute({
+      sql: `UPDATE users SET name=?, phone=?, timezone=?, updated_at=datetime('now') WHERE id=?`,
+      args: [name, phone, tz, req.session.user.id],
+    });
+    await db.execute({
+      sql: `UPDATE coach_profiles SET bio=?, specializations=?, updated_at=datetime('now') WHERE user_id=?`,
+      args: [bio, specializations, req.session.user.id],
+    });
+    req.session.user.name = name;
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // GET /api/coach/my-customers
 router.get('/my-customers', async (req, res) => {
   try {

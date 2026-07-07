@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile — Fitanya Coach</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <a href="/coach" class="sidebar-logo">FIT<span>ANIYA</span></a>
+    <nav class="sidebar-nav">
+      <a href="/coach" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
+      <a href="/coach/schedule" class="nav-item"><span class="icon">📅</span>My Schedule</a>
+      <a href="/coach/customers" class="nav-item"><span class="icon">👥</span>My Clients</a>
+      <a href="/coach/sessions" class="nav-item"><span class="icon">📝</span>Session Notes</a>
+      <a href="/coach/profile" class="nav-item active"><span class="icon">👤</span>My Profile</a>
+    </nav>
+    <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
+  </aside>
+  <main class="main-content">
+    <div class="page-header mb-32">
+      <h2>My Profile</h2>
+      <p>Update your details and set your timezone so session times display correctly</p>
+    </div>
+    <div style="max-width:560px">
+      <div class="card">
+        <div class="section-title mb-24">Coach Details</div>
+        <div class="form-group"><label>Full Name</label><input class="form-control" id="f-name" /></div>
+        <div class="form-group"><label>Phone</label><input class="form-control" id="f-phone" /></div>
+        <div class="form-group">
+          <label>Timezone</label>
+          <select class="form-control" id="f-timezone">
+            <option value="Asia/Kolkata">IST — India Standard Time (UTC+5:30)</option>
+            <option value="America/New_York">EST — Eastern Time (UTC-5/4)</option>
+            <option value="America/Chicago">CST — Central Time (UTC-6/5)</option>
+            <option value="America/Los_Angeles">PST — Pacific Time (UTC-8/7)</option>
+            <option value="Europe/London">GMT — London (UTC+0/1)</option>
+            <option value="Asia/Dubai">GST — Gulf Standard Time (UTC+4)</option>
+          </select>
+          <p class="text-dim text-small mt-6">Session times across the app will display in your selected timezone.</p>
+        </div>
+        <div class="form-group"><label>Bio</label><textarea class="form-control" id="f-bio" rows="3" placeholder="Tell clients about yourself..."></textarea></div>
+        <div class="form-group"><label>Specializations</label><input class="form-control" id="f-spec" placeholder="e.g. Weight Loss, Strength Training, HIIT" /></div>
+        <button class="btn btn-primary btn-full" onclick="saveProfile()">Save Profile</button>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script>
+  async function init() {
+    const data = await api.get('/api/coach/profile');
+    if (!data?.success) { window.location.href = '/login'; return; }
+    const c = data.coach;
+    window.__userTz = c.timezone || 'Asia/Kolkata';
+    document.getElementById('f-name').value = c.name || '';
+    document.getElementById('f-phone').value = c.phone || '';
+    document.getElementById('f-timezone').value = c.timezone || 'Asia/Kolkata';
+    document.getElementById('f-bio').value = c.bio || '';
+    document.getElementById('f-spec').value = c.specializations || '';
+  }
+
+  async function saveProfile() {
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      const data = await api.put('/api/coach/profile', {
+        name: document.getElementById('f-name').value,
+        phone: document.getElementById('f-phone').value,
+        timezone: document.getElementById('f-timezone').value,
+        bio: document.getElementById('f-bio').value,
+        specializations: document.getElementById('f-spec').value,
+      });
+      if (data?.success) {
+        window.__userTz = document.getElementById('f-timezone').value;
+        toast('Profile saved!', 'success');
+      } else toast(data?.error || 'Failed', 'error');
+    } finally { btn.disabled = false; btn.textContent = 'Save Profile'; }
+  }
+
+  init();
+</script>
+</body>
+</html>

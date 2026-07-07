@@ -14,7 +14,7 @@ router.get('/profile', async (req, res) => {
     const db = getDb();
     const userId = req.session.user.id;
     const [user, profile, membership] = await Promise.all([
-      db.execute({ sql: `SELECT id, name, email, phone, role, profile_picture, referral_code, reward_credits, created_at FROM users WHERE id = ?`, args: [userId] }),
+      db.execute({ sql: `SELECT id, name, email, phone, role, timezone, profile_picture, referral_code, reward_credits, created_at FROM users WHERE id = ?`, args: [userId] }),
       db.execute({ sql: `SELECT * FROM customer_profiles WHERE user_id = ?`, args: [userId] }),
       db.execute({
         sql: `SELECT m.*, p.name as package_name, p.sessions, u.name as coach_name
@@ -34,7 +34,9 @@ router.put('/profile', async (req, res) => {
     const userId = req.session.user.id;
     const { name, phone, occupation, height, waist, thigh, arm, chest, age, weight, ideal_weight, address, health_issues, allergies, food_preference, food_specific, prior_experience, fitness_goal } = req.body;
 
-    await db.execute({ sql: `UPDATE users SET name=?, phone=?, updated_at=datetime('now') WHERE id=?`, args: [name, phone, userId] });
+    const VALID_TZ = ['Asia/Kolkata', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London', 'Asia/Dubai'];
+    const tz = VALID_TZ.includes(timezone) ? timezone : 'Asia/Kolkata';
+    await db.execute({ sql: `UPDATE users SET name=?, phone=?, timezone=?, updated_at=datetime('now') WHERE id=?`, args: [name, phone, tz, userId] });
     await db.execute({
       sql: `UPDATE customer_profiles SET occupation=?, height=?, waist=?, thigh=?, arm=?, chest=?, age=?, weight=?, ideal_weight=?, address=?, health_issues=?, allergies=?, food_preference=?, food_specific=?, prior_experience=?, fitness_goal=?, updated_at=datetime('now') WHERE user_id=?`,
       args: [occupation, height, waist, thigh, arm, chest, age, weight, ideal_weight, address, health_issues, allergies, food_preference, food_specific, prior_experience, fitness_goal, userId],

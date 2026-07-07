@@ -95,16 +95,69 @@ function formatINR(amount) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
 }
 
+// ── Timezone ──────────────────────────────────────────────────────────────
+// Set by each page after loading profile. Stored times are in IST (Asia/Kolkata).
+window.__userTz = 'Asia/Kolkata';
+
+const TZ_LABELS = {
+  'Asia/Kolkata':        'IST — India Standard Time (UTC+5:30)',
+  'America/New_York':    'EST — Eastern Time (UTC-5/4)',
+  'America/Chicago':     'CST — Central Time (UTC-6/5)',
+  'America/Los_Angeles': 'PST — Pacific Time (UTC-8/7)',
+  'Europe/London':       'GMT — London (UTC+0/1)',
+  'Asia/Dubai':          'GST — Gulf Standard Time (UTC+4)',
+};
+
 // ── Format date ───────────────────────────────────────────────────────────
 function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+  if (!dateStr) return '—';
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function formatTime(timeStr) {
   if (!timeStr) return '';
   const [h, m] = timeStr.split(':');
   const hour = parseInt(h);
-  return `${hour > 12 ? hour - 12 : hour}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
+  return `${hour > 12 ? hour - 12 : hour || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
+}
+
+// Timezone-aware session time display (stored times are in IST)
+function formatSessionTime(timeStr, dateStr) {
+  if (!timeStr || !dateStr) return formatTime(timeStr);
+  try {
+    const date = new Date(`${dateStr}T${timeStr}:00+05:30`);
+    return date.toLocaleTimeString('en-US', {
+      timeZone: window.__userTz,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch { return formatTime(timeStr); }
+}
+
+function formatSessionDate(dateStr, timeStr) {
+  if (!dateStr) return formatDate(dateStr);
+  try {
+    const t = timeStr || '12:00';
+    const date = new Date(`${dateStr}T${t}:00+05:30`);
+    return date.toLocaleDateString('en-US', {
+      timeZone: window.__userTz,
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  } catch { return formatDate(dateStr); }
+}
+
+function tzLabel() {
+  const tz = window.__userTz;
+  if (tz === 'Asia/Kolkata') return 'IST';
+  if (tz === 'America/New_York') return 'EST';
+  if (tz === 'America/Chicago') return 'CST';
+  if (tz === 'America/Los_Angeles') return 'PST';
+  if (tz === 'Europe/London') return 'GMT';
+  if (tz === 'Asia/Dubai') return 'GST';
+  return tz;
 }
 
 // ── Notification badge ────────────────────────────────────────────────────

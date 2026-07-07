@@ -49,6 +49,16 @@
         <div class="section-title">Edit Details</div>
         <div class="form-group"><label>Full Name</label><input class="form-control" id="f-name" /></div>
         <div class="form-group"><label>Phone</label><input class="form-control" id="f-phone" /></div>
+        <div class="form-group"><label>Timezone</label>
+          <select class="form-control" id="f-timezone">
+            <option value="Asia/Kolkata">IST — India Standard Time (UTC+5:30)</option>
+            <option value="America/New_York">EST — Eastern Time (UTC-5/4)</option>
+            <option value="America/Chicago">CST — Central Time (UTC-6/5)</option>
+            <option value="America/Los_Angeles">PST — Pacific Time (UTC-8/7)</option>
+            <option value="Europe/London">GMT — London (UTC+0/1)</option>
+            <option value="Asia/Dubai">GST — Gulf Standard Time (UTC+4)</option>
+          </select>
+        </div>
         <div class="form-group"><label>Occupation</label><input class="form-control" id="f-occupation" /></div>
         <div class="form-group"><label>Address</label><textarea class="form-control" id="f-address" rows="2"></textarea></div>
         <div class="form-group"><label>Food Preference</label>
@@ -88,8 +98,10 @@
     document.getElementById('profile-email').textContent = user.email;
     if (user.profile_picture) document.getElementById('profile-pic').src = user.profile_picture;
 
+    window.__userTz = user.timezone || 'Asia/Kolkata';
     document.getElementById('f-name').value = user.name || '';
     document.getElementById('f-phone').value = user.phone || '';
+    document.getElementById('f-timezone').value = user.timezone || 'Asia/Kolkata';
     document.getElementById('f-occupation').value = profile?.occupation || '';
     document.getElementById('f-address').value = profile?.address || '';
     document.getElementById('f-food').value = profile?.food_preference || '';
@@ -114,6 +126,7 @@
     const payload = {
       name: document.getElementById('f-name').value,
       phone: document.getElementById('f-phone').value,
+      timezone: document.getElementById('f-timezone').value,
       occupation: document.getElementById('f-occupation').value,
       address: document.getElementById('f-address').value,
       food_preference: document.getElementById('f-food').value,

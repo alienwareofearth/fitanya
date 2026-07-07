@@ -107,6 +107,7 @@ app.get('/coach',               (req, res) => res.sendFile(path.join(pages, 'coa
 app.get('/coach/schedule',      (req, res) => res.sendFile(path.join(pages, 'coach-schedule.html')));
 app.get('/coach/customers',     (req, res) => res.sendFile(path.join(pages, 'coach-customers.html')));
 app.get('/coach/sessions',      (req, res) => res.sendFile(path.join(pages, 'coach-sessions.html')));
+app.get('/coach/profile',       (req, res) => res.sendFile(path.join(pages, 'coach-profile.html')));
 
 // Admin pages
 app.get('/admin',               (req, res) => res.sendFile(path.join(pages, 'admin-dashboard.html')));
