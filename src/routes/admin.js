@@ -170,13 +170,16 @@ router.get('/members', async (req, res) => {
   const result = await db.execute(`
     SELECT u.id, u.name, u.email, u.phone, u.created_at, u.is_active,
            cp.fitness_goal, cp.food_preference,
-           m.status as membership_status, m.sessions_total, m.sessions_used, m.coach_id,
-           p.name as package_name, coach.name as coach_name
+           m.status as membership_status, m.sessions_total, m.sessions_used,
+           COALESCE(m.coach_id, u.assigned_coach_id) as coach_id,
+           p.name as package_name,
+           COALESCE(coach_m.name, coach_u.name) as coach_name
     FROM users u
     LEFT JOIN customer_profiles cp ON cp.user_id = u.id
     LEFT JOIN memberships m ON m.user_id = u.id AND m.status = 'active'
     LEFT JOIN packages p ON p.id = m.package_id
-    LEFT JOIN users coach ON coach.id = m.coach_id
+    LEFT JOIN users coach_m ON coach_m.id = m.coach_id
+    LEFT JOIN users coach_u ON coach_u.id = u.assigned_coach_id
     WHERE u.role = 'customer'
     ORDER BY u.created_at DESC`);
   res.json({ success: true, members: result.rows });
@@ -214,11 +217,21 @@ router.post('/members/:id/reassign-coach', async (req, res) => {
   try {
     const { coach_id } = req.body;
     const db = getDb();
-    const result = await db.execute({
-      sql: `UPDATE memberships SET coach_id = ? WHERE user_id = ? AND status = 'active'`,
-      args: [parseInt(coach_id), parseInt(req.params.id)],
+    const coachId = parseInt(coach_id);
+    const memberId = parseInt(req.params.id);
+
+    // Always store on users table (works even without a membership)
+    await db.execute({
+      sql: `UPDATE users SET assigned_coach_id = ? WHERE id = ?`,
+      args: [coachId, memberId],
     });
-    if (result.rowsAffected === 0) return res.status(400).json({ error: 'No active membership found for this member' });
+
+    // Also update active membership if one exists
+    await db.execute({
+      sql: `UPDATE memberships SET coach_id = ? WHERE user_id = ? AND status = 'active'`,
+      args: [coachId, memberId],
+    });
+
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

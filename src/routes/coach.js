@@ -13,13 +13,15 @@ router.get('/my-customers', async (req, res) => {
     const db = getDb();
     const customers = await db.execute({
       sql: `SELECT DISTINCT u.id, u.name, u.email, u.phone, u.profile_picture,
-            cp.fitness_goal, cp.food_preference, m.sessions_used, m.sessions_total, m.status as membership_status
-            FROM memberships m
-            JOIN users u ON u.id = m.user_id
+            cp.fitness_goal, cp.food_preference,
+            m.sessions_used, m.sessions_total, m.status as membership_status
+            FROM users u
             LEFT JOIN customer_profiles cp ON cp.user_id = u.id
-            WHERE m.coach_id = ?
+            LEFT JOIN memberships m ON m.user_id = u.id AND m.status = 'active'
+            WHERE u.role = 'customer'
+              AND (m.coach_id = ? OR u.assigned_coach_id = ?)
             ORDER BY u.name`,
-      args: [req.session.user.id],
+      args: [req.session.user.id, req.session.user.id],
     });
     res.json({ success: true, customers: customers.rows });
   } catch (err) { res.status(500).json({ error: err.message }); }
