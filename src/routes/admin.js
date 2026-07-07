@@ -72,7 +72,7 @@ router.delete('/workout-styles/:id', async (req, res) => {
 // ── Packages ─────────────────────────────────────────────────────────────────
 router.get('/packages', async (req, res) => {
   const db = getDb();
-  const result = await db.execute(`SELECT * FROM packages ORDER BY sort_order`);
+  const result = await db.execute(`SELECT * FROM packages WHERE is_trial = 0 ORDER BY sort_order`);
   res.json({ success: true, packages: result.rows });
 });
 

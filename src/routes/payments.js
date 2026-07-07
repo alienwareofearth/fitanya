@@ -16,7 +16,7 @@ router.post('/initiate', async (req, res) => {
     const { package_id, discount_code, use_credits, customer_name, customer_email, customer_phone } = req.body;
 
     const db = getDb();
-    const pkg = await db.execute({ sql: `SELECT * FROM packages WHERE id = ? AND is_active = 1`, args: [package_id] });
+    const pkg = await db.execute({ sql: `SELECT * FROM packages WHERE id = ? AND is_active = 1 AND is_trial = 0`, args: [package_id] });
     if (!pkg.rows.length) return res.status(404).json({ error: 'Package not found' });
 
     const packageData = pkg.rows[0];

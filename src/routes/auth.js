@@ -112,6 +112,21 @@ router.post('/register', async (req, res) => {
       });
     }
 
+    // Auto-assign Free Trial membership (1 session, valid 30 days)
+    try {
+      const trialPkg = await db.execute(`SELECT id FROM packages WHERE name = 'Free Trial' LIMIT 1`);
+      if (trialPkg.rows.length) {
+        const trialId = trialPkg.rows[0].id;
+        await db.execute({
+          sql: `INSERT INTO memberships (user_id, package_id, sessions_total, sessions_used, start_date, end_date, status, is_trial)
+                VALUES (?, ?, 1, 0, date('now'), date('now', '+30 days'), 'active', 1)`,
+          args: [userId, trialId],
+        });
+      }
+    } catch (e) {
+      console.warn('[auth] trial membership creation failed:', e.message);
+    }
+
     // Clear session
     delete req.session.pendingOtp;
     delete req.session.otpVerified;

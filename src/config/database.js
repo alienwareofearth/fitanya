@@ -83,6 +83,18 @@ async function initDb() {
     await client.execute(`ALTER TABLE users ADD COLUMN last_login_at TEXT`);
   } catch (_) { /* column already exists */ }
 
+  // Migrate: add is_trial flag to memberships
+  try {
+    await client.execute(`ALTER TABLE memberships ADD COLUMN is_trial INTEGER NOT NULL DEFAULT 0`);
+  } catch (_) { /* column already exists */ }
+
+  // Migrate: add is_trial flag to packages
+  try {
+    await client.execute(`ALTER TABLE packages ADD COLUMN is_trial INTEGER NOT NULL DEFAULT 0`);
+    // Mark the Free Trial package as trial
+    await client.execute(`UPDATE packages SET is_trial = 1 WHERE name = 'Free Trial'`);
+  } catch (_) { /* column already exists */ }
+
   // Coach profiles
   await client.execute(`CREATE TABLE IF NOT EXISTS coach_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -345,10 +357,17 @@ async function seedDefaults(client) {
   const pkgs = await client.execute(`SELECT COUNT(*) as count FROM packages`);
   if (pkgs.rows[0].count === 0) {
     await client.executeMultiple(`
+      INSERT INTO packages (name, sessions, days, price, description, sort_order) VALUES ('Free Trial', 1, 30, 0, '1 free session to experience Fitanya', 0);
       INSERT INTO packages (name, sessions, days, price, description, sort_order) VALUES ('Starter', 12, 15, 5000, '12 personal training sessions over 15 days', 1);
       INSERT INTO packages (name, sessions, days, price, description, sort_order) VALUES ('Growth', 16, 24, 6000, '16 personal training sessions over 24 days', 2);
       INSERT INTO packages (name, sessions, days, price, description, sort_order) VALUES ('Elite', 24, 40, 8000, '24 personal training sessions over 40 days', 3);
     `);
+  }
+
+  // Ensure Free Trial package always exists (for existing DBs)
+  const trialPkg = await client.execute(`SELECT id FROM packages WHERE name = 'Free Trial' LIMIT 1`);
+  if (trialPkg.rows.length === 0) {
+    await client.execute(`INSERT INTO packages (name, sessions, days, price, description, sort_order) VALUES ('Free Trial', 1, 30, 0, '1 free session to experience Fitanya', 0)`);
   }
 
   // Default referral config
