@@ -3,11 +3,21 @@
 const express = require('express');
 const bcrypt  = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
+const { google }     = require('googleapis');
 const { getDb }      = require('../config/database');
 const { sendOtp, sendWelcome, sendPasswordReset } = require('../services/email');
 const { notify }     = require('../services/notifications');
 
 const router = express.Router();
+
+function googleOAuthClient() {
+  const base = process.env.APP_URL || 'http://localhost:3000';
+  return new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    `${base}/api/auth/google/callback`
+  );
+}
 
 function generateOtp() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -210,6 +220,86 @@ router.post('/forgot-password', async (req, res) => {
   } catch (err) {
     console.error('[auth] forgot-password error:', err);
     res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// GET /api/auth/google — redirect to Google consent screen
+router.get('/google', (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.redirect('/login?error=google_not_configured');
+  }
+  const url = googleOAuthClient().generateAuthUrl({
+    access_type: 'online',
+    scope: ['profile', 'email'],
+    prompt: 'select_account',
+  });
+  res.redirect(url);
+});
+
+// GET /api/auth/google/callback
+router.get('/google/callback', async (req, res) => {
+  try {
+    const { code, error } = req.query;
+    if (error || !code) return res.redirect('/login?error=google_denied');
+
+    const client = googleOAuthClient();
+    const { tokens } = await client.getToken(code);
+    client.setCredentials(tokens);
+
+    const oauth2 = google.oauth2({ version: 'v2', auth: client });
+    const { data: profile } = await oauth2.userinfo.get();
+    const { email, name, picture } = profile;
+    if (!email) return res.redirect('/login?error=no_email');
+
+    const db = getDb();
+    const existing = await db.execute({
+      sql: `SELECT * FROM users WHERE email = ? AND is_active = 1`,
+      args: [email],
+    });
+
+    let user;
+    if (existing.rows.length) {
+      user = existing.rows[0];
+      await db.execute({ sql: `UPDATE users SET last_login_at = datetime('now') WHERE id = ?`, args: [user.id] });
+    } else {
+      // New user — auto-create customer account
+      const referralCode = generateReferralCode(name || email);
+      const placeholderPw = await bcrypt.hash(uuidv4(), 12);
+      const result = await db.execute({
+        sql: `INSERT INTO users (name, email, password, role, referral_code, profile_picture)
+              VALUES (?, ?, ?, 'customer', ?, ?) RETURNING id`,
+        args: [name || email, email, placeholderPw, referralCode, picture || null],
+      });
+      const userId = result.rows[0].id;
+
+      await db.execute({ sql: `INSERT INTO customer_profiles (user_id) VALUES (?)`, args: [userId] });
+
+      // Auto-assign Free Trial
+      try {
+        const trialPkg = await db.execute(`SELECT id FROM packages WHERE name = 'Free Trial' LIMIT 1`);
+        if (trialPkg.rows.length) {
+          await db.execute({
+            sql: `INSERT INTO memberships (user_id, package_id, sessions_total, sessions_used, start_date, end_date, status, is_trial)
+                  VALUES (?, ?, 1, 0, date('now'), date('now', '+30 days'), 'active', 1)`,
+            args: [userId, trialPkg.rows[0].id],
+          });
+        }
+      } catch {}
+
+      await sendWelcome({ to: email, name: name || email });
+      user = { id: userId, name: name || email, email, role: 'customer', profile_picture: picture || null };
+    }
+
+    req.session.user = {
+      id: user.id, name: user.name, email: user.email,
+      role: user.role, profile_picture: user.profile_picture,
+    };
+
+    const redirectMap = { admin: '/admin', coach: '/coach', customer: '/dashboard' };
+    res.redirect(redirectMap[user.role] || '/dashboard');
+  } catch (err) {
+    console.error('[auth] google callback error:', err);
+    res.redirect('/login?error=google_failed');
   }
 });
 

@@ -37,7 +37,7 @@ app.use(helmet({
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc:   ["'self'", "'unsafe-inline'", 'fonts.googleapis.com', 'cdn.jsdelivr.net', 'unpkg.com'],
       fontSrc:    ["'self'", 'fonts.gstatic.com'],
-      imgSrc:     ["'self'", 'data:', 'res.cloudinary.com', '*.cloudinary.com'],
+      imgSrc:     ["'self'", 'data:', 'res.cloudinary.com', '*.cloudinary.com', '*.googleusercontent.com'],
       connectSrc: ["'self'", 'api.anthropic.com'],
     },
   },
