@@ -7,6 +7,21 @@ const { requireCoach } = require('../middleware/auth');
 const router = express.Router();
 router.use(requireCoach);
 
+// Block deactivated coaches — catches any removal mid-session
+router.use(async (req, res, next) => {
+  const userId = req.session?.user?.id;
+  if (!userId || userId === 0) return next(); // admin pass-through
+  try {
+    const db = getDb();
+    const r = await db.execute({ sql: `SELECT is_active FROM users WHERE id = ?`, args: [userId] });
+    if (!r.rows.length || !r.rows[0].is_active) {
+      req.session.destroy(() => {});
+      return res.status(403).json({ error: 'Account deactivated' });
+    }
+    next();
+  } catch { next(); }
+});
+
 // GET /api/coach/profile
 router.get('/profile', async (req, res) => {
   try {

@@ -131,7 +131,7 @@ router.get('/coaches', async (req, res) => {
   const result = await db.execute(`
     SELECT u.id, u.name, u.email, u.phone, u.is_active, u.created_at, cp.bio, cp.specializations
     FROM users u LEFT JOIN coach_profiles cp ON cp.user_id = u.id
-    WHERE u.role = 'coach' ORDER BY u.created_at DESC`);
+    WHERE u.role = 'coach' AND u.is_active = 1 ORDER BY u.created_at DESC`);
   res.json({ success: true, coaches: result.rows });
 });
 
@@ -169,11 +169,13 @@ router.delete('/coaches/:id', async (req, res) => {
   try {
     const db = getDb();
     const coachId = parseInt(req.params.id);
-    // Unassign from memberships and users before deleting
+    // Deactivate (not delete) to preserve booking history FK references
+    await db.execute({ sql: `UPDATE users SET is_active = 0 WHERE id = ? AND role = 'coach'`, args: [coachId] });
+    // Unassign from future memberships and user assignments
     await db.execute({ sql: `UPDATE memberships SET coach_id = NULL WHERE coach_id = ?`, args: [coachId] });
     await db.execute({ sql: `UPDATE users SET assigned_coach_id = NULL WHERE assigned_coach_id = ?`, args: [coachId] });
-    await db.execute({ sql: `DELETE FROM coach_profiles WHERE user_id = ?`, args: [coachId] });
-    await db.execute({ sql: `DELETE FROM users WHERE id = ? AND role = 'coach'`, args: [coachId] });
+    // Clear coach profile details
+    await db.execute({ sql: `UPDATE coach_profiles SET bio = NULL, specializations = NULL, certifications = NULL WHERE user_id = ?`, args: [coachId] });
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -204,7 +206,7 @@ router.get('/members/:id', async (req, res) => {
   const [user, profile, bookings] = await Promise.all([
     db.execute({ sql: `SELECT u.*, cp.* FROM users u LEFT JOIN customer_profiles cp ON cp.user_id = u.id WHERE u.id = ?`, args: [req.params.id] }),
     db.execute({ sql: `SELECT * FROM progress_logs WHERE user_id = ? ORDER BY year DESC, week_number DESC LIMIT 12`, args: [req.params.id] }),
-    db.execute({ sql: `SELECT b.*, ss.date, ss.start_time, u.name as coach_name FROM bookings b JOIN schedule_slots ss ON ss.id = b.slot_id JOIN users u ON u.id = b.coach_id WHERE b.customer_id = ? ORDER BY ss.date DESC LIMIT 10`, args: [req.params.id] }),
+    db.execute({ sql: `SELECT b.*, ss.date, ss.start_time, COALESCE(u.name, 'Coach Removed') as coach_name FROM bookings b JOIN schedule_slots ss ON ss.id = b.slot_id LEFT JOIN users u ON u.id = b.coach_id AND u.is_active = 1 WHERE b.customer_id = ? ORDER BY ss.date DESC LIMIT 10`, args: [req.params.id] }),
   ]);
   res.json({ success: true, member: user.rows[0], progress: profile.rows, bookings: bookings.rows });
 });
@@ -321,11 +323,11 @@ router.get('/bookings', async (req, res) => {
       SELECT b.id, b.status, b.is_completed, b.meet_link,
              ss.date, ss.start_time, ss.end_time, ss.id as slot_id,
              cu.name as customer_name, cu.email as customer_email,
-             co.name as coach_name
+             COALESCE(co.name, 'Coach Removed') as coach_name
       FROM bookings b
       JOIN schedule_slots ss ON ss.id = b.slot_id
       JOIN users cu ON cu.id = b.customer_id
-      JOIN users co ON co.id = b.coach_id
+      LEFT JOIN users co ON co.id = b.coach_id AND co.is_active = 1
       WHERE b.status != 'cancelled'
       ORDER BY ss.date DESC, ss.start_time DESC`);
     res.json({ success: true, bookings: result.rows });

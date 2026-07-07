@@ -224,11 +224,12 @@ router.get('/my', requireAuth, async (req, res) => {
   try {
     const db = getDb();
     const bookings = await db.execute({
-      sql: `SELECT b.*, ss.date, ss.start_time, ss.end_time, u.name as coach_name,
+      sql: `SELECT b.*, ss.date, ss.start_time, ss.end_time,
+            COALESCE(u.name, 'Coach Removed') as coach_name,
             sn.notes as session_notes, sn.workout_done, sn.next_session_plan
             FROM bookings b
             JOIN schedule_slots ss ON ss.id = b.slot_id
-            JOIN users u ON u.id = b.coach_id
+            LEFT JOIN users u ON u.id = b.coach_id AND u.is_active = 1
             LEFT JOIN session_notes sn ON sn.booking_id = b.id
             WHERE b.customer_id = ?
             ORDER BY ss.date DESC, ss.start_time DESC`,
