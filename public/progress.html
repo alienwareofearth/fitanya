@@ -53,57 +53,86 @@
     </div>
 
     <!-- ── Health Sync Summary ──────────────────────────────────────────── -->
-    <div id="health-summary-wrap" class="mb-32"></div>
+    <div id="health-summary-wrap" class="mb-24">
+      <div class="card" style="border-color:rgba(255,92,0,0.15)">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="font-family:var(--font-display);font-size:1.2rem;color:var(--white)">Daily Activity</div>
+            <div id="health-sync-status" class="text-dim text-small" style="margin-top:4px">Loading health data…</div>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="toggleSetupGuide()" id="setup-toggle-btn">📱 Connect Health App</button>
+        </div>
+        <div id="health-stats-wrap" class="hidden" style="margin-top:16px"></div>
+      </div>
+    </div>
 
-    <!-- ── iPhone Health Setup Guide (collapsible) ─────────────────────── -->
-    <div id="health-setup-wrap" class="mb-32 hidden">
-      <div class="card" style="border-color:rgba(255,92,0,0.2)">
+    <!-- ── Health Setup Guide (always visible until dismissed) ─────────── -->
+    <div id="health-setup-wrap" class="mb-32">
+      <div class="card" style="border-color:rgba(255,92,0,0.25)">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
           <div style="display:flex;align-items:center;gap:12px">
             <span style="font-size:2rem">📱</span>
             <div>
-              <div style="font-family:var(--font-display);font-size:1.3rem;color:var(--white)">Connect iPhone Health</div>
-              <div class="text-dim text-small">Auto-sync steps, calories & activity from Apple Health</div>
+              <div style="font-family:var(--font-display);font-size:1.1rem;color:var(--white)">Connect Health App</div>
+              <div class="text-dim text-small">Auto-sync steps, calories & activity daily</div>
             </div>
           </div>
-          <button class="btn btn-dark btn-sm" onclick="toggleSetupGuide()" id="setup-toggle-btn">Hide Guide ▲</button>
+          <button class="btn btn-dark btn-sm" onclick="toggleSetupGuide()">Hide ▲</button>
         </div>
 
-        <div id="setup-guide-body">
-          <!-- Token -->
-          <div style="background:var(--dark);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:20px">
-            <div class="stat-label mb-8">Your Personal Sync URL</div>
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <code id="sync-url-display" style="flex:1;font-size:12px;color:var(--orange);word-break:break-all;background:rgba(255,92,0,0.06);padding:8px 12px;border-radius:6px;min-width:0">Loading...</code>
-              <button class="btn btn-outline btn-sm" onclick="copySyncUrl()" style="flex-shrink:0">Copy</button>
-            </div>
-            <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <button class="btn btn-dark btn-sm" onclick="testSync()">🧪 Test Sync</button>
-              <button class="btn btn-dark btn-sm" onclick="regenerateToken()" style="color:var(--text-dim)">↻ Regenerate Token</button>
-              <span id="test-result" class="text-small hidden"></span>
-            </div>
+        <!-- Sync URL box -->
+        <div style="background:var(--dark);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:20px">
+          <div class="stat-label" style="margin-bottom:8px">Your Personal Sync URL</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <code id="sync-url-display" style="flex:1;font-size:12px;color:var(--orange);word-break:break-all;background:rgba(255,92,0,0.06);padding:8px 12px;border-radius:6px;min-width:0">Loading…</code>
+            <button class="btn btn-outline btn-sm" onclick="copySyncUrl()" style="flex-shrink:0">Copy</button>
           </div>
-
-          <!-- Steps -->
-          <div class="stat-label mb-12">How to set up iOS Shortcut (one-time, 3 minutes)</div>
-          <div id="setup-steps-list">
-            <div class="setup-step"><span class="setup-step-num">1</span><div><strong>Open Shortcuts</strong> app on your iPhone → tap <strong>+</strong> to create new shortcut → name it "Fitanya Sync"</div></div>
-            <div class="setup-step"><span class="setup-step-num">2</span><div>Tap <strong>Add Action</strong> → search <strong>"Health"</strong> → choose <strong>Find Health Samples</strong> (or "Get Quantity")<br><span class="text-dim text-small">Set: Type = Steps · Start = Start of Day · End = Now · Aggregate = Sum → rename result variable to <em>Steps</em></span></div></div>
-            <div class="setup-step"><span class="setup-step-num">3</span><div>Add another <strong>Health</strong> action for <strong>Active Energy Burned</strong> (calories) → variable <em>Calories</em><br><span class="text-dim text-small">Aggregate = Sum, same time range</span></div></div>
-            <div class="setup-step"><span class="setup-step-num">4</span><div>Add another <strong>Health</strong> action for <strong>Walking + Running Distance</strong> → variable <em>Distance</em></div></div>
-            <div class="setup-step"><span class="setup-step-num">5</span><div>Add another <strong>Health</strong> action for <strong>Exercise Minutes</strong> → variable <em>ActiveMin</em></div></div>
-            <div class="setup-step"><span class="setup-step-num">6</span><div>Add <strong>Get Contents of URL</strong> action:<br>
-              <span class="text-dim text-small">• Method: <strong>POST</strong><br>
-              • URL: paste your Sync URL from above<br>
-              • Headers: <code style="color:var(--orange)">Content-Type</code> → <code style="color:var(--orange)">application/json</code><br>
-              • Body type: <strong>JSON</strong><br>
-              • Add keys: <code style="color:var(--orange)">steps</code> → Steps variable · <code style="color:var(--orange)">calories</code> → Calories · <code style="color:var(--orange)">distance_km</code> → Distance · <code style="color:var(--orange)">active_minutes</code> → ActiveMin · <code style="color:var(--orange)">date</code> → Current Date (formatted as <strong>yyyy-MM-dd</strong>)</span>
-            </div></div>
-            <div class="setup-step"><span class="setup-step-num">7</span><div><strong>Automate it:</strong> Go to Automation tab → New Automation → <strong>Time of Day</strong> → set to <strong>10:00 PM daily</strong> → add "Run Shortcut" → choose "Fitanya Sync"<br><span class="text-dim text-small">Turn off "Ask Before Running" so it runs silently in the background</span></div></div>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-dark btn-sm" onclick="testSync()">🧪 Test Connection</button>
+            <button class="btn btn-dark btn-sm" onclick="regenerateToken()" style="color:var(--text-dim)">↻ New Token</button>
+            <span id="test-result" class="text-small hidden"></span>
           </div>
+        </div>
 
-          <div style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:8px;padding:12px 16px;margin-top:16px;font-size:13px;color:#4ade80">
-            ✅ Once set up, your steps and activity will sync automatically every night and appear here on your progress page.
+        <!-- Platform tabs -->
+        <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px">
+          <button id="tab-ios" onclick="switchPlatformTab('ios')" style="flex:1;padding:9px;font-size:13px;font-weight:600;background:var(--orange);color:#fff;border:none;cursor:pointer">🍎 iPhone</button>
+          <button id="tab-android" onclick="switchPlatformTab('android')" style="flex:1;padding:9px;font-size:13px;font-weight:600;background:var(--card);color:var(--text-dim);border:none;cursor:pointer">🤖 Android</button>
+        </div>
+
+        <!-- iOS steps -->
+        <div id="guide-ios">
+          <div class="stat-label" style="margin-bottom:10px">iOS Shortcuts setup — one-time, ~3 minutes</div>
+          <div class="setup-step"><span class="setup-step-num">1</span><div>Open <strong>Shortcuts</strong> app → tap <strong>+</strong> (top right) → name it <strong>"Fitanya Sync"</strong></div></div>
+          <div class="setup-step"><span class="setup-step-num">2</span><div>Tap <strong>Add Action</strong> → search <strong>Health</strong> → pick <strong>Find Health Samples</strong><br><span class="text-dim text-small">Type = <strong>Steps</strong> · Time Range = Today · Aggregate = <strong>Sum</strong> → rename variable to <em>Steps</em></span></div></div>
+          <div class="setup-step"><span class="setup-step-num">3</span><div>Add another Health action → <strong>Active Energy Burned</strong> → variable <em>Calories</em></div></div>
+          <div class="setup-step"><span class="setup-step-num">4</span><div>Add another Health action → <strong>Walking + Running Distance</strong> → variable <em>Distance</em></div></div>
+          <div class="setup-step"><span class="setup-step-num">5</span><div>Add another Health action → <strong>Exercise Minutes</strong> → variable <em>ActiveMin</em></div></div>
+          <div class="setup-step"><span class="setup-step-num">6</span><div>Add <strong>Get Contents of URL</strong> action<br>
+            <span class="text-dim text-small">• URL → paste your Sync URL above<br>
+            • Method → <strong>POST</strong><br>
+            • Request Body → <strong>JSON</strong><br>
+            • Keys: <code style="color:var(--orange)">steps</code>=Steps · <code style="color:var(--orange)">calories</code>=Calories · <code style="color:var(--orange)">distance_km</code>=Distance · <code style="color:var(--orange)">active_minutes</code>=ActiveMin · <code style="color:var(--orange)">date</code>=Current Date (format <strong>yyyy-MM-dd</strong>)</span>
+          </div></div>
+          <div class="setup-step"><span class="setup-step-num">7</span><div><strong>Automation tab</strong> → New Automation → <strong>Time of Day</strong> → 10:00 PM · Daily → Run Shortcut → Fitanya Sync<br><span class="text-dim text-small">Disable "Ask Before Running" so it runs silently</span></div></div>
+          <div style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:8px;padding:12px 16px;margin-top:14px;font-size:13px;color:#4ade80">
+            ✅ Once set up, steps & activity sync automatically every night at 10 PM.
+          </div>
+        </div>
+
+        <!-- Android steps -->
+        <div id="guide-android" class="hidden">
+          <div class="stat-label" style="margin-bottom:10px">Android setup via HTTP Request Shortcuts — one-time, ~5 minutes</div>
+          <div class="setup-step"><span class="setup-step-num">1</span><div>Install <strong>HTTP Request Shortcuts</strong> from the Play Store (free, by Waboodoo)</div></div>
+          <div class="setup-step"><span class="setup-step-num">2</span><div>Open the app → tap <strong>+</strong> → choose <strong>Regular Shortcut</strong></div></div>
+          <div class="setup-step"><span class="setup-step-num">3</span><div>Set:<br><span class="text-dim text-small">• Name: <strong>Fitanya Sync</strong><br>• Method: <strong>POST</strong><br>• URL: paste your Sync URL above<br>• Content Type: <strong>application/json</strong></span></div></div>
+          <div class="setup-step"><span class="setup-step-num">4</span><div>Under <strong>Request Body</strong> paste this JSON:<br>
+            <code style="font-size:11px;color:var(--orange);line-height:1.8;display:block;margin-top:6px;background:rgba(255,92,0,0.06);padding:8px;border-radius:6px">{"steps":8000,"calories":400,"active_minutes":45,"distance_km":6.2,"date":"2024-01-15"}</code>
+            <span class="text-dim text-small" style="margin-top:4px;display:block">Replace values with your actual step count each day, or use a variable if your launcher supports it</span>
+          </div></div>
+          <div class="setup-step"><span class="setup-step-num">5</span><div>Tap the shortcut to sync manually anytime, or use a launcher like <strong>Tasker</strong> to run it automatically at 10 PM daily</div></div>
+          <div style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:8px;padding:12px 16px;margin-top:14px;font-size:13px;color:#4ade80">
+            ✅ For full automation on Android use <strong>Tasker</strong> (paid) + HTTP Request plugin for daily auto-sync from Google Fit.
           </div>
         </div>
       </div>
@@ -170,107 +199,85 @@
 
   // ── Health summary widget ──────────────────────────────────────────────
   function renderHealthSummary(logs) {
-    const wrap = document.getElementById('health-summary-wrap');
-    const today = new Date().toLocaleDateString('en-CA');
+    const today    = new Date().toLocaleDateString('en-CA');
     const todayLog = logs.find(l => l.date === today);
-    const hasAnyData = logs.length > 0;
+    const hasData  = logs.length > 0;
 
-    const steps    = todayLog?.steps          || 0;
-    const cals     = todayLog?.calories       || 0;
-    const mins     = todayLog?.active_minutes || 0;
-    const dist     = todayLog?.distance_km    || 0;
-    const goal     = 10000;
-    const pct      = Math.min(100, Math.round((steps / goal) * 100));
+    const steps = todayLog?.steps          || 0;
+    const cals  = todayLog?.calories       || 0;
+    const mins  = todayLog?.active_minutes || 0;
+    const dist  = todayLog?.distance_km    || 0;
+    const goal  = 10000;
+    const pct   = Math.min(100, Math.round((steps / goal) * 100));
     const lastSync = todayLog?.synced_at
       ? new Date(todayLog.synced_at).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })
       : null;
 
-    // 7-day bar chart data (sorted oldest → newest)
+    // Status line
+    const statusEl = document.getElementById('health-sync-status');
+    const btnEl    = document.getElementById('setup-toggle-btn');
+    if (hasData) {
+      statusEl.innerHTML = lastSync
+        ? `<span class="health-sync-badge"><span class="health-sync-dot"></span>Synced today at ${lastSync}</span>`
+        : 'Connected · not synced today';
+      btnEl.textContent = '⚙️ Setup Guide';
+      // hide setup card by default once data is coming in
+      document.getElementById('health-setup-wrap').classList.add('hidden');
+    } else {
+      statusEl.textContent = 'Not connected yet — tap to set up';
+      btnEl.textContent = '📱 Connect Health App';
+    }
+
+    if (!hasData) return;
+
+    // 7-day bar chart
     const last7 = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
       const key = d.toLocaleDateString('en-CA');
       const log = logs.find(l => l.date === key);
-      last7.push({ day: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0,2), steps: log?.steps || 0, isToday: i === 0 });
+      last7.push({ day: d.toLocaleDateString('en-US', { weekday:'short' }).slice(0,2), steps: log?.steps || 0, isToday: i === 0 });
     }
     const maxSteps = Math.max(...last7.map(d => d.steps), goal);
 
-    wrap.innerHTML = `
-      <div class="card" style="border-color:rgba(255,92,0,${hasAnyData ? '0.2' : '0.08'})">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-          <div>
-            <div style="font-family:var(--font-display);font-size:1.2rem;color:var(--white)">Daily Activity</div>
-            ${lastSync ? `<div class="health-sync-badge"><div class="health-sync-dot"></div>Synced today at ${lastSync}</div>` : '<div class="text-dim text-small" style="margin-top:4px">Not synced today</div>'}
-          </div>
-          <button class="btn btn-outline btn-sm" onclick="toggleSetupGuide()" id="setup-toggle-btn">
-            ${hasAnyData ? '⚙️ Setup Guide' : '📱 Connect Health App'}
-          </button>
-        </div>
-
-        ${hasAnyData ? `
-        <div class="health-grid">
-          <div class="health-stat">
-            <div class="health-stat-icon">👟</div>
-            <div class="health-stat-val">${steps.toLocaleString('en-IN')}</div>
-            <div class="health-stat-label">Steps</div>
-          </div>
-          <div class="health-stat">
-            <div class="health-stat-icon">🔥</div>
-            <div class="health-stat-val">${cals.toLocaleString('en-IN')}</div>
-            <div class="health-stat-label">Calories</div>
-          </div>
-          <div class="health-stat">
-            <div class="health-stat-icon">⏱️</div>
-            <div class="health-stat-val">${mins}</div>
-            <div class="health-stat-label">Active Min</div>
-          </div>
-          <div class="health-stat">
-            <div class="health-stat-icon">📍</div>
-            <div class="health-stat-val">${dist.toFixed(1)}</div>
-            <div class="health-stat-label">km walked</div>
-          </div>
-        </div>
-
-        <div class="stat-label mb-4" style="margin-top:4px">7-Day Steps <span class="text-dim" style="font-weight:400">· Goal: ${goal.toLocaleString('en-IN')}/day</span></div>
-        <div class="steps-bar-wrap">
-          ${last7.map(d => `
-            <div class="steps-bar-col">
-              <div class="steps-bar${d.isToday ? ' today' : ''}" style="height:${d.steps ? Math.max(8, Math.round((d.steps/maxSteps)*72)) : 3}px" title="${d.steps.toLocaleString('en-IN')} steps"></div>
-              <div class="steps-bar-day">${d.day}</div>
-            </div>
-          `).join('')}
-        </div>
-        <div style="display:flex;justify-content:space-between;margin-top:2px">
-          <span class="text-dim text-small">7-day avg: ${Math.round(last7.reduce((s,d)=>s+d.steps,0)/7).toLocaleString('en-IN')} steps</span>
-          <span class="text-small" style="color:${pct>=100?'#4ade80':'var(--orange)'}">${pct}% of daily goal</span>
-        </div>
-        ` : `
-        <div style="text-align:center;padding:20px 0">
-          <div style="font-size:2.5rem;margin-bottom:10px">📱</div>
-          <div style="color:var(--text-dim);font-size:14px">No health data yet.<br>Connect your iPhone Health app to auto-sync steps and activity.</div>
-        </div>
-        `}
+    const statsWrap = document.getElementById('health-stats-wrap');
+    statsWrap.classList.remove('hidden');
+    statsWrap.innerHTML = `
+      <div class="health-grid">
+        <div class="health-stat"><div class="health-stat-icon">👟</div><div class="health-stat-val">${steps.toLocaleString('en-IN')}</div><div class="health-stat-label">Steps</div></div>
+        <div class="health-stat"><div class="health-stat-icon">🔥</div><div class="health-stat-val">${cals.toLocaleString('en-IN')}</div><div class="health-stat-label">Calories</div></div>
+        <div class="health-stat"><div class="health-stat-icon">⏱️</div><div class="health-stat-val">${mins}</div><div class="health-stat-label">Active Min</div></div>
+        <div class="health-stat"><div class="health-stat-icon">📍</div><div class="health-stat-val">${dist.toFixed(1)}</div><div class="health-stat-label">km walked</div></div>
+      </div>
+      <div class="stat-label" style="margin-top:4px;margin-bottom:4px">7-Day Steps <span class="text-dim" style="font-weight:400">· Goal: ${goal.toLocaleString('en-IN')}/day</span></div>
+      <div class="steps-bar-wrap">
+        ${last7.map(d => `<div class="steps-bar-col"><div class="steps-bar${d.isToday ? ' today' : ''}" style="height:${d.steps ? Math.max(8, Math.round((d.steps/maxSteps)*72)) : 3}px" title="${d.steps.toLocaleString('en-IN')} steps"></div><div class="steps-bar-day">${d.day}</div></div>`).join('')}
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px">
+        <span class="text-dim text-small">7-day avg: ${Math.round(last7.reduce((s,d)=>s+d.steps,0)/7).toLocaleString('en-IN')} steps</span>
+        <span class="text-small" style="color:${pct>=100?'#4ade80':'var(--orange)'}">${pct}% of daily goal</span>
       </div>
     `;
-
-    // Show setup guide card
-    if (!hasAnyData) {
-      document.getElementById('health-setup-wrap').classList.remove('hidden');
-    }
   }
 
   // ── Setup guide ────────────────────────────────────────────────────────
   function initSetupGuide(token) {
-    const base = window.location.origin;
-    _syncUrl = `${base}/api/customer/health/sync?token=${token}`;
+    _syncUrl = `${window.location.origin}/api/customer/health/sync?token=${token}`;
     document.getElementById('sync-url-display').textContent = _syncUrl;
+  }
+
+  function switchPlatformTab(tab) {
+    document.getElementById('guide-ios').classList.toggle('hidden', tab !== 'ios');
+    document.getElementById('guide-android').classList.toggle('hidden', tab !== 'android');
+    document.getElementById('tab-ios').style.background     = tab === 'ios'     ? 'var(--orange)' : 'var(--card)';
+    document.getElementById('tab-ios').style.color          = tab === 'ios'     ? '#fff' : 'var(--text-dim)';
+    document.getElementById('tab-android').style.background = tab === 'android' ? 'var(--orange)' : 'var(--card)';
+    document.getElementById('tab-android').style.color      = tab === 'android' ? '#fff' : 'var(--text-dim)';
   }
 
   function toggleSetupGuide() {
     const wrap = document.getElementById('health-setup-wrap');
-    const btn  = document.getElementById('setup-toggle-btn');
-    const hidden = wrap.classList.toggle('hidden');
-    btn.textContent = hidden ? '📱 Connect Health App' : '⚙️ Setup Guide';
+    wrap.classList.toggle('hidden');
   }
 
   function copySyncUrl() {
