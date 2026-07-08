@@ -102,11 +102,12 @@
       dateFormat: 'Y-m-d',
       onChange: ([date]) => {
         document.getElementById('clear-date-btn').style.display = '';
-        loadSlots(date.toISOString().split('T')[0]);
+        // Convert selected date to the member's local YYYY-MM-DD (not UTC, not IST)
+        const localDate = date.toLocaleDateString('en-CA', { timeZone: window.__userTz });
+        loadSlots(localDate);
       },
     });
 
-    // Load all upcoming slots immediately — no date selection needed
     loadSlots();
     loadMyBookings();
   }
@@ -117,55 +118,53 @@
     loadSlots();
   }
 
-  async function loadSlots(date = null) {
+  async function loadSlots(filterLocalDate = null) {
     document.getElementById('slots-wrap').innerHTML = '<div class="spinner"></div>';
     clearSelection();
-    const url = date ? '/api/bookings/slots?date=' + date : '/api/bookings/slots';
-    const data = await api.get(url);
+
+    // Always load all upcoming slots — never filter by date on the server.
+    // Server dates are stored in IST; filtering server-side gives wrong results
+    // for members in other timezones. We group by local date here instead.
+    const data = await api.get('/api/bookings/slots');
     if (!data?.slots?.length) {
-      document.getElementById('slots-wrap').innerHTML = date
+      document.getElementById('slots-wrap').innerHTML = filterLocalDate
         ? '<p class="text-dim">No available slots on this date. Try another day.</p>'
         : '<p class="text-dim">No upcoming slots available yet. Check back soon.</p>';
       return;
     }
 
-    if (date) {
-      // Single date: flat grid
-      document.getElementById('slots-wrap').innerHTML = `
-        <div class="slot-grid">
-          ${data.slots.map(s => `
-            <div class="slot-btn" onclick="selectSlot(${JSON.stringify(s).replace(/"/g,'&quot;')})">
-              <div class="slot-time">${formatSessionTime(s.start_time, s.date)}</div>
-              <div class="slot-coach">Coach: ${s.coach_name}</div>
-            </div>
-          `).join('')}
-        </div>
-      `;
+    // Group every slot by the member's LOCAL calendar date
+    const grouped = {};
+    data.slots.forEach(s => {
+      const localDate = new Date(`${s.date}T${s.start_time}:00+05:30`)
+        .toLocaleDateString('en-CA', { timeZone: window.__userTz }); // YYYY-MM-DD in member tz
+      (grouped[localDate] = grouped[localDate] || []).push(s);
+    });
+
+    const slotCard = s => `
+      <div class="slot-btn" onclick="selectSlot(${JSON.stringify(s).replace(/"/g,'&quot;')})">
+        <div class="slot-time">${formatSessionTime(s.start_time, s.date)}</div>
+        <div class="slot-coach">Coach: ${s.coach_name}</div>
+      </div>`;
+
+    if (filterLocalDate) {
+      // Show only the slots that fall on the selected local date
+      const slots = grouped[filterLocalDate] || [];
+      if (!slots.length) {
+        document.getElementById('slots-wrap').innerHTML = '<p class="text-dim">No available slots on this date. Try another day.</p>';
+        return;
+      }
+      document.getElementById('slots-wrap').innerHTML = `<div class="slot-grid">${slots.map(slotCard).join('')}</div>`;
     } else {
-      // All upcoming: group by member's LOCAL date (not stored IST date)
-      const grouped = {};
-      data.slots.forEach(s => {
-        const localDate = new Date(`${s.date}T${s.start_time}:00+05:30`)
-          .toLocaleDateString('en-CA', { timeZone: window.__userTz }); // gives YYYY-MM-DD
-        (grouped[localDate] = grouped[localDate] || []).push(s);
-      });
-      document.getElementById('slots-wrap').innerHTML = Object.entries(grouped)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([d, slots]) => {
+      // Show all upcoming grouped by local date
+      const entries = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+      document.getElementById('slots-wrap').innerHTML = entries.map(([d, slots]) => {
         const label = new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short' });
         return `
           <div style="margin-top:20px">
             <div class="text-dim text-small" style="font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">${label}</div>
-            <div class="slot-grid">
-              ${slots.map(s => `
-                <div class="slot-btn" onclick="selectSlot(${JSON.stringify(s).replace(/"/g,'&quot;')})">
-                  <div class="slot-time">${formatSessionTime(s.start_time, s.date)}</div>
-                  <div class="slot-coach">Coach: ${s.coach_name}</div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `;
+            <div class="slot-grid">${slots.map(slotCard).join('')}</div>
+          </div>`;
       }).join('');
     }
   }
