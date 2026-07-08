@@ -284,8 +284,7 @@ router.post('/book', async (req, res) => {
     const bookingInfo = { date: fmtDate(), start_time: `${fmtTime(slotData.start_time)} ${tzLabel}`, end_time: `${fmtTime(slotData.end_time)} ${tzLabel}`, coach_name: coachData.name };
     res.json({ success: true, meetLink });
 
-    sendBookingConfirmation({ to: customerData.email, name: customerData.name, booking: bookingInfo, meetLink })
-      .catch(err => console.error('[coach] confirmation email failed:', err.message));
+    // booking confirmation email disabled
     notify.sessionBooked(parseInt(customer_id), slotData.date, slotData.start_time).catch(() => {});
   } catch (err) {
     console.error('[coach] book error:', err);

@@ -173,8 +173,7 @@ router.post('/book', requireAuth, async (req, res) => {
     res.json({ success: true, booking_id: booking.rows[0].id, meetLink });
 
     // Fire-and-forget: email + notifications after response is sent
-    sendBookingConfirmation({ to: customerData.email, name: customerData.name, booking: bookingInfo, meetLink })
-      .catch(err => console.error('[bookings] confirmation email failed:', err.message));
+    // booking confirmation email disabled
     notify.sessionBooked(userId, slotData.date, slotData.start_time).catch(() => {});
     notify.newBookingForCoach(slotData.coach_id, customerData.name, slotData.date, slotData.start_time).catch(() => {});
   } catch (err) {
