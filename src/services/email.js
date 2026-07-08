@@ -222,8 +222,25 @@ async function sendCoachInvite({ to, name, tempPassword }) {
   });
 }
 
+async function sendRenewalReminder({ to, name, packageName, daysLeft, expiryDate, renewUrl }) {
+  return sendMail({
+    to, subject: `⚠️ Your Fitanya membership expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`,
+    html: baseTemplate(`
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>Just a heads-up — your <strong>${packageName}</strong> membership expires in <strong>${daysLeft} day${daysLeft !== 1 ? 's' : ''}</strong> on <strong>${expiryDate}</strong>.</p>
+      <div class="detail-box">
+        <p>🗓️ <strong>Expiry Date:</strong> ${expiryDate}</p>
+        <p>📦 <strong>Current Plan:</strong> ${packageName}</p>
+      </div>
+      <p>Renew now to keep your training momentum going — your remaining sessions carry over as credit toward any plan you choose!</p>
+      <a href="${renewUrl || (process.env.APP_URL + '/dashboard/membership')}" class="btn">Renew My Membership →</a>
+      <p style="color:#666;font-size:13px;margin-top:16px">If you have any questions, reach out to your coach or admin.</p>
+    `),
+  });
+}
+
 module.exports = {
   sendMail, sendOtp, sendWelcome, sendBookingConfirmation,
   sendSessionReminder, sendPaymentConfirmation, sendRegistrationRequest,
-  sendReferralReward, sendCoachInvite, sendPasswordReset,
+  sendReferralReward, sendCoachInvite, sendPasswordReset, sendRenewalReminder,
 };

@@ -238,12 +238,59 @@ async function runDeletionCleanup() {
   }
 }
 
+// ── Membership renewal reminder (3 days before expiry) ────────────────────────
+async function runRenewalReminders() {
+  try {
+    const { getDb } = require('./config/database');
+    const { notify } = require('./services/notifications');
+    const { sendRenewalReminder } = require('./services/email');
+    const db = getDb();
+
+    // Find active memberships expiring in exactly 3 days (within a 25-hour window to survive daily drift)
+    const expiring = await db.execute({
+      sql: `SELECT m.id, m.user_id, m.end_date, p.name as package_name,
+                   u.name as user_name, u.email
+            FROM memberships m
+            JOIN packages p ON p.id = m.package_id
+            JOIN users u ON u.id = m.user_id
+            WHERE m.status = 'active'
+              AND u.deleted_at IS NULL
+              AND m.end_date BETWEEN date('now', '+2 days') AND date('now', '+3 days')`,
+      args: [],
+    });
+
+    for (const row of expiring.rows) {
+      const daysLeft = Math.ceil((new Date(row.end_date) - Date.now()) / 86400000);
+      const expiryDate = new Date(row.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      // In-app notification
+      await notify.membershipExpiring(row.user_id, daysLeft).catch(() => {});
+
+      // Email reminder (fire-and-forget)
+      sendRenewalReminder({
+        to: row.email, name: row.user_name,
+        packageName: row.package_name, daysLeft, expiryDate,
+        renewUrl: `${process.env.APP_URL || 'http://localhost:3000'}/dashboard/membership`,
+      }).catch(() => {});
+    }
+
+    if (expiring.rows.length) {
+      console.log(`[reminders] Sent renewal reminders to ${expiring.rows.length} member(s)`);
+    }
+  } catch (err) {
+    console.error('[reminders] renewal reminder error:', err.message);
+  }
+}
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 async function start() {
   await initDb();
   // Run cleanup immediately on startup then every 24 hours
   runDeletionCleanup();
   setInterval(runDeletionCleanup, 24 * 60 * 60 * 1000);
+  // Send renewal reminders daily (run on startup + every 24h)
+  runRenewalReminders();
+  setInterval(runRenewalReminders, 24 * 60 * 60 * 1000);
   app.listen(PORT, () => {
     console.log(`\n🔥 FITANYA running on http://localhost:${PORT}`);
     console.log(`   ENV: ${process.env.NODE_ENV || 'development'}`);

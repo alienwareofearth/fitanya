@@ -52,6 +52,18 @@
 
     .history-table th, .history-table td { font-size: 13px; }
 
+    .renew-banner {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+      background: linear-gradient(135deg, rgba(255,92,0,0.12) 0%, rgba(255,92,0,0.05) 100%);
+      border: 1px solid rgba(255,92,0,0.35);
+      border-radius: var(--radius); padding: 20px 24px; margin: 16px 0 0;
+    }
+    .renew-banner-left { display: flex; align-items: center; gap: 14px; }
+    .renew-banner-icon { font-size: 2rem; flex-shrink: 0; }
+    .renew-banner-title { font-family: var(--font-display); font-size: 1.2rem; color: var(--white); }
+    .renew-banner-sub { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+
     .free-switch-box {
       background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.2);
       border-radius: var(--radius-sm); padding: 16px 20px; margin-top: 16px;
@@ -85,6 +97,9 @@
 
     <!-- ── Section 1: Current Plan ─────────────────────────────────────── -->
     <div id="current-plan-wrap"><div class="spinner"></div></div>
+
+    <!-- ── Quick Renew banner (shown when expiry ≤ 14 days) ───────────── -->
+    <div id="renew-banner" class="hidden"></div>
 
     <!-- ── Section 2: Switch Plan ─────────────────────────────────────── -->
     <div class="switch-section">
@@ -229,6 +244,11 @@
       const used = m.sessions_used, total = m.sessions_total || m.total_sessions || 0;
       const pct = total > 0 ? Math.round((used / total) * 100) : 0;
       const daysLeft = Math.max(0, Math.ceil((new Date(m.end_date) - Date.now()) / 86400000));
+      const expiryBadge = daysLeft <= 7
+        ? `<span class="badge badge-red" style="align-self:flex-start">⚠️ Expires in ${daysLeft}d</span>`
+        : daysLeft <= 14
+          ? `<span class="badge badge-yellow" style="align-self:flex-start">● ${daysLeft} days left</span>`
+          : `<span class="badge badge-green" style="align-self:flex-start">● Active</span>`;
       el.innerHTML = `
         <div class="plan-hero">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">
@@ -236,7 +256,7 @@
               <div class="plan-name">${m.package_name}</div>
               <div class="plan-coach">Coach: ${m.coach_name || 'Being assigned...'}</div>
             </div>
-            <span class="badge badge-green" style="align-self:flex-start">● Active</span>
+            ${expiryBadge}
           </div>
           <div class="grid-3 gap-16 mb-20">
             <div class="stat-card"><div class="stat-label">Sessions Done</div><div class="stat-value">${used}</div></div>
@@ -254,6 +274,9 @@
         </div>
       `;
       document.getElementById('switch-title').textContent = 'Switch / Upgrade Plan';
+
+      // Show quick-renew banner when expiry ≤ 14 days
+      renderRenewBanner(m, daysLeft);
     } else {
       el.innerHTML = `
         <div class="card text-center" style="padding:32px;margin-bottom:8px">
@@ -264,6 +287,43 @@
       `;
       document.getElementById('switch-title').textContent = 'Choose a Plan';
     }
+  }
+
+  // ── Quick-renew banner ─────────────────────────────────────────────────
+  function renderRenewBanner(mem, daysLeft) {
+    const banner = document.getElementById('renew-banner');
+    if (daysLeft > 14) { banner.classList.add('hidden'); return; }
+
+    const urgency = daysLeft <= 3 ? '🚨' : daysLeft <= 7 ? '⚠️' : '🔔';
+    const msg = daysLeft <= 0
+      ? 'Your membership has expired!'
+      : daysLeft === 1 ? 'Your membership expires tomorrow!'
+      : `Your membership expires in ${daysLeft} days.`;
+
+    banner.classList.remove('hidden');
+    banner.innerHTML = `
+      <div class="renew-banner">
+        <div class="renew-banner-left">
+          <div class="renew-banner-icon">${urgency}</div>
+          <div>
+            <div class="renew-banner-title">${msg}</div>
+            <div class="renew-banner-sub">Renew <strong>${mem.package_name}</strong> now — your remaining sessions carry over as credit.</div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="quickRenew()">Renew Now →</button>
+      </div>
+    `;
+  }
+
+  // ── Quick renew: pre-select current package in the switch section ──────
+  function quickRenew() {
+    if (!_activeMem) return;
+    const pkgId = String(_activeMem.package_id);
+    const sel = document.getElementById('pkg-select');
+    sel.value = pkgId;
+    onPackageChange();
+    // Scroll to switch section
+    document.querySelector('.switch-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // ── Package dropdown ───────────────────────────────────────────────────
