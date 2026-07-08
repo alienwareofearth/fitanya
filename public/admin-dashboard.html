@@ -10,6 +10,7 @@
   <link rel="apple-touch-icon" href="/icons/icon.svg">
   <title>Admin — Fitanya</title>
   <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/admin.css">
   <style>
     .admin-sidebar { width:240px; }
     .admin-logo { font-size:20px; padding:24px 20px; }
@@ -17,22 +18,40 @@
 </head>
 <body>
 <div class="app-layout">
-  <aside class="sidebar">
-    <a href="/admin" class="sidebar-logo" style="font-size:20px;padding:22px 20px">FIT<span>ANYA</span> <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-ui);display:block;margin-top:2px">ADMIN</span></a>
+    <aside class="sidebar">
+    <a href="/admin" class="sidebar-logo">FIT<span>ANYA</span></a>
+    <div class="admin-profile">
+      <div class="admin-avatar">A</div>
+      <div class="admin-info">
+        <div class="admin-name">Admin</div>
+        <span class="admin-role-badge">Super Admin</span>
+      </div>
+    </div>
     <nav class="sidebar-nav">
+      <div class="nav-group-label">Overview</div>
       <a href="/admin" class="nav-item active"><span class="icon">📊</span>Dashboard</a>
-      <a href="/admin/packages" class="nav-item"><span class="icon">📦</span>Packages & Prices</a>
-      <a href="/admin/discounts" class="nav-item"><span class="icon">🏷️</span>Discounts</a>
-      <a href="/admin/coaches" class="nav-item"><span class="icon">🏋️</span>Coaches</a>
+      <div class="nav-group-label">Management</div>
       <a href="/admin/members" class="nav-item"><span class="icon">👥</span>Members</a>
+      <a href="/admin/coaches" class="nav-item"><span class="icon">🏋️</span>Coaches</a>
+      <a href="/admin/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
+      <div class="nav-group-label">Revenue</div>
+      <a href="/admin/packages" class="nav-item"><span class="icon">📦</span>Packages</a>
+      <a href="/admin/discounts" class="nav-item"><span class="icon">🏷️</span>Discounts</a>
+      <div class="nav-group-label">Content</div>
       <a href="/admin/stories" class="nav-item"><span class="icon">📸</span>Stories</a>
       <a href="/admin/diet" class="nav-item"><span class="icon">🥗</span>Diet Plans</a>
+      <div class="nav-group-label">System</div>
       <a href="/admin/settings" class="nav-item"><span class="icon">⚙️</span>Settings</a>
     </nav>
     <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
   </aside>
   <main class="main-content">
-    <div class="page-header mb-32"><h2>Admin Dashboard</h2><p>Overview of Fitanya platform</p></div>
+    <div class="admin-topbar">
+      <div class="admin-topbar-left">
+        <div class="admin-topbar-title">Dashboard</div>
+        <div class="breadcrumb">Fitanya Admin <span class="bc-sep">›</span> <span class="bc-current">Overview</span></div>
+      </div>
+    </div>
     <div id="stats-grid" class="stats-grid mb-32"><div class="spinner"></div></div>
     <div class="grid-2 gap-24">
       <div>
@@ -65,10 +84,26 @@
 
     const s = stats.stats;
     document.getElementById('stats-grid').innerHTML = `
-      <div class="stat-card"><div class="stat-label">Total Members</div><div class="stat-value orange">${s.customers}</div></div>
-      <div class="stat-card"><div class="stat-label">Coaches</div><div class="stat-value">${s.coaches}</div></div>
-      <div class="stat-card"><div class="stat-label">Total Bookings</div><div class="stat-value">${s.bookings}</div></div>
-      <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value orange">₹${Number(s.revenue).toLocaleString('en-IN')}</div></div>
+      <div class="stat-card">
+        <span class="stat-icon">👥</span>
+        <div class="stat-label">Total Members</div>
+        <div class="stat-value orange">${s.customers}</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">🏋️</span>
+        <div class="stat-label">Coaches</div>
+        <div class="stat-value">${s.coaches}</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">📅</span>
+        <div class="stat-label">Total Bookings</div>
+        <div class="stat-value">${s.bookings}</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">💰</span>
+        <div class="stat-label">Total Revenue</div>
+        <div class="stat-value orange">₹${Number(s.revenue).toLocaleString('en-IN')}</div>
+      </div>
     `;
 
     const membEl = document.getElementById('recent-members');

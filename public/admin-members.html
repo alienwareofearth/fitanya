@@ -10,26 +10,44 @@
   <link rel="apple-touch-icon" href="/icons/icon.svg">
   <title>Members — Fitanya Admin</title>
   <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/admin.css">
 </head>
 <body>
 <div class="app-layout">
-  <aside class="sidebar">
-    <a href="/admin" class="sidebar-logo" style="font-size:20px;padding:22px 20px">FIT<span>ANYA</span></a>
+    <aside class="sidebar">
+    <a href="/admin" class="sidebar-logo">FIT<span>ANYA</span></a>
+    <div class="admin-profile">
+      <div class="admin-avatar">A</div>
+      <div class="admin-info">
+        <div class="admin-name">Admin</div>
+        <span class="admin-role-badge">Super Admin</span>
+      </div>
+    </div>
     <nav class="sidebar-nav">
+      <div class="nav-group-label">Overview</div>
       <a href="/admin" class="nav-item"><span class="icon">📊</span>Dashboard</a>
-      <a href="/admin/packages" class="nav-item"><span class="icon">📦</span>Packages & Prices</a>
-      <a href="/admin/discounts" class="nav-item"><span class="icon">🏷️</span>Discounts</a>
-      <a href="/admin/coaches" class="nav-item"><span class="icon">🏋️</span>Coaches</a>
+      <div class="nav-group-label">Management</div>
       <a href="/admin/members" class="nav-item active"><span class="icon">👥</span>Members</a>
+      <a href="/admin/coaches" class="nav-item"><span class="icon">🏋️</span>Coaches</a>
       <a href="/admin/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
+      <div class="nav-group-label">Revenue</div>
+      <a href="/admin/packages" class="nav-item"><span class="icon">📦</span>Packages</a>
+      <a href="/admin/discounts" class="nav-item"><span class="icon">🏷️</span>Discounts</a>
+      <div class="nav-group-label">Content</div>
       <a href="/admin/stories" class="nav-item"><span class="icon">📸</span>Stories</a>
       <a href="/admin/diet" class="nav-item"><span class="icon">🥗</span>Diet Plans</a>
+      <div class="nav-group-label">System</div>
       <a href="/admin/settings" class="nav-item"><span class="icon">⚙️</span>Settings</a>
     </nav>
     <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
   </aside>
   <main class="main-content">
-    <div class="page-header mb-32"><h2>Members</h2><p>View all members, their progress and coach assignments</p></div>
+    <div class="admin-topbar">
+      <div class="admin-topbar-left">
+        <div class="admin-topbar-title">Members</div>
+        <div class="breadcrumb">Fitanya Admin <span class="bc-sep">›</span> <span class="bc-current">Management › Members</span></div>
+      </div>
+    </div>
     <div class="card mb-16">
       <input class="form-control" id="search" placeholder="🔍 Search by name or email..." oninput="filterMembers()" style="max-width:320px" />
     </div>

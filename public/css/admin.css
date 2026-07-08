@@ -1,0 +1,251 @@
+/* ── FITANYA ADMIN THEME — Violet/Purple ────────────────────────────────── */
+/* Loaded on admin pages only. Overrides main.css colour variables.          */
+
+body {
+  --black:    #09071a;
+  --dark:     #100e22;
+  --card:     #16132b;
+  --border:   #221e3a;
+  --muted:    #2e2850;
+  --text-dim: #8b85a8;
+  --text:     #e2dff5;
+
+  --orange:   #7c3aed;
+  --orange-2: #a78bfa;
+  --grad:     linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+  --grad-2:   linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+  --glow:     0 0 40px rgba(124,58,237,0.18);
+
+  background: var(--black);
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+
+.sidebar {
+  width: 240px;
+  background: var(--dark);
+  border-right: 1px solid var(--border);
+}
+
+.sidebar-logo {
+  padding: 22px 20px 18px;
+  font-size: 22px;
+  border-bottom-color: var(--border);
+}
+
+/* Admin profile pill below logo */
+.admin-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 14px 6px;
+  padding: 10px 12px;
+  background: rgba(124,58,237,0.08);
+  border: 1px solid rgba(124,58,237,0.22);
+  border-radius: 10px;
+}
+
+.admin-avatar {
+  width: 32px;
+  height: 32px;
+  background: var(--grad);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.admin-info { min-width: 0; }
+
+.admin-name {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-role-badge {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--orange-2);
+  background: rgba(124,58,237,0.18);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 3px;
+}
+
+/* Nav group labels */
+.nav-group-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: #3d3660;
+  padding: 18px 20px 6px;
+  pointer-events: none;
+}
+
+.nav-item {
+  padding: 10px 20px;
+  font-size: 13.5px;
+  border-left: 3px solid transparent;
+  gap: 10px;
+}
+.nav-item .icon { font-size: 16px; width: 18px; }
+
+.nav-item:hover {
+  color: var(--text);
+  background: rgba(124,58,237,0.07);
+}
+.nav-item.active {
+  color: var(--orange-2);
+  background: rgba(124,58,237,0.13);
+  border-left-color: var(--orange);
+}
+
+/* ── Main content ─────────────────────────────────────────────────────────── */
+
+.main-content { margin-left: 240px; }
+
+/* Admin top bar */
+.admin-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+}
+
+.admin-topbar-left .admin-topbar-title {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  color: var(--white);
+  line-height: 1.1;
+}
+
+.breadcrumb {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.breadcrumb .bc-sep { color: var(--muted); }
+.breadcrumb .bc-current { color: var(--orange-2); }
+
+.admin-topbar-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+
+/* ── Stat cards ───────────────────────────────────────────────────────────── */
+
+.stat-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  padding: 22px 24px;
+}
+
+.stat-card::after {
+  content: '';
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 90px;
+  height: 90px;
+  background: var(--grad);
+  opacity: 0.07;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.stat-card:hover { border-color: rgba(124,58,237,0.4); transform: translateY(-2px); }
+
+.stat-icon {
+  font-size: 20px;
+  margin-bottom: 14px;
+  display: block;
+  opacity: 0.85;
+}
+
+.stat-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  margin-bottom: 6px;
+}
+
+.stat-value {
+  font-size: 2.6rem;
+  line-height: 1;
+}
+
+.stat-value.orange { color: var(--orange-2); }
+
+/* ── Cards ────────────────────────────────────────────────────────────────── */
+
+.card:hover { border-color: rgba(124,58,237,0.35); }
+.card-glow   { box-shadow: var(--glow); }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+
+.btn-primary {
+  background: var(--grad);
+  box-shadow: 0 4px 16px rgba(124,58,237,0.3);
+}
+.btn-primary:hover { box-shadow: 0 8px 24px rgba(124,58,237,0.45); }
+
+.btn-outline {
+  color: var(--orange-2);
+  border-color: var(--orange);
+}
+.btn-outline:hover { background: rgba(124,58,237,0.1); }
+
+/* ── Forms ────────────────────────────────────────────────────────────────── */
+
+.form-control:focus {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.14);
+}
+
+/* ── Tables ───────────────────────────────────────────────────────────────── */
+
+tr:hover td { background: rgba(124,58,237,0.04); }
+
+/* ── Badges ───────────────────────────────────────────────────────────────── */
+
+.badge-orange { background: rgba(124,58,237,0.15); color: var(--orange-2); }
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
+
+.toast.info { border-color: var(--orange); }
+
+/* ── Section title ────────────────────────────────────────────────────────── */
+
+.section-title { border-bottom-color: var(--border); }
+
+/* ── Spinner ──────────────────────────────────────────────────────────────── */
+
+.spinner { border-top-color: var(--orange-2); }
+
+/* ── Mobile ───────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .sidebar { width: 240px; }
+  .main-content { margin-left: 0; }
+  .admin-topbar { flex-direction: column; }
+}
