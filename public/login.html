@@ -110,14 +110,25 @@
       const btn = document.querySelector('.btn-primary');
       btn.disabled = true; btn.textContent = 'Logging in...';
 
-      const data = await api.post('/api/auth/login', { email, password });
+      // Use fetch directly — api.post redirects on 401 but login itself returns 401 for wrong password
+      let data;
+      try {
+        const r = await fetch('/api/auth/login', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        data = await r.json();
+      } catch {
+        data = null;
+      }
       btn.disabled = false; btn.textContent = 'Login to Fitanya →';
 
       if (data?.success) {
         toast('Welcome back! 🔥', 'success');
         setTimeout(() => window.location.href = data.redirect || '/dashboard', 500);
       } else {
-        toast(data?.error || 'Login failed', 'error');
+        toast(data?.error || 'Invalid email or password', 'error');
       }
     }
 
