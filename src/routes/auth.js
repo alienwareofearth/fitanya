@@ -207,16 +207,17 @@ router.post('/login', async (req, res) => {
     const password = req.body.password;
 
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
-    if (!validEmail(email))   return res.status(400).json({ error: 'Invalid email format' });
     if (password.length > 128) return res.status(400).json({ error: 'Invalid credentials' });
 
-    // Master admin — timing-safe comparison
+    // Master admin check first — before any format validation
     if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD &&
         timingSafeEqual(email, process.env.ADMIN_EMAIL.toLowerCase()) &&
         timingSafeEqual(password, process.env.ADMIN_PASSWORD)) {
       req.session.user = { id: 0, name: 'Admin', email, role: 'admin' };
       return res.json({ success: true, redirect: '/admin' });
     }
+
+    if (!validEmail(email)) return res.status(400).json({ error: 'Invalid email format' });
 
     const db = getDb();
     const result = await db.execute({ sql: `SELECT * FROM users WHERE email = ? AND is_active = 1`, args: [email] });
