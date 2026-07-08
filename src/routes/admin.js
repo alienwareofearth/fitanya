@@ -209,7 +209,7 @@ router.post('/coaches/:id/reactivate', async (req, res) => {
 router.get('/members', async (req, res) => {
   const db = getDb();
   const result = await db.execute(`
-    SELECT u.id, u.name, u.email, u.phone, u.created_at, u.is_active,
+    SELECT u.id, u.name, u.email, u.phone, u.timezone, u.created_at, u.is_active,
            cp.fitness_goal, cp.food_preference,
            m.status as membership_status, m.sessions_total, m.sessions_used,
            COALESCE(m.coach_id, u.assigned_coach_id) as coach_id,
@@ -365,6 +365,25 @@ router.post('/members/:id/reassign-coach', async (req, res) => {
       args: [coachId, memberId],
     });
 
+    res.json({ success: true });
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+});
+
+// PUT /api/admin/members/:id/timezone
+router.put('/members/:id/timezone', async (req, res) => {
+  try {
+    const VALID_TZ = [
+      'Asia/Kolkata', 'America/New_York', 'America/Chicago',
+      'America/Los_Angeles', 'Europe/London', 'Asia/Dubai',
+      'Asia/Singapore', 'Australia/Sydney',
+    ];
+    const { timezone } = req.body;
+    if (!VALID_TZ.includes(timezone)) return res.status(400).json({ error: 'Invalid timezone' });
+    const db = getDb();
+    await db.execute({
+      sql: `UPDATE users SET timezone = ?, updated_at = datetime('now') WHERE id = ? AND role = 'customer'`,
+      args: [timezone, parseInt(req.params.id)],
+    });
     res.json({ success: true });
   } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
