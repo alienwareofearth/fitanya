@@ -625,9 +625,7 @@
     <div class="modal" style="max-width:460px;position:relative">
       <button class="modal-close" onclick="closePayModal()">×</button>
       <h3 class="modal-title">Complete Payment</h3>
-      <div class="card mt-24" id="pay-summary" style="background:var(--dark)">
-        Loading...
-      </div>
+      <div class="card mt-24" id="pay-summary" style="background:var(--dark)">Loading...</div>
       <div class="form-group mt-24">
         <label>Discount Code</label>
         <div class="flex gap-8">
@@ -652,7 +650,25 @@
           <span id="pay-total" style="font-family:var(--font-display);font-size:1.6rem;color:var(--orange)"></span>
         </div>
       </div>
-      <button class="btn btn-primary btn-full mt-24" onclick="proceedToPayment()">Pay with PhonePe →</button>
+
+      <!-- personal UPI section (shown only in personal mode) -->
+      <div id="upi-section" class="hidden">
+        <p class="text-center text-small text-dim mt-16 mb-8">Pay via UPI to complete your membership:</p>
+        <div class="flex gap-8 mt-8" id="upi-btns" style="justify-content:center"></div>
+        <div class="mt-16 text-center">
+          <p class="text-small text-dim mb-8">Or scan with any UPI app:</p>
+          <div id="upi-qr" style="display:flex;justify-content:center"></div>
+          <p class="text-small text-dim mt-8" id="upi-id-label"></p>
+        </div>
+        <button class="btn btn-primary btn-full mt-16" id="upi-paid-btn" onclick="submitUpiPayment('upi')">I've Paid →</button>
+        <p class="text-center text-small text-dim mt-8">Admin will verify and activate your membership within a few hours.</p>
+      </div>
+
+      <!-- razorpay / phonepe button (shown only in those modes) -->
+      <div id="gateway-section">
+        <button class="btn btn-primary btn-full mt-24" id="pay-btn" onclick="proceedToPayment()">Pay Now →</button>
+      </div>
+
       <button class="btn btn-outline btn-full mt-8" onclick="payLater()" style="opacity:0.7">Pay Later</button>
       <p class="text-center text-small text-dim mt-8">Your account is created. You can pay anytime from the dashboard.</p>
     </div>
@@ -890,7 +906,15 @@
     }
 
     // ── Payment modal
-    function showPaymentModal() {
+    let _payConfig = null;
+    async function getPayConfig() {
+      if (_payConfig) return _payConfig;
+      const d = await api.get('/api/payments/config');
+      _payConfig = d?.config || { mode: 'personal' };
+      return _payConfig;
+    }
+
+    async function showPaymentModal() {
       const pkg = selectedPackage;
       document.getElementById('pay-summary').innerHTML = `
         <div class="flex-between">
@@ -903,13 +927,33 @@
       `;
       document.getElementById('pay-original').textContent = `₹${pkg.price.toLocaleString('en-IN')}`;
       document.getElementById('pay-total').textContent = `₹${pkg.price.toLocaleString('en-IN')}`;
+
+      const cfg = await getPayConfig();
+      const upiSection = document.getElementById('upi-section');
+      const gatewaySection = document.getElementById('gateway-section');
+      const payBtn = document.getElementById('pay-btn');
+
+      if (cfg.mode === 'personal') {
+        upiSection.classList.add('hidden');
+        gatewaySection.classList.remove('hidden');
+        payBtn.textContent = 'See Payment Options →';
+      } else if (cfg.mode === 'razorpay') {
+        upiSection.classList.add('hidden');
+        gatewaySection.classList.remove('hidden');
+        payBtn.textContent = 'Pay with Razorpay →';
+      } else {
+        upiSection.classList.add('hidden');
+        gatewaySection.classList.remove('hidden');
+        payBtn.textContent = 'Pay with PhonePe →';
+      }
+
       document.getElementById('pay-modal').classList.remove('hidden');
     }
 
     async function applyDiscount() {
       const code = document.getElementById('discount-code').value.trim();
       if (!code) return;
-      const data = await api.get(`/api/payments/validate-code?code=${code}&amount=${selectedPackage.price}`);
+      const data = await api.get(`/api/payments/validate-code?code=${encodeURIComponent(code)}&package_id=${selectedPackage.id}`);
       if (data?.valid) {
         discountAmount = parseFloat(data.discountAmount);
         document.getElementById('discount-msg').textContent = `✅ ${data.type === 'percentage' ? data.value + '%' : '₹' + data.value} discount applied!`;
@@ -928,26 +972,145 @@
       document.getElementById('pay-total').textContent = `₹${total.toLocaleString('en-IN')}`;
     }
 
+    function _payFields() {
+      return {
+        package_id:     selectedPackage.id,
+        discount_code:  document.getElementById('discount-code').value,
+        use_credits:    document.getElementById('use-credits').checked,
+        customer_name:  document.getElementById('reg-name').value,
+        customer_email: document.getElementById('reg-email').value,
+        customer_phone: (document.getElementById('reg-phone-code')?.value || '') + (document.getElementById('reg-phone')?.value?.trim() || ''),
+      };
+    }
+
     async function proceedToPayment() {
-      const customerName = document.getElementById('reg-name').value;
-      const customerEmail = document.getElementById('reg-email').value;
-      const customerPhone = document.getElementById('reg-phone-code').value + document.getElementById('reg-phone').value.trim();
-      const discountCode = document.getElementById('discount-code').value;
-      const useCredits = document.getElementById('use-credits').checked;
+      const cfg = await getPayConfig();
 
-      const data = await api.post('/api/payments/initiate', {
-        package_id: selectedPackage.id,
-        discount_code: discountCode,
-        use_credits: useCredits,
-        customer_name: customerName,
-        customer_email: customerEmail,
-        customer_phone: customerPhone,
-      });
-
+      if (cfg.mode === 'razorpay') {
+        return _razorpayCheckout();
+      }
+      if (cfg.mode === 'personal') {
+        return _showUpiOptions();
+      }
+      // phonepe
+      const data = await api.post('/api/payments/initiate', _payFields());
       if (data?.redirectUrl) {
         window.location.href = data.redirectUrl;
       } else {
         toast(data?.error || 'Payment failed to initiate', 'error');
+      }
+    }
+
+    async function _showUpiOptions() {
+      const btn = document.getElementById('pay-btn');
+      btn.disabled = true;
+      btn.textContent = 'Loading...';
+      try {
+        const data = await api.post('/api/payments/initiate', _payFields());
+        if (!data?.success) { toast(data?.error || 'Error', 'error'); return; }
+
+        const { finalAmount, generic, gpay, phonepe: ppLink, upiId } = data;
+
+        document.getElementById('gateway-section').classList.add('hidden');
+        const upiSection = document.getElementById('upi-section');
+        upiSection.classList.remove('hidden');
+
+        document.getElementById('upi-id-label').textContent = `UPI ID: ${upiId}`;
+        document.getElementById('upi-btns').innerHTML = `
+          <a href="${gpay}" class="btn btn-outline" style="gap:6px;display:flex;align-items:center">
+            <svg width="20" height="20" viewBox="0 0 48 48"><path d="M24 0C10.7 0 0 10.7 0 24s10.7 24 24 24 24-10.7 24-24S37.3 0 24 0z" fill="#4285F4"/><path d="M34.5 24.3c0-.8-.1-1.6-.2-2.3H24v4.4h5.9c-.3 1.4-1 2.6-2.1 3.4v2.8h3.4c2-1.8 3.3-4.5 3.3-8.3z" fill="#fff"/><path d="M24 35c2.9 0 5.3-1 7.1-2.6l-3.4-2.8c-1 .7-2.2 1.1-3.7 1.1-2.8 0-5.2-1.9-6.1-4.4H14.4v2.9C16.2 32.7 19.8 35 24 35z" fill="#fff"/><path d="M17.9 26.3c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3v-2.9h-3.5C13.5 20.6 13 22.2 13 24s.5 3.4 1.4 4.8l3.5-2.5z" fill="#fff"/><path d="M24 17.3c1.6 0 3 .6 4.1 1.6l3.1-3.1C29.3 14 26.9 13 24 13c-4.2 0-7.8 2.3-9.6 5.8l3.5 2.9C18.8 19.2 21.2 17.3 24 17.3z" fill="#fff"/></svg>
+            GPay
+          </a>
+          <a href="${ppLink}" class="btn btn-outline" style="gap:6px;display:flex;align-items:center">
+            <svg width="20" height="20" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#5f259f"/><path d="M35 30h20c8 0 15 7 15 15s-7 15-15 15H45v10H35V30zm10 22h10c3 0 5-2 5-7s-2-7-5-7H45v14z" fill="#fff"/></svg>
+            PhonePe
+          </a>
+          <a href="${generic}" class="btn btn-outline">Any UPI</a>
+        `;
+
+        // QR code via CDN
+        const qrDiv = document.getElementById('upi-qr');
+        qrDiv.innerHTML = '';
+        if (window.QRCode) {
+          new QRCode(qrDiv, { text: generic, width: 160, height: 160, colorDark: '#fff', colorLight: '#1a1a1a' });
+        } else {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+          script.onload = () => new QRCode(qrDiv, { text: generic, width: 160, height: 160, colorDark: '#fff', colorLight: '#1a1a1a' });
+          document.head.appendChild(script);
+        }
+
+        document.getElementById('upi-paid-btn').onclick = () => submitUpiPayment('upi');
+      } catch (e) {
+        toast('Error loading payment options', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'See Payment Options →';
+      }
+    }
+
+    async function submitUpiPayment(method) {
+      const btn = document.getElementById('upi-paid-btn');
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+      const data = await api.post('/api/payments/upi/submit', { method });
+      btn.disabled = false;
+      btn.textContent = "I've Paid →";
+      if (data?.success) {
+        closePayModal();
+        toast('Payment submitted! Admin will verify and activate your membership shortly.', 'success');
+        setTimeout(() => window.location.href = '/dashboard.html', 3000);
+      } else {
+        toast(data?.error || 'Submission failed', 'error');
+      }
+    }
+
+    async function _razorpayCheckout() {
+      const btn = document.getElementById('pay-btn');
+      btn.disabled = true; btn.textContent = 'Loading...';
+      try {
+        const data = await api.post('/api/payments/initiate', _payFields());
+        if (!data?.success) { toast(data?.error || 'Error', 'error'); return; }
+
+        if (data.mode === 'dev') {
+          window.location.href = data.redirectUrl;
+          return;
+        }
+
+        const cfg = await getPayConfig();
+        const rzpScript = document.createElement('script');
+        rzpScript.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        rzpScript.onload = () => {
+          const rzp = new Razorpay({
+            key: cfg.razorpayKeyId,
+            amount: data.order.amount,
+            currency: data.order.currency,
+            order_id: data.order.orderId,
+            name: 'Fitanya',
+            description: selectedPackage.name,
+            theme: { color: '#FF5C00' },
+            handler: async function(response) {
+              const verifyData = await api.post('/api/payments/razorpay/verify', {
+                razorpay_order_id:   response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature:  response.razorpay_signature,
+              });
+              if (verifyData?.success) {
+                closePayModal();
+                toast('Payment successful! Membership activated.', 'success');
+                setTimeout(() => window.location.href = '/dashboard.html', 2500);
+              } else {
+                toast('Payment verification failed. Contact support.', 'error');
+              }
+            },
+          });
+          rzp.open();
+        };
+        document.head.appendChild(rzpScript);
+      } catch(e) {
+        toast('Payment error', 'error');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Pay with Razorpay →';
       }
     }
 

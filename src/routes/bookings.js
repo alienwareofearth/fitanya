@@ -58,23 +58,32 @@ router.get('/slots', requireAuth, async (req, res) => {
       filteredCoachId = user.rows[0]?.assigned_coach_id || null;
     }
 
-    if (filteredCoachId) coachFilter = `AND ss.coach_id = ${parseInt(filteredCoachId)}`;
+    // Build fully-parameterized query — no string interpolation for user data
+    const whereClauses = [
+      `ss.is_booked = 0`,
+      `ss.is_active = 1`,
+      `(ss.date > date('now', '+05:30') OR (ss.date = date('now', '+05:30') AND ss.start_time > time('now', '+05:30')))`,
+      `ss.id NOT IN (SELECT slot_id FROM bookings WHERE customer_id = ? AND status != 'cancelled')`,
+    ];
+    const args = [userId];
 
-    // Filter out past slots (including past times on today's date). Times stored in IST.
-    const pastFilter = `AND (ss.date > date('now', '+05:30') OR (ss.date = date('now', '+05:30') AND ss.start_time > time('now', '+05:30')))`;
-    const dateFilter = date ? `AND ss.date = '${date.replace(/[^0-9-]/g, '')}' ${pastFilter}` : pastFilter;
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      whereClauses.push(`ss.date = ?`);
+      args.push(date);
+    }
+
+    if (filteredCoachId) {
+      whereClauses.push(`ss.coach_id = ?`);
+      args.push(parseInt(filteredCoachId, 10));
+    }
 
     const slots = await db.execute({
       sql: `SELECT ss.*, u.name as coach_name
             FROM schedule_slots ss
             JOIN users u ON u.id = ss.coach_id
-            WHERE ss.is_booked = 0 AND ss.is_active = 1
-            ${dateFilter} ${coachFilter}
-            AND ss.id NOT IN (
-              SELECT slot_id FROM bookings WHERE customer_id = ? AND status != 'cancelled'
-            )
+            WHERE ${whereClauses.join(' AND ')}
             ORDER BY ss.date, ss.start_time`,
-      args: [userId],
+      args,
     });
 
     res.json({ success: true, slots: slots.rows });
@@ -170,7 +179,7 @@ router.post('/book', requireAuth, async (req, res) => {
     notify.newBookingForCoach(slotData.coach_id, customerData.name, slotData.date, slotData.start_time).catch(() => {});
   } catch (err) {
     console.error('[bookings] book error:', err);
-    res.status(500).json({ error: 'Booking failed: ' + err.message });
+    res.status(500).json({ error: 'Booking failed. Please try again.' });
   }
 });
 
@@ -215,7 +224,7 @@ router.post('/cancel/:id', requireAuth, async (req, res) => {
     res.json({ success: true, message: 'Booking cancelled' });
   } catch (err) {
     console.error('[bookings] cancel error:', err);
-    res.status(500).json({ error: 'Cancellation failed: ' + err.message });
+    res.status(500).json({ error: 'Cancellation failed. Please try again.' });
   }
 });
 

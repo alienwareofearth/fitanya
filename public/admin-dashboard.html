@@ -44,16 +44,21 @@
         <div id="pending-stories"><div class="spinner"></div></div>
       </div>
     </div>
+    <div class="mt-32">
+      <div class="section-title">Pending UPI Payments <span id="pending-pay-badge" class="badge badge-yellow hidden" style="margin-left:8px"></span></div>
+      <div id="pending-payments"><div class="spinner"></div></div>
+    </div>
   </main>
 </div>
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
   async function init() {
-    const [stats, members, stories] = await Promise.all([
+    const [stats, members, stories, pendingPay] = await Promise.all([
       api.get('/api/admin/stats'),
       api.get('/api/admin/members'),
       api.get('/api/admin/stories?status=pending'),
+      api.get('/api/admin/payments/pending'),
     ]);
 
     if (!stats?.success) { window.location.href = '/login'; return; }
@@ -86,7 +91,59 @@
         <p class="text-dim text-small">${s.body.substring(0, 80)}...</p>
       </div>
     `).join('') : '<div class="card"><p class="text-dim">No pending stories</p></div>';
+
+    const payEl = document.getElementById('pending-payments');
+    const pays = pendingPay?.payments || [];
+    if (pays.length) {
+      document.getElementById('pending-pay-badge').textContent = pays.length;
+      document.getElementById('pending-pay-badge').classList.remove('hidden');
+    }
+    payEl.innerHTML = pays.length ? pays.map(p => `
+      <div class="card mb-12" style="padding:16px" id="pp-${p.id}">
+        <div class="flex-between mb-8">
+          <div>
+            <div class="text-white" style="font-weight:600">${p.member_name || 'Unknown'}</div>
+            <div class="text-dim text-small">${p.member_email || ''} · ${p.member_phone || ''}</div>
+            <div class="text-dim text-small mt-4">Package: <strong class="text-white">${p.package_name || '—'}</strong></div>
+          </div>
+          <div class="text-right">
+            <div style="font-family:var(--font-display);font-size:1.4rem;color:var(--orange)">₹${Number(p.final_amount).toLocaleString('en-IN')}</div>
+            <div class="text-dim text-small">${p.method?.toUpperCase() || 'UPI'}</div>
+            <div class="text-dim text-small">${new Date(p.created_at).toLocaleDateString('en-IN')}</div>
+          </div>
+        </div>
+        <div class="flex gap-8 mt-8">
+          <button class="btn btn-primary btn-sm" onclick="confirmPayment(${p.id})">✓ Confirm Received</button>
+          <button class="btn btn-outline btn-sm" onclick="rejectPayment(${p.id})" style="color:var(--red,#e55)">✗ Reject</button>
+        </div>
+      </div>
+    `).join('') : '<div class="card"><p class="text-dim">No pending UPI payments</p></div>';
   }
+
+  async function confirmPayment(id) {
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = 'Confirming...';
+    const data = await api.post(`/api/admin/payments/${id}/confirm`, {});
+    if (data?.success) {
+      document.getElementById(`pp-${id}`)?.remove();
+      toast('Payment confirmed — membership activated!', 'success');
+    } else {
+      toast(data?.error || 'Failed', 'error');
+      btn.disabled = false; btn.textContent = '✓ Confirm Received';
+    }
+  }
+
+  async function rejectPayment(id) {
+    if (!confirm('Reject this payment? This will cancel the pending membership.')) return;
+    const data = await api.post(`/api/admin/payments/${id}/reject`, {});
+    if (data?.success) {
+      document.getElementById(`pp-${id}`)?.remove();
+      toast('Payment rejected', 'success');
+    } else {
+      toast(data?.error || 'Failed', 'error');
+    }
+  }
+
   init();
 </script>
 <script src="/js/pwa.js" defer></script>

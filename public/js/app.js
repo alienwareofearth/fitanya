@@ -45,7 +45,13 @@ function toast(message, type = 'info', duration = 4000) {
   const icons = { success: '✅', error: '❌', info: '🔥', warning: '⚠️' };
   const el = document.createElement('div');
   el.className = `toast ${type}`;
-  el.innerHTML = `<span>${icons[type] || '💬'}</span><span>${message}</span>`;
+  // Use textContent for message to prevent XSS from API error strings
+  const icon = document.createElement('span');
+  icon.textContent = icons[type] || '💬';
+  const text = document.createElement('span');
+  text.textContent = message;
+  el.appendChild(icon);
+  el.appendChild(text);
   container.appendChild(el);
   setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, duration);
 }

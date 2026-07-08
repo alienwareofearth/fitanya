@@ -29,7 +29,7 @@ router.get('/stats', async (req, res) => {
         pendingStories: pending.rows[0].count,
       },
     });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // ── Workout Styles ───────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ router.post('/workout-styles', async (req, res) => {
       args: [name, description, icon, sort_order || 0],
     });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 router.put('/workout-styles/:id', async (req, res) => {
@@ -60,7 +60,7 @@ router.put('/workout-styles/:id', async (req, res) => {
       args: [name, description, icon, sort_order, is_active, req.params.id],
     });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 router.delete('/workout-styles/:id', async (req, res) => {
@@ -85,7 +85,7 @@ router.post('/packages', async (req, res) => {
       args: [name, sessions, days, price, description, features],
     });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 router.put('/packages/:id', async (req, res) => {
@@ -97,7 +97,7 @@ router.put('/packages/:id', async (req, res) => {
       args: [name, parseInt(sessions), parseInt(days), parseFloat(price), description, features || null, parseInt(is_active), req.params.id],
     });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // ── Discount Codes ────────────────────────────────────────────────────────────
@@ -116,7 +116,7 @@ router.post('/discounts', async (req, res) => {
       args: [code.toUpperCase(), type, parseFloat(value), parseFloat(min_amount) || 0, max_uses || null, expires_at || null, applies_to || 'all', package_id || null],
     });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 router.put('/discounts/:id/toggle', async (req, res) => {
@@ -160,8 +160,8 @@ router.post('/coaches', async (req, res) => {
     // Send invite email with credentials
     await sendCoachInvite({ to: email, name, tempPassword });
 
-    res.json({ success: true, tempPassword, message: `Coach created and invite sent to ${email}` });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    res.json({ success: true, message: `Coach created. Login credentials sent to ${email}.` });
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // Admin remove coach
@@ -182,7 +182,7 @@ router.delete('/coaches/:id', async (req, res) => {
     await db.execute({ sql: `DELETE FROM coach_profiles WHERE user_id = ?`, args: [coachId] });
     await db.execute({ sql: `DELETE FROM users WHERE id = ? AND role = 'coach'`, args: [coachId] });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // Soft deactivate — keeps all data, just blocks login
@@ -192,7 +192,7 @@ router.post('/coaches/:id/deactivate', async (req, res) => {
     const coachId = parseInt(req.params.id);
     await db.execute({ sql: `UPDATE users SET is_active = 0 WHERE id = ? AND role = 'coach'`, args: [coachId] });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // Reactivate
@@ -202,7 +202,7 @@ router.post('/coaches/:id/reactivate', async (req, res) => {
     const coachId = parseInt(req.params.id);
     await db.execute({ sql: `UPDATE users SET is_active = 1 WHERE id = ? AND role = 'coach'`, args: [coachId] });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // ── Members ───────────────────────────────────────────────────────────────────
@@ -257,7 +257,7 @@ router.post('/members/:id/assign-trial', async (req, res) => {
       args: [memberId, trialPkg.rows[0].id],
     });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // Admin assign any package to a member
@@ -286,7 +286,7 @@ router.post('/members/:id/assign-package', async (req, res) => {
       args: [memberId, p.id, p.sessions, startD, endD],
     });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // Admin edit membership sessions
@@ -303,7 +303,7 @@ router.post('/members/:id/add-sessions', async (req, res) => {
     });
     if (result.rowsAffected === 0) return res.status(400).json({ error: 'No active membership found for this member' });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // Admin: regenerate Meet links for bookings that have broken/placeholder links
@@ -342,7 +342,7 @@ router.post('/fix-meet-links', async (_req, res) => {
       }
     }
     res.json({ success: true, total: broken.rows.length, fixed });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // Admin reassign coach
@@ -366,7 +366,7 @@ router.post('/members/:id/reassign-coach', async (req, res) => {
     });
 
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // ── Bookings ──────────────────────────────────────────────────────────────────
@@ -385,7 +385,7 @@ router.get('/bookings', async (req, res) => {
       WHERE b.status != 'cancelled'
       ORDER BY ss.date DESC, ss.start_time DESC`);
     res.json({ success: true, bookings: result.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 router.delete('/bookings/:id', async (req, res) => {
@@ -405,7 +405,7 @@ router.delete('/bookings/:id', async (req, res) => {
     // Refund the session back to membership
     await db.execute({ sql: `UPDATE memberships SET sessions_used = MAX(0, sessions_used - 1) WHERE id = ?`, args: [booking.membership_id] });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // ── Schedule Slots ────────────────────────────────────────────────────────────
@@ -427,7 +427,7 @@ router.post('/slots', async (req, res) => {
       args: [coach_id, date, start_time, end_time],
     });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 router.delete('/slots/:id', async (req, res) => {
@@ -463,7 +463,7 @@ router.post('/stories/:id/review', async (req, res) => {
       else await notify.storyRejected(userId, admin_note);
     }
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // ── Referral Config ───────────────────────────────────────────────────────────
@@ -482,7 +482,7 @@ router.put('/referral-config', async (req, res) => {
       args: [reward_type, reward_value, min_purchase, is_active],
     });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // ── Diet Plans ────────────────────────────────────────────────────────────────
@@ -501,7 +501,87 @@ router.post('/diet-plans', async (req, res) => {
       args: [name, food_preference, fitness_goal, calories_per_day, description],
     });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Pending UPI payments (personal mode — admin manually confirms)
+// ══════════════════════════════════════════════════════════════════════════════
+router.get('/payments/pending', async (req, res) => {
+  try {
+    const db = getDb();
+    const payments = await db.execute({
+      sql: `SELECT p.id, p.user_id, p.amount, p.discount_amount, p.credits_used, p.final_amount,
+                   p.method, p.status, p.transaction_id, p.created_at,
+                   u.name as member_name, u.email as member_email, u.phone as member_phone,
+                   pkg.name as package_name
+            FROM payments p
+            LEFT JOIN users u ON u.id = p.user_id
+            LEFT JOIN memberships m ON m.user_id = p.user_id AND m.status = 'pending'
+            LEFT JOIN packages pkg ON pkg.id = m.package_id
+            WHERE p.status = 'pending_verification'
+            ORDER BY p.created_at DESC`,
+      args: [],
+    });
+    res.json({ success: true, payments: payments.rows });
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+});
+
+router.post('/payments/:id/confirm', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = getDb();
+
+    const payment = await db.execute({
+      sql: `SELECT * FROM payments WHERE id = ? AND status = 'pending_verification'`,
+      args: [id],
+    });
+    if (!payment.rows.length) return res.status(404).json({ error: 'Payment not found or already processed' });
+    const p = payment.rows[0];
+
+    await db.execute({
+      sql: `UPDATE payments SET status = 'completed', updated_at = datetime('now') WHERE id = ?`,
+      args: [id],
+    });
+
+    await db.execute({
+      sql: `UPDATE memberships SET status = 'active', updated_at = datetime('now')
+            WHERE user_id = ? AND status = 'pending'`,
+      args: [p.user_id],
+    });
+
+    if (p.credits_used > 0) {
+      await db.execute({
+        sql: `UPDATE users SET reward_credits = reward_credits - ? WHERE id = ?`,
+        args: [p.credits_used, p.user_id],
+      });
+    }
+
+    const { notify } = require('../services/notifications');
+    if (p.user_id) await notify.paymentReceived(p.user_id, p.final_amount).catch(() => {});
+
+    res.json({ success: true, message: 'Payment confirmed and membership activated' });
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+});
+
+router.post('/payments/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = getDb();
+    await db.execute({
+      sql: `UPDATE payments SET status = 'failed', updated_at = datetime('now') WHERE id = ?`,
+      args: [id],
+    });
+    const payment = await db.execute({ sql: `SELECT user_id FROM payments WHERE id = ?`, args: [id] });
+    if (payment.rows[0]?.user_id) {
+      await db.execute({
+        sql: `UPDATE memberships SET status = 'cancelled', updated_at = datetime('now')
+              WHERE user_id = ? AND status = 'pending'`,
+        args: [payment.rows[0].user_id],
+      });
+    }
+    res.json({ success: true });
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 module.exports = router;

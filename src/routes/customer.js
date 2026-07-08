@@ -25,7 +25,7 @@ router.get('/profile', async (req, res) => {
       }),
     ]);
     res.json({ success: true, user: user.rows[0], profile: profile.rows[0], membership: membership.rows[0], prev_login: req.session.user.prev_login || null });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 router.put('/profile', async (req, res) => {
@@ -44,7 +44,7 @@ router.put('/profile', async (req, res) => {
 
     req.session.user.name = name;
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 router.post('/profile/picture', upload.single('photo'), async (req, res) => {
@@ -55,7 +55,7 @@ router.post('/profile/picture', upload.single('photo'), async (req, res) => {
     await db.execute({ sql: `UPDATE users SET profile_picture = ? WHERE id = ?`, args: [url, req.session.user.id] });
     req.session.user.profile_picture = url;
     res.json({ success: true, url });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // ── Membership ────────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ router.get('/membership', async (req, res) => {
       args: [req.session.user.id],
     });
     res.json({ success: true, memberships: memberships.rows, payments: payments.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // ── Progress Tracking ─────────────────────────────────────────────────────────
@@ -86,7 +86,7 @@ router.get('/progress', async (req, res) => {
       args: [req.session.user.id],
     });
     res.json({ success: true, logs: logs.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 router.post('/progress', async (req, res) => {
@@ -106,7 +106,7 @@ router.post('/progress', async (req, res) => {
       args: [req.session.user.id, weekNumber, year, weight, steps, waist, thigh, arm, chest, notes],
     });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // Check if weight was logged in the last 7 days
@@ -125,7 +125,7 @@ router.get('/progress/weight-check', async (req, res) => {
       logged: log.rows.length > 0,
       last_logged: lastLog?.log_date || null,
     });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // ── Hydration ─────────────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ router.get('/hydration', async (req, res) => {
       args: [req.session.user.id, date || new Date().toISOString().split('T')[0]],
     });
     res.json({ success: true, log: log.rows[0] || null });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 router.post('/hydration', async (req, res) => {
@@ -152,7 +152,7 @@ router.post('/hydration', async (req, res) => {
       args: [req.session.user.id, logDate, glasses, goal_glasses || 8],
     });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // ── Diet ──────────────────────────────────────────────────────────────────────
@@ -180,7 +180,7 @@ router.get('/diet', async (req, res) => {
     });
 
     res.json({ success: true, plan: plan.rows[0], meals: meals.rows, day: dayOfWeek });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // ── Stories ───────────────────────────────────────────────────────────────────
@@ -192,7 +192,7 @@ router.get('/stories', async (req, res) => {
       args: [req.session.user.id],
     });
     res.json({ success: true, stories: stories.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 router.post('/stories', upload.single('photo'), async (req, res) => {
@@ -216,7 +216,7 @@ router.post('/stories', upload.single('photo'), async (req, res) => {
       args: [userId, title, body, photoUrl],
     });
     res.json({ success: true, message: 'Story submitted for review' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // ── Referrals ─────────────────────────────────────────────────────────────────
@@ -230,7 +230,7 @@ router.get('/referrals', async (req, res) => {
       db.execute(`SELECT * FROM referral_config LIMIT 1`),
     ]);
     res.json({ success: true, referral_code: user.rows[0]?.referral_code, credits: user.rows[0]?.reward_credits, referrals: referrals.rows, config: config.rows[0] });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // ── Notifications ─────────────────────────────────────────────────────────────
@@ -240,7 +240,7 @@ router.get('/notifications', async (req, res) => {
     const notifications = await getUserNotifications(req.session.user.id);
     const unreadCount = await getUnreadCount(req.session.user.id);
     res.json({ success: true, notifications, unreadCount });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 router.post('/notifications/read', async (req, res) => {
@@ -248,7 +248,7 @@ router.post('/notifications/read', async (req, res) => {
     const { markRead } = require('../services/notifications');
     await markRead(req.session.user.id, req.body.ids || []);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 function getWeekNumber(date) {

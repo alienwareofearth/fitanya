@@ -34,7 +34,7 @@ router.get('/profile', async (req, res) => {
       args: [req.session.user.id],
     });
     res.json({ success: true, coach: user.rows[0] });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[coach]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // PUT /api/coach/profile
@@ -54,7 +54,7 @@ router.put('/profile', async (req, res) => {
     });
     req.session.user.name = name;
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[coach]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // GET /api/coach/my-customers
@@ -74,7 +74,7 @@ router.get('/my-customers', async (req, res) => {
       args: [req.session.user.id, req.session.user.id],
     });
     res.json({ success: true, customers: customers.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[coach]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // GET /api/coach/my-schedule
@@ -93,7 +93,7 @@ router.get('/my-schedule', async (req, res) => {
       args: [req.session.user.id],
     });
     res.json({ success: true, slots: slots.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[coach]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // POST /api/coach/slots  (coach opens their own slots)
@@ -106,7 +106,7 @@ router.post('/slots', async (req, res) => {
       args: [req.session.user.id, date, start_time, end_time],
     });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[coach]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 router.delete('/slots/:id', async (req, res) => {
@@ -117,7 +117,7 @@ router.delete('/slots/:id', async (req, res) => {
       args: [req.params.id, req.session.user.id],
     });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[coach]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // GET /api/coach/customer/:id/progress
@@ -145,7 +145,7 @@ router.get('/customer/:id/progress', async (req, res) => {
       db.execute({ sql: `SELECT b.*, ss.date, ss.start_time, sn.notes FROM bookings b JOIN schedule_slots ss ON ss.id = b.slot_id LEFT JOIN session_notes sn ON sn.booking_id = b.id WHERE b.customer_id = ? AND b.coach_id = ? ORDER BY ss.date DESC`, args: [req.params.id, coachId] }),
     ]);
     res.json({ success: true, profile: profile.rows[0], progress: progress.rows, bookings: bookings.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[coach]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // GET /api/coach/sessions (sessions needing notes)
@@ -161,7 +161,7 @@ router.get('/sessions', async (req, res) => {
       args: [req.session.user.id],
     });
     res.json({ success: true, sessions: sessions.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[coach]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // GET /api/coach/all-slots — all slots including past (for calendar display)
@@ -178,7 +178,7 @@ router.get('/all-slots', async (req, res) => {
       args: [req.session.user.id],
     });
     res.json({ success: true, slots: slots.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[coach]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // GET /api/coach/init — combined profile + sessions in one query to reduce DB round-trips
@@ -222,7 +222,7 @@ router.get('/init', async (req, res) => {
       sessions: sessions.rows,
       customers: customers.rows,
     });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[coach]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // POST /api/coach/book — coach books a session on behalf of a customer
@@ -289,7 +289,7 @@ router.post('/book', async (req, res) => {
     notify.sessionBooked(parseInt(customer_id), slotData.date, slotData.start_time).catch(() => {});
   } catch (err) {
     console.error('[coach] book error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Booking failed. Please try again.' });
   }
 });
 
