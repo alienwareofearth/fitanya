@@ -6,6 +6,58 @@ const { requireAuth } = require('../middleware/auth');
 const { upload, uploadBuffer } = require('../middleware/upload');
 
 const router = express.Router();
+const crypto = require('crypto');
+
+// ── Health Sync — BEFORE requireAuth (accepts session OR personal token) ──────
+// POST /api/customer/health/sync
+// Called by iOS Shortcuts with ?token=<health_token> or X-Health-Token header
+router.post('/health/sync', async (req, res) => {
+  try {
+    const db = getDb();
+    let userId = req.session?.user?.id;
+
+    if (!userId) {
+      const token = req.headers['x-health-token'] || req.query.token || req.body?.token;
+      if (!token) return res.status(401).json({ error: 'Auth token required' });
+      const u = await db.execute({
+        sql: `SELECT id FROM users WHERE health_token = ? AND is_active = 1 AND deleted_at IS NULL`,
+        args: [token],
+      });
+      if (!u.rows.length) return res.status(401).json({ error: 'Invalid token' });
+      userId = u.rows[0].id;
+    }
+
+    // Accept values from body OR query string (Shortcuts flexibility)
+    const src = { ...req.query, ...req.body };
+    const date = (src.date || '').trim();
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: 'date required in YYYY-MM-DD format' });
+    }
+
+    const steps         = Math.max(0, parseInt(src.steps         || 0, 10));
+    const calories      = Math.max(0, parseInt(src.calories      || 0, 10));
+    const active_minutes = Math.max(0, parseInt(src.active_minutes || 0, 10));
+    const distance_km   = Math.max(0, parseFloat(src.distance_km || 0));
+
+    await db.execute({
+      sql: `INSERT INTO health_logs (user_id, date, steps, calories, active_minutes, distance_km, source, synced_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'shortcut', datetime('now'))
+            ON CONFLICT(user_id, date) DO UPDATE SET
+              steps = excluded.steps,
+              calories = excluded.calories,
+              active_minutes = excluded.active_minutes,
+              distance_km = excluded.distance_km,
+              synced_at = datetime('now')`,
+      args: [userId, date, steps, calories, active_minutes, distance_km],
+    });
+
+    res.json({ success: true, synced: { date, steps, calories, active_minutes, distance_km } });
+  } catch (err) {
+    console.error('[health] sync error:', err.message);
+    res.status(500).json({ error: 'Sync failed. Please try again.' });
+  }
+});
+
 router.use(requireAuth);
 
 // ── Profile ───────────────────────────────────────────────────────────────────
@@ -305,6 +357,45 @@ function getWeekNumber(date) {
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
+
+// ── Health Logs & Token (after requireAuth) ───────────────────────────────────
+
+// GET /api/customer/health/logs?days=30
+router.get('/health/logs', async (req, res) => {
+  try {
+    const days = Math.min(parseInt(req.query.days || 30, 10), 90);
+    const db = getDb();
+    const logs = await db.execute({
+      sql: `SELECT * FROM health_logs WHERE user_id = ? ORDER BY date DESC LIMIT ?`,
+      args: [req.session.user.id, days],
+    });
+    res.json({ success: true, logs: logs.rows });
+  } catch (err) { console.error('[health] logs error:', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+});
+
+// GET /api/customer/health/token — get or auto-generate token
+router.get('/health/token', async (req, res) => {
+  try {
+    const db = getDb();
+    const u = await db.execute({ sql: `SELECT health_token FROM users WHERE id = ?`, args: [req.session.user.id] });
+    let token = u.rows[0]?.health_token;
+    if (!token) {
+      token = crypto.randomBytes(32).toString('hex');
+      await db.execute({ sql: `UPDATE users SET health_token = ? WHERE id = ?`, args: [token, req.session.user.id] });
+    }
+    res.json({ success: true, token });
+  } catch (err) { console.error('[health] token error:', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+});
+
+// POST /api/customer/health/token/regenerate
+router.post('/health/token/regenerate', async (req, res) => {
+  try {
+    const token = crypto.randomBytes(32).toString('hex');
+    const db = getDb();
+    await db.execute({ sql: `UPDATE users SET health_token = ? WHERE id = ?`, args: [token, req.session.user.id] });
+    res.json({ success: true, token });
+  } catch (err) { console.error('[health] regenerate error:', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+});
 
 // ── Account Deletion ──────────────────────────────────────────────────────────
 

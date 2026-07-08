@@ -113,6 +113,25 @@ async function initDb() {
     await client.execute(`ALTER TABLE users ADD COLUMN deletion_scheduled_at TEXT DEFAULT NULL`);
   } catch (_) { /* column already exists */ }
 
+  // Migrate: personal API token for iOS Shortcuts health sync
+  try {
+    await client.execute(`ALTER TABLE users ADD COLUMN health_token TEXT DEFAULT NULL`);
+  } catch (_) { /* column already exists */ }
+
+  // Health logs — daily data synced from iPhone Health via iOS Shortcuts
+  await client.execute(`CREATE TABLE IF NOT EXISTS health_logs (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL REFERENCES users(id),
+    date            TEXT NOT NULL,
+    steps           INTEGER NOT NULL DEFAULT 0,
+    calories        INTEGER NOT NULL DEFAULT 0,
+    active_minutes  INTEGER NOT NULL DEFAULT 0,
+    distance_km     REAL    NOT NULL DEFAULT 0,
+    source          TEXT    NOT NULL DEFAULT 'shortcut',
+    synced_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(user_id, date)
+  )`);
+
   // Coach profiles
   await client.execute(`CREATE TABLE IF NOT EXISTS coach_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
