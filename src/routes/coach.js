@@ -282,10 +282,11 @@ router.post('/book', async (req, res) => {
     const fmtDate = () => { const dt = new Date(`${slotData.date}T${slotData.start_time}:00+05:30`); return dt.toLocaleDateString('en-US', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); };
     const tzLabel = TZ_LABELS[tz] || tz;
     const bookingInfo = { date: fmtDate(), start_time: `${fmtTime(slotData.start_time)} ${tzLabel}`, end_time: `${fmtTime(slotData.end_time)} ${tzLabel}`, coach_name: coachData.name };
-    await sendBookingConfirmation({ to: customerData.email, name: customerData.name, booking: bookingInfo, meetLink });
-    await notify.sessionBooked(parseInt(customer_id), slotData.date, slotData.start_time);
-
     res.json({ success: true, meetLink });
+
+    sendBookingConfirmation({ to: customerData.email, name: customerData.name, booking: bookingInfo, meetLink })
+      .catch(err => console.error('[coach] confirmation email failed:', err.message));
+    notify.sessionBooked(parseInt(customer_id), slotData.date, slotData.start_time).catch(() => {});
   } catch (err) {
     console.error('[coach] book error:', err);
     res.status(500).json({ error: err.message });

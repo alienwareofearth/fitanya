@@ -160,14 +160,14 @@ router.post('/book', requireAuth, async (req, res) => {
       coach_name: coachData.name,
     };
 
-    // Email only to customer; coach gets in-app notification only
-    await sendBookingConfirmation({ to: customerData.email, name: customerData.name, booking: bookingInfo, meetLink });
-
-    // In-app notifications
-    await notify.sessionBooked(userId, slotData.date, slotData.start_time);
-    await notify.newBookingForCoach(slotData.coach_id, customerData.name, slotData.date, slotData.start_time);
-
+    // Respond immediately — email/notifications must not block or fail the booking
     res.json({ success: true, booking_id: booking.rows[0].id, meetLink });
+
+    // Fire-and-forget: email + notifications after response is sent
+    sendBookingConfirmation({ to: customerData.email, name: customerData.name, booking: bookingInfo, meetLink })
+      .catch(err => console.error('[bookings] confirmation email failed:', err.message));
+    notify.sessionBooked(userId, slotData.date, slotData.start_time).catch(() => {});
+    notify.newBookingForCoach(slotData.coach_id, customerData.name, slotData.date, slotData.start_time).catch(() => {});
   } catch (err) {
     console.error('[bookings] book error:', err);
     res.status(500).json({ error: 'Booking failed: ' + err.message });
