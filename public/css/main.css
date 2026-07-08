@@ -235,6 +235,22 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 }
 .sidebar-logo span { color: var(--orange); }
 
+/* ── Account deletion warning banner ─────────────────────────────────────── */
+.deletion-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #450a0a;
+  border: 1px solid #b91c1c;
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  font-size: 13px;
+  color: #fca5a5;
+  flex-wrap: wrap;
+}
+
 /* ── Sidebar user profile pill (member / coach pages) ─────────────────────── */
 .user-profile-pill {
   display: flex;

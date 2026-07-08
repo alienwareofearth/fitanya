@@ -220,7 +220,12 @@ router.post('/login', async (req, res) => {
     if (!validEmail(email)) return res.status(400).json({ error: 'Invalid email format' });
 
     const db = getDb();
-    const result = await db.execute({ sql: `SELECT * FROM users WHERE email = ? AND is_active = 1`, args: [email] });
+    // Allow login if account is active OR within 7-day deletion grace period
+    const result = await db.execute({
+      sql: `SELECT * FROM users WHERE email = ? AND is_active = 1
+            AND (deleted_at IS NULL OR deletion_scheduled_at > datetime('now'))`,
+      args: [email],
+    });
     // Always hash-compare even if not found — prevents timing-based user enumeration
     const dummy  = '$2a$12$invalidhashfortimingnormalization000000000000000000000000';
     const valid  = result.rows.length
@@ -233,6 +238,10 @@ router.post('/login', async (req, res) => {
 
     const user = result.rows[0];
     const prevLogin = user.last_login_at || null;
+    const pendingDeletion = !!user.deleted_at;
+    const daysRemaining = pendingDeletion
+      ? Math.ceil((new Date(user.deletion_scheduled_at) - Date.now()) / 86400000)
+      : null;
 
     await db.execute({
       sql: `UPDATE users SET last_login_at = datetime('now') WHERE id = ?`,
@@ -245,7 +254,7 @@ router.post('/login', async (req, res) => {
       prev_login: prevLogin,
     };
     const redirectMap = { admin: '/admin', coach: '/coach', customer: '/dashboard' };
-    res.json({ success: true, redirect: redirectMap[user.role] || '/dashboard' });
+    res.json({ success: true, redirect: redirectMap[user.role] || '/dashboard', pendingDeletion, daysRemaining });
   } catch (err) {
     console.error('[auth] login error:', err);
     res.status(500).json({ error: 'Login failed' });

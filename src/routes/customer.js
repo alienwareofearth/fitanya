@@ -14,7 +14,7 @@ router.get('/profile', async (req, res) => {
     const db = getDb();
     const userId = req.session.user.id;
     const [user, profile, membership] = await Promise.all([
-      db.execute({ sql: `SELECT id, name, email, phone, role, timezone, profile_picture, referral_code, reward_credits, created_at FROM users WHERE id = ?`, args: [userId] }),
+      db.execute({ sql: `SELECT id, name, email, phone, role, timezone, profile_picture, referral_code, reward_credits, created_at, deleted_at, deletion_scheduled_at FROM users WHERE id = ?`, args: [userId] }),
       db.execute({ sql: `SELECT * FROM customer_profiles WHERE user_id = ?`, args: [userId] }),
       db.execute({
         sql: `SELECT m.*, p.name as package_name, p.sessions, u.name as coach_name
@@ -24,7 +24,12 @@ router.get('/profile', async (req, res) => {
         args: [userId],
       }),
     ]);
-    res.json({ success: true, user: user.rows[0], profile: profile.rows[0], membership: membership.rows[0], prev_login: req.session.user.prev_login || null });
+    const u = user.rows[0];
+    const pendingDeletion = !!u.deleted_at && new Date(u.deletion_scheduled_at) > new Date();
+    const daysRemaining = pendingDeletion
+      ? Math.ceil((new Date(u.deletion_scheduled_at) - Date.now()) / 86400000)
+      : null;
+    res.json({ success: true, user: { ...u, pendingDeletion, daysRemaining }, profile: profile.rows[0], membership: membership.rows[0], prev_login: req.session.user.prev_login || null });
   } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
@@ -300,5 +305,34 @@ function getWeekNumber(date) {
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
+
+// ── Account Deletion ──────────────────────────────────────────────────────────
+
+// POST /api/customer/account/request-deletion
+router.post('/account/request-deletion', async (req, res) => {
+  try {
+    const db = getDb();
+    const userId = req.session.user.id;
+    if (userId === 0) return res.status(403).json({ error: 'Admin account cannot be deleted' });
+
+    await db.execute({
+      sql: `UPDATE users SET deleted_at = datetime('now'), deletion_scheduled_at = datetime('now', '+7 days') WHERE id = ?`,
+      args: [userId],
+    });
+    res.json({ success: true, message: 'Account deletion scheduled. You have 7 days to recover it.' });
+  } catch (err) { console.error('[customer] request-deletion error:', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+});
+
+// POST /api/customer/account/cancel-deletion
+router.post('/account/cancel-deletion', async (req, res) => {
+  try {
+    const db = getDb();
+    await db.execute({
+      sql: `UPDATE users SET deleted_at = NULL, deletion_scheduled_at = NULL WHERE id = ?`,
+      args: [req.session.user.id],
+    });
+    res.json({ success: true, message: 'Account deletion cancelled. Your account is fully restored.' });
+  } catch (err) { console.error('[customer] cancel-deletion error:', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+});
 
 module.exports = router;

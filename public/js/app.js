@@ -97,6 +97,35 @@ function _renderSidebarProfile(user) {
   `;
 }
 
+// ── Deletion warning banner ───────────────────────────────────────────────
+function _showDeletionBanner(user) {
+  if (!user?.pendingDeletion) return;
+  const days = user.daysRemaining ?? 7;
+  const existing = document.getElementById('deletion-banner');
+  if (existing) return;
+  const bar = document.createElement('div');
+  bar.id = 'deletion-banner';
+  bar.className = 'deletion-banner';
+  const msg = document.createElement('span');
+  msg.textContent = `⚠️ Your account is scheduled for deletion in ${days} day${days !== 1 ? 's' : ''}. All profile data will be erased. Bookings and payment records are kept.`;
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-sm';
+  btn.style.cssText = 'background:#fff;color:#b91c1c;font-weight:700;flex-shrink:0';
+  btn.textContent = 'Cancel Deletion';
+  btn.onclick = async () => {
+    btn.disabled = true; btn.textContent = 'Cancelling…';
+    const data = await api.post('/api/customer/account/cancel-deletion', {});
+    if (data?.success) { bar.remove(); toast('Account deletion cancelled. Welcome back! 🎉', 'success'); }
+    else { btn.disabled = false; btn.textContent = 'Cancel Deletion'; toast(data?.error || 'Failed', 'error'); }
+  };
+  bar.appendChild(msg);
+  bar.appendChild(btn);
+  // Insert before main-content or at top of body
+  const main = document.querySelector('.main-content');
+  if (main) main.prepend(bar);
+  else document.body.prepend(bar);
+}
+
 // ── Auth Guard ────────────────────────────────────────────────────────────
 async function requireAuth(expectedRole = null) {
   const data = await api.get('/api/customer/profile');
@@ -105,6 +134,7 @@ async function requireAuth(expectedRole = null) {
     return null;
   }
   _renderSidebarProfile(data.user);
+  _showDeletionBanner(data.user);
   return data;
 }
 

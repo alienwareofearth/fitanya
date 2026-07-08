@@ -194,9 +194,56 @@ app.use((err, req, res, next) => {
   res.status(500).sendFile(path.join(pages, '404.html'));
 });
 
+// ── Account deletion cleanup ───────────────────────────────────────────────────
+async function runDeletionCleanup() {
+  try {
+    const { getDb } = require('./config/database');
+    const db = getDb();
+    // Find accounts past the 7-day grace window
+    const expired = await db.execute({
+      sql: `SELECT id FROM users WHERE deleted_at IS NOT NULL AND deletion_scheduled_at <= datetime('now')`,
+      args: [],
+    });
+    if (!expired.rows.length) return;
+    const ids = expired.rows.map(r => r.id);
+
+    for (const id of ids) {
+      // Wipe personal data from customer_profiles
+      await db.execute({
+        sql: `UPDATE customer_profiles SET
+                occupation=NULL, height=NULL, waist=NULL, thigh=NULL,
+                arm=NULL, chest=NULL, age=NULL, weight=NULL, ideal_weight=NULL,
+                address=NULL, health_issues=NULL, allergies=NULL,
+                food_specific=NULL, prior_experience=NULL,
+                updated_at=datetime('now')
+              WHERE user_id=?`,
+        args: [id],
+      });
+      // Anonymize the user row — keep id so foreign keys (bookings/payments) stay valid
+      await db.execute({
+        sql: `UPDATE users SET
+                name='Deleted User',
+                email='deleted-' || CAST(id AS TEXT) || '@fitanya.local',
+                phone=NULL, profile_picture=NULL,
+                password='DELETED',
+                deleted_at=NULL, deletion_scheduled_at=NULL,
+                updated_at=datetime('now')
+              WHERE id=?`,
+        args: [id],
+      });
+    }
+    console.log(`[cleanup] Anonymized ${ids.length} expired account(s)`);
+  } catch (err) {
+    console.error('[cleanup] account deletion error:', err.message);
+  }
+}
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 async function start() {
   await initDb();
+  // Run cleanup immediately on startup then every 24 hours
+  runDeletionCleanup();
+  setInterval(runDeletionCleanup, 24 * 60 * 60 * 1000);
   app.listen(PORT, () => {
     console.log(`\n🔥 FITANYA running on http://localhost:${PORT}`);
     console.log(`   ENV: ${process.env.NODE_ENV || 'development'}`);

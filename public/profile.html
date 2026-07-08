@@ -91,14 +91,21 @@
         <button class="btn btn-primary btn-full" onclick="saveProfile()">Save Changes</button>
       </div>
     </div>
+
+    <!-- Danger Zone -->
+    <div class="card mt-32" id="danger-zone" style="border-color:rgba(185,28,28,0.3)">
+      <div class="section-title" style="color:#f87171;border-bottom-color:rgba(185,28,28,0.2)">Danger Zone</div>
+      <div id="deletion-status-wrap" style="margin-top:16px"></div>
+    </div>
+
   </main>
 </div>
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
   async function init() {
-    const data = await api.get('/api/customer/profile');
-    if (!data?.success) { window.location.href = '/login'; return; }
+    const data = await requireAuth();
+    if (!data) return;
     const { user, profile } = data;
 
     document.getElementById('profile-name').textContent = user.name;
@@ -127,6 +134,60 @@
       <div class="flex-between mb-8"><span class="text-dim">Fitness Goal</span><span>${profile?.fitness_goal || '—'}</span></div>
       <div class="flex-between"><span class="text-dim">Food Preference</span><span>${profile?.food_preference || '—'}</span></div>
     `;
+
+    renderDangerZone(user);
+  }
+
+  function renderDangerZone(user) {
+    const wrap = document.getElementById('deletion-status-wrap');
+    if (user.pendingDeletion) {
+      const days = user.daysRemaining ?? 0;
+      const date = new Date(Date.now() + days * 86400000).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      wrap.innerHTML = `
+        <div style="background:rgba(185,28,28,0.08);border:1px solid rgba(185,28,28,0.25);border-radius:10px;padding:18px 20px;margin-bottom:16px">
+          <div style="color:#f87171;font-weight:700;margin-bottom:6px">⏳ Deletion scheduled in ${days} day${days !== 1 ? 's' : ''}</div>
+          <div style="color:#fca5a5;font-size:13px;margin-bottom:14px">
+            Your account will be permanently erased on <strong>${date}</strong>.<br>
+            Bookings, sessions, and payment records are kept for our records.<br>
+            You can recover your account anytime before that date.
+          </div>
+          <button class="btn btn-primary" onclick="cancelDeletion()">↩ Recover My Account</button>
+        </div>
+      `;
+    } else {
+      wrap.innerHTML = `
+        <p class="text-dim text-small mb-16">
+          Deleting your account will remove all your personal data — name, contact info, health data, and measurements — after a 7-day grace period.
+          Your booking history and payment records are kept for our records. You can recover your account within 7 days by logging back in.
+        </p>
+        <button class="btn btn-sm" onclick="requestDeletion()" style="background:rgba(185,28,28,0.12);color:#f87171;border:1px solid rgba(185,28,28,0.3)">
+          🗑️ Delete My Account
+        </button>
+      `;
+    }
+  }
+
+  async function requestDeletion() {
+    if (!confirm('Are you sure you want to delete your account?\n\nYour data will be erased in 7 days. You can recover it by logging in before then.')) return;
+    const data = await api.post('/api/customer/account/request-deletion', {});
+    if (data?.success) {
+      toast('Account deletion scheduled. You have 7 days to recover it.', 'warning');
+      setTimeout(() => init(), 800);
+    } else {
+      toast(data?.error || 'Failed', 'error');
+    }
+  }
+
+  async function cancelDeletion() {
+    const data = await api.post('/api/customer/account/cancel-deletion', {});
+    if (data?.success) {
+      toast('Account recovered successfully! 🎉', 'success');
+      // Remove the top banner if it was shown
+      document.getElementById('deletion-banner')?.remove();
+      setTimeout(() => init(), 800);
+    } else {
+      toast(data?.error || 'Failed', 'error');
+    }
   }
 
   async function saveProfile() {

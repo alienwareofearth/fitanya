@@ -105,6 +105,14 @@ async function initDb() {
     await client.execute(`UPDATE packages SET is_trial = 1 WHERE name = 'Free Trial'`);
   } catch (_) { /* column already exists */ }
 
+  // Migrate: soft-delete columns for account deletion with 7-day grace period
+  try {
+    await client.execute(`ALTER TABLE users ADD COLUMN deleted_at TEXT DEFAULT NULL`);
+  } catch (_) { /* column already exists */ }
+  try {
+    await client.execute(`ALTER TABLE users ADD COLUMN deletion_scheduled_at TEXT DEFAULT NULL`);
+  } catch (_) { /* column already exists */ }
+
   // Coach profiles
   await client.execute(`CREATE TABLE IF NOT EXISTS coach_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
