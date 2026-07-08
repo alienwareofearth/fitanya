@@ -44,6 +44,17 @@ class TursoSessionStore extends Store {
     } catch (err) { cb(err); }
   }
 
+  // regenerate: destroy current session and create a new empty one
+  regenerate(req, cb) {
+    const oldSid = req.sessionID;
+    this.destroy(oldSid, (err) => {
+      if (err) return cb(err);
+      // express-session will generate a new sid and call set() automatically
+      req.session = req.sessionStore.generate(req);
+      cb(null);
+    });
+  }
+
   async clearExpired() {
     try {
       const db = getDb();

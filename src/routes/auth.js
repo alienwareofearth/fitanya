@@ -214,12 +214,8 @@ router.post('/login', async (req, res) => {
     if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD &&
         timingSafeEqual(email, process.env.ADMIN_EMAIL.toLowerCase()) &&
         timingSafeEqual(password, process.env.ADMIN_PASSWORD)) {
-      req.session.regenerate((err) => {
-        if (err) return res.status(500).json({ error: 'Session error' });
-        req.session.user = { id: 0, name: 'Admin', email, role: 'admin' };
-        res.json({ success: true, redirect: '/admin' });
-      });
-      return;
+      req.session.user = { id: 0, name: 'Admin', email, role: 'admin' };
+      return res.json({ success: true, redirect: '/admin' });
     }
 
     const db = getDb();
@@ -242,17 +238,13 @@ router.post('/login', async (req, res) => {
       args: [user.id],
     });
 
-    // Regenerate session ID after login to prevent session fixation
-    req.session.regenerate((err) => {
-      if (err) return res.status(500).json({ error: 'Session error' });
-      req.session.user = {
-        id: user.id, name: user.name, email: user.email,
-        role: user.role, profile_picture: user.profile_picture,
-        prev_login: prevLogin,
-      };
-      const redirectMap = { admin: '/admin', coach: '/coach', customer: '/dashboard' };
-      res.json({ success: true, redirect: redirectMap[user.role] || '/dashboard' });
-    });
+    req.session.user = {
+      id: user.id, name: user.name, email: user.email,
+      role: user.role, profile_picture: user.profile_picture,
+      prev_login: prevLogin,
+    };
+    const redirectMap = { admin: '/admin', coach: '/coach', customer: '/dashboard' };
+    res.json({ success: true, redirect: redirectMap[user.role] || '/dashboard' });
   } catch (err) {
     console.error('[auth] login error:', err);
     res.status(500).json({ error: 'Login failed' });
