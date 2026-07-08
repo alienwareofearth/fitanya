@@ -80,6 +80,23 @@ function getDailyQuote() {
   return QUOTES[idx];
 }
 
+// ── Sidebar Profile Pill ──────────────────────────────────────────────────
+function _renderSidebarProfile(user) {
+  const el = document.getElementById('sidebar-profile');
+  if (!el || !user) return;
+  const initial = (user.name || 'U').charAt(0).toUpperCase();
+  const roleLabel = user.role === 'coach' ? 'Coach' : 'Member';
+  el.innerHTML = `
+    <div class="user-profile-pill">
+      <div class="user-avatar">${initial}</div>
+      <div class="user-info">
+        <div class="user-display-name">${user.name || ''}</div>
+        <span class="user-role-badge">${roleLabel}</span>
+      </div>
+    </div>
+  `;
+}
+
 // ── Auth Guard ────────────────────────────────────────────────────────────
 async function requireAuth(expectedRole = null) {
   const data = await api.get('/api/customer/profile');
@@ -87,6 +104,7 @@ async function requireAuth(expectedRole = null) {
     window.location.href = '/login';
     return null;
   }
+  _renderSidebarProfile(data.user);
   return data;
 }
 

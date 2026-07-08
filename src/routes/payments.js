@@ -29,7 +29,7 @@ router.get('/config', (req, res) => {
 });
 
 // ── Shared: compute discount + credits, store paymentIntent in session
-async function buildIntent(req, { package_id, discount_code, use_credits }) {
+async function buildIntent(req, { package_id, discount_code, use_credits, carry_over }) {
   const db = getDb();
   const pkg = await db.execute({
     sql:  `SELECT * FROM packages WHERE id = ? AND is_active = 1 AND is_trial = 0`,
@@ -70,19 +70,42 @@ async function buildIntent(req, { package_id, discount_code, use_credits }) {
     amount -= creditsUsed;
   }
 
+  // Carry-over credit from remaining sessions on current active membership
+  let carryCredit = 0;
+  let oldMembershipId = null;
+  if (carry_over && req.session?.user?.id) {
+    const memResult = await db.execute({
+      sql: `SELECT m.id, m.sessions_total, m.sessions_used, p.price as original_price
+            FROM memberships m JOIN packages p ON p.id = m.package_id
+            WHERE m.user_id = ? AND m.status = 'active'
+            ORDER BY m.created_at DESC LIMIT 1`,
+      args: [req.session.user.id],
+    });
+    if (memResult.rows.length) {
+      const m = memResult.rows[0];
+      const remaining = Math.max(0, m.sessions_total - m.sessions_used);
+      const pricePerSession = m.sessions_total > 0 ? m.original_price / m.sessions_total : 0;
+      carryCredit = Math.floor(remaining * pricePerSession);
+      oldMembershipId = m.id;
+      amount = Math.max(0, amount - carryCredit);
+    }
+  }
+
   const finalAmount = Math.max(0, amount);
 
   req.session.paymentIntent = {
     package_id,
-    customer_name:    req.body.customer_name  || req.session?.user?.name || '',
-    customer_email:   req.body.customer_email || req.session?.user?.email || '',
-    customer_phone:   req.body.customer_phone || '',
-    original_amount:  packageData.price,
-    discount_amount:  discountAmount,
-    credits_used:     creditsUsed,
-    final_amount:     finalAmount,
-    discount_code_id: discountCodeId,
-    package_name:     packageData.name,
+    customer_name:      req.body.customer_name  || req.session?.user?.name || '',
+    customer_email:     req.body.customer_email || req.session?.user?.email || '',
+    customer_phone:     req.body.customer_phone || '',
+    original_amount:    packageData.price,
+    discount_amount:    discountAmount,
+    credits_used:       creditsUsed,
+    carry_credit:       carryCredit,
+    old_membership_id:  oldMembershipId,
+    final_amount:       finalAmount,
+    discount_code_id:   discountCodeId,
+    package_name:       packageData.name,
   };
 
   return { finalAmount, packageData };
@@ -124,6 +147,13 @@ async function activateMembership(db, {
       await db.execute({
         sql: `UPDATE discount_codes SET used_count = used_count + 1 WHERE id = ?`,
         args: [intent.discount_code_id],
+      });
+    }
+    // Expire old membership when switching/upgrading plans
+    if (intent.old_membership_id) {
+      await db.execute({
+        sql: `UPDATE memberships SET status = 'expired' WHERE id = ?`,
+        args: [intent.old_membership_id],
       });
     }
     if (userId) await notify.paymentReceived(userId, intent.final_amount).catch(() => {});
@@ -404,6 +434,36 @@ router.get('/validate-code', async (req, res) => {
   } catch (err) {
     console.error('[payments] validate-code error:', err.message);
     res.status(500).json({ error: 'Validation failed' });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// POST /api/payments/confirm-free  (carry-over credit covers full new plan cost)
+// ══════════════════════════════════════════════════════════════════════════════
+router.post('/confirm-free', async (req, res) => {
+  try {
+    const intent = req.session.paymentIntent;
+    if (!intent) return res.status(400).json({ error: 'No payment session' });
+    if (intent.final_amount !== 0) return res.status(400).json({ error: 'Payment required for this plan' });
+    if (!req.session?.user?.id) return res.status(401).json({ error: 'Not authenticated' });
+
+    const db = getDb();
+    const pkg = await db.execute({ sql: `SELECT * FROM packages WHERE id = ?`, args: [intent.package_id] });
+    if (!pkg.rows.length) return res.status(400).json({ error: 'Package not found' });
+
+    await activateMembership(db, {
+      userId: req.session.user.id,
+      packageData: pkg.rows[0],
+      intent,
+      method: 'carry_over',
+      transactionId: `CARRY-${Date.now()}-${req.session.user.id}`,
+    });
+
+    delete req.session.paymentIntent;
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[payment] confirm-free error:', err.message);
+    res.status(500).json({ error: 'Request failed. Please try again.' });
   }
 });
 

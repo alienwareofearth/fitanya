@@ -77,6 +77,48 @@ router.get('/membership', async (req, res) => {
   } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
+// GET /api/customer/membership/switch-preview?package_id=X
+router.get('/membership/switch-preview', async (req, res) => {
+  try {
+    const packageId = parseInt(req.query.package_id, 10);
+    if (!packageId) return res.status(400).json({ error: 'package_id required' });
+    const db = getDb();
+    const userId = req.session.user.id;
+
+    const pkg = await db.execute({
+      sql: `SELECT * FROM packages WHERE id = ? AND is_active = 1`,
+      args: [packageId],
+    });
+    if (!pkg.rows.length) return res.status(404).json({ error: 'Package not found' });
+
+    const mem = await db.execute({
+      sql: `SELECT m.id, m.sessions_total, m.sessions_used, p.price as original_price
+            FROM memberships m JOIN packages p ON p.id = m.package_id
+            WHERE m.user_id = ? AND m.status = 'active'
+            ORDER BY m.created_at DESC LIMIT 1`,
+      args: [userId],
+    });
+
+    let carryCredit = 0;
+    let remainingSessions = 0;
+    if (mem.rows.length) {
+      const m = mem.rows[0];
+      remainingSessions = Math.max(0, m.sessions_total - m.sessions_used);
+      const pricePerSession = m.sessions_total > 0 ? m.original_price / m.sessions_total : 0;
+      carryCredit = Math.floor(remainingSessions * pricePerSession);
+    }
+
+    const p = pkg.rows[0];
+    res.json({
+      success: true,
+      package: p,
+      carryCredit,
+      remainingSessions,
+      finalPrice: Math.max(0, p.price - carryCredit),
+    });
+  } catch (err) { console.error('[customer] switch-preview error:', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+});
+
 // ── Progress Tracking ─────────────────────────────────────────────────────────
 router.get('/progress', async (req, res) => {
   try {

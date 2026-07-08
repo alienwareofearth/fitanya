@@ -235,6 +235,38 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 }
 .sidebar-logo span { color: var(--orange); }
 
+/* ── Sidebar user profile pill (member / coach pages) ─────────────────────── */
+.user-profile-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 14px 4px;
+  padding: 10px 12px;
+  background: rgba(255,92,0,0.06);
+  border: 1px solid rgba(255,92,0,0.14);
+  border-radius: 10px;
+}
+.user-avatar {
+  width: 32px; height: 32px;
+  background: var(--grad);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-ui); font-size: 13px; font-weight: 700; color: #fff;
+  flex-shrink: 0;
+}
+.user-info { min-width: 0; }
+.user-display-name {
+  font-family: var(--font-ui); font-size: 12px; font-weight: 700;
+  color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.user-role-badge {
+  display: inline-block;
+  font-family: var(--font-ui); font-size: 9px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  color: var(--orange); background: rgba(255,92,0,0.12);
+  padding: 2px 6px; border-radius: 4px; margin-top: 2px;
+}
+
 .sidebar-nav {
   flex: 1;
   padding: 20px 0;

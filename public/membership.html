@@ -10,11 +10,60 @@
   <link rel="apple-touch-icon" href="/icons/icon.svg">
   <title>Membership — Fitanya</title>
   <link rel="stylesheet" href="/css/main.css">
+  <style>
+    .plan-hero {
+      background: linear-gradient(135deg, rgba(255,92,0,0.08) 0%, rgba(255,92,0,0.03) 100%);
+      border: 1px solid rgba(255,92,0,0.2);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 8px;
+    }
+    .plan-name { font-family: var(--font-display); font-size: 2rem; color: var(--white); line-height:1; }
+    .plan-coach { font-size: 13px; color: var(--text-dim); margin-top: 6px; }
+
+    .switch-section { margin-top: 32px; }
+
+    .breakdown-box {
+      background: var(--dark); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 18px 20px; margin: 16px 0;
+    }
+    .breakdown-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 7px 0; font-size: 14px; color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+    }
+    .breakdown-row:last-child { border-bottom: none; }
+    .breakdown-row.total { color: var(--white); font-weight: 700; font-size: 16px; padding-top: 12px; }
+    .breakdown-row .label { display: flex; align-items: center; gap: 8px; }
+    .breakdown-row .val-green { color: #4ade80; }
+    .breakdown-row .val-orange { color: var(--orange); font-family: var(--font-display); font-size: 1.4rem; }
+
+    .plan-badge-up   { background: rgba(74,222,128,0.12); color: #4ade80; font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 700; }
+    .plan-badge-down { background: rgba(251,191,36,0.12); color: #fbbf24; font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 700; }
+    .plan-badge-same { background: rgba(255,92,0,0.12); color: var(--orange); font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 700; }
+
+    .discount-row { display: flex; gap: 10px; align-items: center; margin: 14px 0 0; }
+    .discount-row .form-control { flex: 1; }
+
+    .payment-inline { margin-top: 20px; }
+    .upi-btns-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+    .upi-qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 12px 0; }
+    .upi-id-tag { font-size: 12px; color: var(--text-dim); }
+
+    .history-table th, .history-table td { font-size: 13px; }
+
+    .free-switch-box {
+      background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.2);
+      border-radius: var(--radius-sm); padding: 16px 20px; margin-top: 16px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    }
+  </style>
 </head>
 <body>
 <div class="app-layout">
   <aside class="sidebar">
     <a href="/dashboard" class="sidebar-logo">FIT<span>ANYA</span></a>
+    <div id="sidebar-profile"></div>
     <nav class="sidebar-nav">
       <a href="/dashboard" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
       <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
@@ -27,108 +76,488 @@
     </nav>
     <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
   </aside>
+
   <main class="main-content">
-    <div class="page-header mb-32">
+    <div class="page-header mb-24">
       <h2>Membership</h2>
-      <p>Manage your plans, view payment history, and renew your membership</p>
+      <p>Manage your plan and payments</p>
     </div>
 
-    <!-- Active membership -->
-    <div id="active-membership"><div class="spinner"></div></div>
+    <!-- ── Section 1: Current Plan ─────────────────────────────────────── -->
+    <div id="current-plan-wrap"><div class="spinner"></div></div>
 
-    <!-- Payment history -->
+    <!-- ── Section 2: Switch Plan ─────────────────────────────────────── -->
+    <div class="switch-section">
+      <div class="section-title" id="switch-title">Switch / Upgrade Plan</div>
+      <div class="card mt-16">
+
+        <div class="form-group">
+          <label class="form-label">Select Package</label>
+          <select class="form-control" id="pkg-select" onchange="onPackageChange()">
+            <option value="">— Choose a package —</option>
+          </select>
+        </div>
+
+        <!-- Price breakdown (hidden until package selected) -->
+        <div id="breakdown-wrap" class="hidden">
+          <div class="breakdown-box">
+            <div class="breakdown-row">
+              <span class="label">Package Price</span>
+              <span id="bd-base">—</span>
+            </div>
+            <div class="breakdown-row" id="bd-carry-row" style="display:none">
+              <span class="label">🔄 Carry-over Credit <span id="bd-carry-sessions" class="text-dim text-small"></span></span>
+              <span id="bd-carry" class="val-green">—</span>
+            </div>
+            <div class="breakdown-row" id="bd-discount-row" style="display:none">
+              <span class="label">🏷️ Discount Code</span>
+              <span id="bd-discount" class="val-green">—</span>
+            </div>
+            <div class="breakdown-row total">
+              <span class="label">
+                Total
+                <span id="bd-direction-badge"></span>
+              </span>
+              <span id="bd-total" class="val-orange">—</span>
+            </div>
+          </div>
+
+          <!-- Discount code -->
+          <div class="discount-row">
+            <input class="form-control" id="discount-code" placeholder="Discount code (optional)" style="max-width:240px" />
+            <button class="btn btn-outline btn-sm" onclick="applyDiscount()">Apply</button>
+            <span id="discount-msg" class="text-small hidden" style="color:#4ade80"></span>
+          </div>
+
+          <!-- Payment section -->
+          <div class="payment-inline" id="payment-section">
+            <div id="free-switch-wrap" class="hidden">
+              <div class="free-switch-box">
+                <div>
+                  <div style="color:var(--white);font-weight:600">No payment needed!</div>
+                  <div class="text-dim text-small">Your carry-over credit covers the full cost of this plan.</div>
+                </div>
+                <button class="btn btn-primary" onclick="confirmFreeSwitch()">Switch Plan →</button>
+              </div>
+            </div>
+
+            <div id="pay-options-wrap" class="hidden">
+              <!-- Personal / UPI mode -->
+              <div id="upi-initiate-wrap">
+                <button class="btn btn-primary btn-full mt-4" id="see-options-btn" onclick="initiatePayment()">
+                  See Payment Options →
+                </button>
+              </div>
+              <div id="upi-links-wrap" class="hidden">
+                <div class="upi-btns-row" id="upi-deep-links"></div>
+                <div class="upi-qr-wrap">
+                  <div id="upi-qr"></div>
+                  <div class="upi-id-tag" id="upi-id-label"></div>
+                </div>
+                <button class="btn btn-primary btn-full mt-8" id="ive-paid-btn" onclick="submitUpiPayment()">
+                  I've Paid →
+                </button>
+              </div>
+
+              <!-- Razorpay mode -->
+              <div id="rzp-wrap" class="hidden">
+                <button class="btn btn-primary btn-full mt-4" id="rzp-btn" onclick="initiatePayment()">
+                  Pay with Razorpay →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Section 3: Payment History ─────────────────────────────────── -->
     <div class="section-title mt-32">Payment History</div>
-    <div class="card">
+    <div class="card mt-16">
       <div class="table-wrap">
-        <table>
-          <thead><tr><th>Date</th><th>Package</th><th>Amount</th><th>Discount</th><th>Credits</th><th>Status</th><th>Txn ID</th></tr></thead>
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Date</th><th>Amount</th><th>Discount</th>
+              <th>Carry Credit</th><th>Paid</th><th>Status</th><th>Ref</th>
+            </tr>
+          </thead>
           <tbody id="payment-rows"><tr><td colspan="7" class="text-center text-dim">Loading...</td></tr></tbody>
         </table>
       </div>
     </div>
 
-    <!-- Renew section -->
-    <div class="section-title mt-32">Renew or Upgrade</div>
-    <div class="packages-grid" id="renew-packages" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px;margin-top:16px"></div>
   </main>
 </div>
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
-  async function init() {
-    await requireAuth();
-    const data = await api.get('/api/customer/membership');
-    if (!data?.success) return;
+  let _activeMem = null;
+  let _pkgs = [];
+  let _selPkg = null;
+  let _carryCredit = 0;
+  let _discountAmount = 0;
+  let _payConfig = null;
 
-    // Active membership card
-    const mem = data.memberships?.find(m => m.status === 'active');
-    const el = document.getElementById('active-membership');
-    if (mem) {
-      const used = mem.sessions_used, total = mem.sessions_total;
-      const pct = Math.round((used / total) * 100);
-      const daysLeft = Math.ceil((new Date(mem.end_date) - Date.now()) / 86400000);
+  // ── Init ───────────────────────────────────────────────────────────────
+  async function init() {
+    const auth = await requireAuth();
+    if (!auth) return;
+
+    const [memData, pkgData, payCfg] = await Promise.all([
+      api.get('/api/customer/membership'),
+      api.get('/api/public/packages'),
+      api.get('/api/payments/config'),
+    ]);
+
+    _payConfig = payCfg?.config || { mode: 'personal' };
+    _pkgs = pkgData?.packages || [];
+
+    renderCurrentPlan(memData);
+    renderPackageDropdown();
+    renderPaymentHistory(memData?.payments || []);
+  }
+
+  // ── Current plan hero card ─────────────────────────────────────────────
+  function renderCurrentPlan(data) {
+    _activeMem = data?.memberships?.find(m => m.status === 'active') || null;
+    const el = document.getElementById('current-plan-wrap');
+
+    if (_activeMem) {
+      const m = _activeMem;
+      const used = m.sessions_used, total = m.sessions_total || m.total_sessions || 0;
+      const pct = total > 0 ? Math.round((used / total) * 100) : 0;
+      const daysLeft = Math.max(0, Math.ceil((new Date(m.end_date) - Date.now()) / 86400000));
       el.innerHTML = `
-        <div class="card card-glow">
-          <div class="flex-between mb-24">
+        <div class="plan-hero">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">
             <div>
-              <div style="font-family:var(--font-display);font-size:1.8rem;color:var(--white)">${mem.package_name}</div>
-              <div class="text-dim text-small">Coach: ${mem.coach_name || 'Being assigned...'}</div>
+              <div class="plan-name">${m.package_name}</div>
+              <div class="plan-coach">Coach: ${m.coach_name || 'Being assigned...'}</div>
             </div>
-            <span class="badge badge-green">Active</span>
+            <span class="badge badge-green" style="align-self:flex-start">● Active</span>
           </div>
-          <div class="grid-3 gap-16 mb-24">
+          <div class="grid-3 gap-16 mb-20">
             <div class="stat-card"><div class="stat-label">Sessions Done</div><div class="stat-value">${used}</div></div>
             <div class="stat-card"><div class="stat-label">Remaining</div><div class="stat-value orange">${total - used}</div></div>
-            <div class="stat-card"><div class="stat-label">Days Left</div><div class="stat-value">${Math.max(0, daysLeft)}</div></div>
+            <div class="stat-card"><div class="stat-label">Days Left</div><div class="stat-value">${daysLeft}</div></div>
           </div>
-          <div class="stat-label mb-8">Session Progress (${used}/${total})</div>
+          <div class="stat-label mb-8">Progress (${used} / ${total} sessions)</div>
           <div class="progress-bar-wrap">
             <div class="progress-bar-fill" style="width:${pct}%"></div>
           </div>
-          <div class="flex-between mt-8">
-            <span class="text-small text-dim">Expires: ${formatDate(mem.end_date)}</span>
+          <div style="display:flex;justify-content:space-between;margin-top:8px">
+            <span class="text-small text-dim">Expires ${formatDate(m.end_date)}</span>
             <span class="text-small text-orange">${pct}% used</span>
           </div>
         </div>
       `;
+      document.getElementById('switch-title').textContent = 'Switch / Upgrade Plan';
     } else {
-      el.innerHTML = `<div class="card text-center" style="padding:40px">
-        <p class="text-dim mb-16">No active membership. Choose a plan to get started!</p>
-        <a href="/#packages" class="btn btn-primary">Browse Plans</a>
-      </div>`;
-    }
-
-    // Payments table
-    const tbody = document.getElementById('payment-rows');
-    if (!data.payments?.length) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-dim">No payments yet</td></tr>';
-    } else {
-      tbody.innerHTML = data.payments.map(p => `
-        <tr>
-          <td>${formatDate(p.created_at)}</td>
-          <td>—</td>
-          <td>₹${p.amount.toLocaleString('en-IN')}</td>
-          <td class="text-green">${p.discount_amount > 0 ? '-₹' + p.discount_amount : '—'}</td>
-          <td class="text-green">${p.credits_used > 0 ? '-₹' + p.credits_used : '—'}</td>
-          <td><span class="badge ${p.status === 'completed' ? 'badge-green' : 'badge-yellow'}">${p.status}</span></td>
-          <td class="text-dim text-small">${p.transaction_id || '—'}</td>
-        </tr>
-      `).join('');
-    }
-
-    // Renew packages
-    const pkgs = await api.get('/api/public/packages');
-    if (pkgs?.packages) {
-      document.getElementById('renew-packages').innerHTML = pkgs.packages.map(p => `
-        <div class="card">
-          <div style="font-family:var(--font-display);font-size:1.4rem;margin-bottom:8px">${p.name}</div>
-          <div style="font-family:var(--font-display);font-size:2rem;color:var(--orange);margin-bottom:12px">₹${p.price.toLocaleString('en-IN')}</div>
-          <p class="text-dim text-small mb-16">${p.sessions} Sessions · ${p.days} Days</p>
-          <a href="/#packages" class="btn btn-outline btn-sm btn-full">Renew →</a>
+      el.innerHTML = `
+        <div class="card text-center" style="padding:32px;margin-bottom:8px">
+          <div style="font-size:2.4rem;margin-bottom:12px">🎫</div>
+          <div style="font-family:var(--font-display);font-size:1.4rem;color:var(--white);margin-bottom:8px">No Active Plan</div>
+          <p class="text-dim mb-0">Choose a plan below to get started!</p>
         </div>
-      `).join('');
+      `;
+      document.getElementById('switch-title').textContent = 'Choose a Plan';
     }
   }
+
+  // ── Package dropdown ───────────────────────────────────────────────────
+  function renderPackageDropdown() {
+    const sel = document.getElementById('pkg-select');
+    sel.innerHTML = '<option value="">— Choose a package —</option>';
+    _pkgs.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = `${p.name}  —  ₹${Number(p.price).toLocaleString('en-IN')}  ·  ${p.sessions} sessions  ·  ${p.days} days`;
+      sel.appendChild(opt);
+    });
+  }
+
+  // ── On package change ──────────────────────────────────────────────────
+  async function onPackageChange() {
+    const pkgId = document.getElementById('pkg-select').value;
+    if (!pkgId) {
+      document.getElementById('breakdown-wrap').classList.add('hidden');
+      return;
+    }
+
+    _selPkg = _pkgs.find(p => String(p.id) === pkgId);
+    _discountAmount = 0;
+    document.getElementById('discount-code').value = '';
+    document.getElementById('discount-msg').classList.add('hidden');
+    document.getElementById('discount-msg').textContent = '';
+    resetPaymentUI();
+
+    // Fetch carry-over preview (only if user has active membership)
+    let carryCredit = 0, remainingSessions = 0;
+    if (_activeMem) {
+      const preview = await api.get(`/api/customer/membership/switch-preview?package_id=${pkgId}`);
+      carryCredit = preview?.carryCredit || 0;
+      remainingSessions = preview?.remainingSessions || 0;
+    }
+    _carryCredit = carryCredit;
+
+    updateBreakdown(remainingSessions);
+    document.getElementById('breakdown-wrap').classList.remove('hidden');
+    setupPaymentUI();
+  }
+
+  // ── Price breakdown ────────────────────────────────────────────────────
+  function updateBreakdown(remainingSessions = 0) {
+    if (!_selPkg) return;
+    const base = _selPkg.price;
+    const afterCarry = Math.max(0, base - _carryCredit);
+    const total = Math.max(0, afterCarry - _discountAmount);
+
+    document.getElementById('bd-base').textContent = `₹${Number(base).toLocaleString('en-IN')}`;
+
+    const carryRow = document.getElementById('bd-carry-row');
+    if (_carryCredit > 0) {
+      carryRow.style.display = '';
+      document.getElementById('bd-carry').textContent = `-₹${Number(_carryCredit).toLocaleString('en-IN')}`;
+      document.getElementById('bd-carry-sessions').textContent = `(${remainingSessions} sessions remaining)`;
+    } else {
+      carryRow.style.display = 'none';
+    }
+
+    const discRow = document.getElementById('bd-discount-row');
+    if (_discountAmount > 0) {
+      discRow.style.display = '';
+      document.getElementById('bd-discount').textContent = `-₹${Number(_discountAmount).toLocaleString('en-IN')}`;
+    } else {
+      discRow.style.display = 'none';
+    }
+
+    document.getElementById('bd-total').textContent = total === 0 ? 'FREE' : `₹${Number(total).toLocaleString('en-IN')}`;
+
+    // Direction badge
+    const badge = document.getElementById('bd-direction-badge');
+    if (_activeMem) {
+      if (_selPkg.price > _activeMem.price || 0) {
+        badge.innerHTML = '<span class="plan-badge-up">↑ Upgrade</span>';
+      } else if (_selPkg.price < (_activeMem.price || 0)) {
+        badge.innerHTML = '<span class="plan-badge-down">↓ Downgrade</span>';
+      } else {
+        badge.innerHTML = '<span class="plan-badge-same">↺ Renew</span>';
+      }
+    } else {
+      badge.innerHTML = '';
+    }
+
+    // Show/hide free-switch vs pay options
+    if (total === 0) {
+      document.getElementById('free-switch-wrap').classList.remove('hidden');
+      document.getElementById('pay-options-wrap').classList.add('hidden');
+    } else {
+      document.getElementById('free-switch-wrap').classList.add('hidden');
+      document.getElementById('pay-options-wrap').classList.remove('hidden');
+      setupPaymentUI();
+    }
+  }
+
+  function setupPaymentUI() {
+    const mode = _payConfig?.mode || 'personal';
+    document.getElementById('upi-initiate-wrap').classList.toggle('hidden', mode !== 'personal');
+    document.getElementById('rzp-wrap').classList.toggle('hidden', mode !== 'razorpay');
+    document.getElementById('upi-links-wrap').classList.add('hidden');
+    document.getElementById('pay-options-wrap').classList.remove('hidden');
+  }
+
+  function resetPaymentUI() {
+    document.getElementById('upi-links-wrap').classList.add('hidden');
+    document.getElementById('upi-deep-links').innerHTML = '';
+    document.getElementById('upi-qr').innerHTML = '';
+    document.getElementById('pay-options-wrap').classList.add('hidden');
+    document.getElementById('free-switch-wrap').classList.add('hidden');
+  }
+
+  // ── Discount code ──────────────────────────────────────────────────────
+  async function applyDiscount() {
+    const code = document.getElementById('discount-code').value.trim();
+    const msgEl = document.getElementById('discount-msg');
+    if (!code || !_selPkg) return;
+    const data = await api.get(`/api/payments/validate-code?code=${encodeURIComponent(code)}&package_id=${_selPkg.id}`);
+    if (data?.valid) {
+      _discountAmount = parseFloat(data.discountAmount);
+      msgEl.textContent = `✅ ${data.type === 'percentage' ? data.value + '%' : '₹' + data.value} off applied`;
+      msgEl.classList.remove('hidden');
+      updateBreakdown();
+      toast('Discount applied!', 'success');
+    } else {
+      _discountAmount = 0;
+      msgEl.textContent = '';
+      msgEl.classList.add('hidden');
+      updateBreakdown();
+      toast(data?.message || 'Invalid discount code', 'error');
+    }
+  }
+
+  // ── Pay fields ─────────────────────────────────────────────────────────
+  function _payFields() {
+    return {
+      package_id:    _selPkg.id,
+      discount_code: document.getElementById('discount-code').value.trim(),
+      use_credits:   false,
+      carry_over:    !!_activeMem,
+    };
+  }
+
+  // ── Initiate payment ───────────────────────────────────────────────────
+  async function initiatePayment() {
+    if (!_selPkg) return;
+    const mode = _payConfig?.mode || 'personal';
+
+    if (mode === 'personal') {
+      const btn = document.getElementById('see-options-btn');
+      btn.disabled = true; btn.textContent = 'Loading…';
+      try {
+        const data = await api.post('/api/payments/initiate', _payFields());
+        if (!data?.success) { toast(data?.error || 'Failed to load payment options', 'error'); return; }
+
+        document.getElementById('upi-initiate-wrap').classList.add('hidden');
+        document.getElementById('upi-links-wrap').classList.remove('hidden');
+        document.getElementById('upi-id-label').textContent = `UPI ID: ${data.upiId}`;
+
+        document.getElementById('upi-deep-links').innerHTML = `
+          <a href="${data.gpay}" class="btn btn-outline" style="gap:6px;display:flex;align-items:center">
+            <svg width="18" height="18" viewBox="0 0 48 48"><circle cx="24" cy="24" r="24" fill="#4285F4"/><path d="M34.5 24.3c0-.8-.1-1.6-.2-2.3H24v4.4h5.9c-.3 1.4-1 2.6-2.1 3.4v2.8h3.4c2-1.8 3.3-4.5 3.3-8.3z" fill="#fff"/><path d="M24 35c2.9 0 5.3-1 7.1-2.6l-3.4-2.8c-1 .7-2.2 1.1-3.7 1.1-2.8 0-5.2-1.9-6.1-4.4H14.4v2.9C16.2 32.7 19.8 35 24 35z" fill="#fff"/><path d="M17.9 26.3c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3v-2.9h-3.5C13.5 20.6 13 22.2 13 24s.5 3.4 1.4 4.8l3.5-2.5z" fill="#fff"/><path d="M24 17.3c1.6 0 3 .6 4.1 1.6l3.1-3.1C29.3 14 26.9 13 24 13c-4.2 0-7.8 2.3-9.6 5.8l3.5 2.9C18.8 19.2 21.2 17.3 24 17.3z" fill="#fff"/></svg>
+            GPay
+          </a>
+          <a href="${data.phonepe}" class="btn btn-outline" style="gap:6px;display:flex;align-items:center">
+            <svg width="18" height="18" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#5f259f"/><path d="M35 30h20c8 0 15 7 15 15s-7 15-15 15H45v10H35V30zm10 22h10c3 0 5-2 5-7s-2-7-5-7H45v14z" fill="#fff"/></svg>
+            PhonePe
+          </a>
+          <a href="${data.generic}" class="btn btn-outline">Any UPI</a>
+        `;
+
+        const qrDiv = document.getElementById('upi-qr');
+        qrDiv.innerHTML = '';
+        const loadQr = () => new QRCode(qrDiv, { text: data.generic, width: 150, height: 150, colorDark: '#fff', colorLight: '#1a1a1a' });
+        if (window.QRCode) {
+          loadQr();
+        } else {
+          const s = document.createElement('script');
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+          s.onload = loadQr;
+          document.head.appendChild(s);
+        }
+      } finally {
+        btn.disabled = false; btn.textContent = 'See Payment Options →';
+      }
+      return;
+    }
+
+    if (mode === 'razorpay') {
+      const btn = document.getElementById('rzp-btn');
+      btn.disabled = true; btn.textContent = 'Loading…';
+      try {
+        const data = await api.post('/api/payments/initiate', _payFields());
+        if (!data?.success) { toast(data?.error || 'Failed', 'error'); return; }
+        if (data.mode === 'dev') { window.location.href = data.redirectUrl; return; }
+
+        const rzpScript = document.createElement('script');
+        rzpScript.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        rzpScript.onload = () => {
+          const rzp = new Razorpay({
+            key: _payConfig.razorpayKeyId,
+            amount: data.order.amount,
+            currency: data.order.currency,
+            order_id: data.order.orderId,
+            name: 'Fitanya',
+            description: _selPkg.name,
+            theme: { color: '#FF5C00' },
+            handler: async function(response) {
+              const verify = await api.post('/api/payments/razorpay/verify', {
+                razorpay_order_id:   response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature:  response.razorpay_signature,
+              });
+              if (verify?.success) {
+                toast('Payment successful! Membership activated. 🎉', 'success');
+                setTimeout(() => window.location.reload(), 1500);
+              } else {
+                toast(verify?.error || 'Payment verification failed', 'error');
+              }
+            },
+            modal: { ondismiss: () => { btn.disabled = false; btn.textContent = 'Pay with Razorpay →'; } },
+          });
+          rzp.open();
+        };
+        document.head.appendChild(rzpScript);
+      } catch {
+        toast('Payment error. Please try again.', 'error');
+        btn.disabled = false; btn.textContent = 'Pay with Razorpay →';
+      }
+    }
+  }
+
+  // ── UPI: I've Paid ─────────────────────────────────────────────────────
+  async function submitUpiPayment() {
+    const btn = document.getElementById('ive-paid-btn');
+    btn.disabled = true; btn.textContent = 'Submitting…';
+    const data = await api.post('/api/payments/upi/submit', { method: 'upi' });
+    btn.disabled = false; btn.textContent = "I've Paid →";
+    if (data?.success) {
+      toast('Payment submitted! Admin will verify and activate your plan shortly.', 'success');
+      document.getElementById('upi-links-wrap').classList.add('hidden');
+      document.getElementById('upi-initiate-wrap').classList.remove('hidden');
+    } else {
+      toast(data?.error || 'Submission failed', 'error');
+    }
+  }
+
+  // ── Free switch (carry credit covers full cost) ────────────────────────
+  async function confirmFreeSwitch() {
+    // Need to build intent first (so session has paymentIntent), then confirm
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = 'Processing…';
+
+    const initData = await api.post('/api/payments/initiate', _payFields());
+    if (!initData?.success || initData.finalAmount !== 0) {
+      btn.disabled = false; btn.textContent = 'Switch Plan →';
+      toast(initData?.error || 'Error initiating switch', 'error');
+      return;
+    }
+
+    const data = await api.post('/api/payments/confirm-free', {});
+    btn.disabled = false; btn.textContent = 'Switch Plan →';
+    if (data?.success) {
+      toast('Plan switched successfully! 🎉', 'success');
+      setTimeout(() => window.location.reload(), 1200);
+    } else {
+      toast(data?.error || 'Switch failed', 'error');
+    }
+  }
+
+  // ── Payment history ────────────────────────────────────────────────────
+  function renderPaymentHistory(payments) {
+    const tbody = document.getElementById('payment-rows');
+    if (!payments.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-dim">No payments yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = payments.map(p => {
+      const statusCls = p.status === 'completed' ? 'badge-green' : p.status === 'pending_verification' ? 'badge-yellow' : 'badge-red';
+      const carry = p.carry_credit > 0 ? `-₹${Number(p.carry_credit).toLocaleString('en-IN')}` : '—';
+      return `
+        <tr>
+          <td>${formatDate(p.created_at)}</td>
+          <td>₹${Number(p.amount).toLocaleString('en-IN')}</td>
+          <td class="text-green">${p.discount_amount > 0 ? '-₹' + Number(p.discount_amount).toLocaleString('en-IN') : '—'}</td>
+          <td class="text-green">${carry}</td>
+          <td style="font-weight:600;color:var(--white)">₹${Number(p.final_amount).toLocaleString('en-IN')}</td>
+          <td><span class="badge ${statusCls}">${p.status === 'pending_verification' ? 'Pending' : p.status === 'completed' ? 'Paid' : p.status}</span></td>
+          <td class="text-dim text-small">${p.transaction_id || '—'}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
   init();
 </script>
 <script src="/js/pwa.js" defer></script>
