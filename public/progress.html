@@ -102,19 +102,32 @@
 
         <!-- iOS steps -->
         <div id="guide-ios">
-          <div class="stat-label" style="margin-bottom:10px">iOS Shortcuts setup — one-time, ~3 minutes</div>
-          <div class="setup-step"><span class="setup-step-num">1</span><div>Open <strong>Shortcuts</strong> app → tap <strong>+</strong> (top right) → name it <strong>"Fitanya Sync"</strong></div></div>
-          <div class="setup-step"><span class="setup-step-num">2</span><div>Tap <strong>Add Action</strong> → search <strong>Health</strong> → pick <strong>Find Health Samples</strong><br><span class="text-dim text-small">Type = <strong>Steps</strong> · Time Range = Today · Aggregate = <strong>Sum</strong> → rename variable to <em>Steps</em></span></div></div>
-          <div class="setup-step"><span class="setup-step-num">3</span><div>Add another Health action → <strong>Active Energy Burned</strong> → variable <em>Calories</em></div></div>
-          <div class="setup-step"><span class="setup-step-num">4</span><div>Add another Health action → <strong>Walking + Running Distance</strong> → variable <em>Distance</em></div></div>
-          <div class="setup-step"><span class="setup-step-num">5</span><div>Add another Health action → <strong>Exercise Minutes</strong> → variable <em>ActiveMin</em></div></div>
-          <div class="setup-step"><span class="setup-step-num">6</span><div>Add <strong>Get Contents of URL</strong> action<br>
-            <span class="text-dim text-small">• URL → paste your Sync URL above<br>
-            • Method → <strong>POST</strong><br>
-            • Request Body → <strong>JSON</strong><br>
-            • Keys: <code style="color:var(--orange)">steps</code>=Steps · <code style="color:var(--orange)">calories</code>=Calories · <code style="color:var(--orange)">distance_km</code>=Distance · <code style="color:var(--orange)">active_minutes</code>=ActiveMin · <code style="color:var(--orange)">date</code>=Current Date (format <strong>yyyy-MM-dd</strong>)</span>
+          <!-- Download button -->
+          <div style="background:linear-gradient(135deg,rgba(255,92,0,0.12),rgba(124,58,237,0.12));border:1px solid rgba(255,92,0,0.25);border-radius:12px;padding:18px 20px;margin-bottom:20px">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+              <div style="font-size:2.2rem">⬇️</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:600;color:var(--white);margin-bottom:2px">Download Ready-Made Shortcut</div>
+                <div class="text-dim text-small">Tap the button below on your iPhone — it opens Shortcuts with everything pre-configured. You just tap "Add Shortcut".</div>
+              </div>
+            </div>
+            <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+              <a id="shortcut-open-btn" href="#" class="btn btn-primary" style="text-decoration:none" onclick="openInShortcuts(event)">📲 Add to Shortcuts</a>
+              <a id="shortcut-dl-btn" href="/api/customer/health/shortcut" class="btn btn-outline btn-sm" style="text-decoration:none;align-self:center">⬇ Direct Download</a>
+            </div>
+            <div id="shortcut-ios15-note" class="text-dim text-small" style="margin-top:10px;display:none">
+              ⚠️ iOS 15+: If blocked, go to <strong>Settings → Shortcuts → Allow Untrusted Shortcuts</strong> and enable it, then try again.
+            </div>
+          </div>
+
+          <div class="stat-label" style="margin-bottom:10px">Or set it up manually — one-time, ~3 minutes</div>
+          <div class="setup-step"><span class="setup-step-num">1</span><div>Open <strong>Shortcuts</strong> app → tap <strong>+</strong> → name it <strong>"Fitanya Sync"</strong></div></div>
+          <div class="setup-step"><span class="setup-step-num">2</span><div>Add Action → search <strong>Health</strong> → <strong>Find Health Samples</strong> · Type=Steps · Today · Sum → variable <em>Steps</em></div></div>
+          <div class="setup-step"><span class="setup-step-num">3</span><div>Repeat for <strong>Active Energy Burned</strong> → <em>Calories</em>, <strong>Walking Distance</strong> → <em>Distance</em>, <strong>Exercise Minutes</strong> → <em>ActiveMin</em></div></div>
+          <div class="setup-step"><span class="setup-step-num">4</span><div>Add <strong>Get Contents of URL</strong> → Method=POST · URL=your Sync URL above · Body=JSON<br>
+            <span class="text-dim text-small">Keys: steps=Steps · calories=Calories · distance_km=Distance · active_minutes=ActiveMin · date=Current Date (yyyy-MM-dd)</span>
           </div></div>
-          <div class="setup-step"><span class="setup-step-num">7</span><div><strong>Automation tab</strong> → New Automation → <strong>Time of Day</strong> → 10:00 PM · Daily → Run Shortcut → Fitanya Sync<br><span class="text-dim text-small">Disable "Ask Before Running" so it runs silently</span></div></div>
+          <div class="setup-step"><span class="setup-step-num">5</span><div><strong>Automation tab</strong> → New Automation → Time of Day → 10 PM Daily → Run "Fitanya Sync" · disable "Ask Before Running"</div></div>
           <div style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:8px;padding:12px 16px;margin-top:14px;font-size:13px;color:#4ade80">
             ✅ Once set up, steps & activity sync automatically every night at 10 PM.
           </div>
@@ -262,8 +275,34 @@
 
   // ── Setup guide ────────────────────────────────────────────────────────
   function initSetupGuide(token) {
-    _syncUrl = `${window.location.origin}/api/customer/health/sync?token=${token}`;
+    const origin = window.location.origin;
+    _syncUrl = `${origin}/api/customer/health/sync?token=${token}`;
     document.getElementById('sync-url-display').textContent = _syncUrl;
+
+    // Wire up download button with the token (for session-less access by Shortcuts app)
+    const shortcutDlUrl = `/api/customer/health/shortcut?token=${token}`;
+    document.getElementById('shortcut-dl-btn').href = shortcutDlUrl;
+
+    // "Open in Shortcuts" URL scheme — works on iPhone when app is installed
+    const shortcutsImportUrl = `shortcuts://import-workflow?url=${encodeURIComponent(origin + shortcutDlUrl)}&name=Fitanya%20Health%20Sync`;
+    document.getElementById('shortcut-open-btn').dataset.shortcutsUrl = shortcutsImportUrl;
+
+    // Show iOS 15 note only on iOS
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    if (isIOS) document.getElementById('shortcut-ios15-note').style.display = 'block';
+  }
+
+  function openInShortcuts(e) {
+    e.preventDefault();
+    const url = e.currentTarget.dataset.shortcutsUrl;
+    if (!url) return;
+    // Try the shortcuts:// scheme; if it fails (not on iPhone) fall back to direct download
+    window.location.href = url;
+    // After 1.5s, if we're still here the scheme didn't open — fallback to download
+    setTimeout(() => {
+      const dl = document.getElementById('shortcut-dl-btn');
+      if (dl) window.location.href = dl.href;
+    }, 1500);
   }
 
   function switchPlatformTab(tab) {

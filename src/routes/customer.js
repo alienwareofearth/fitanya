@@ -58,6 +58,161 @@ router.post('/health/sync', async (req, res) => {
   }
 });
 
+// GET /api/customer/health/shortcut?token=<health_token>
+// Returns a personalised .shortcut plist that iOS installs directly in the Shortcuts app
+router.get('/health/shortcut', async (req, res) => {
+  try {
+    const db = getDb();
+    let userId = req.session?.user?.id;
+    let token  = req.query.token;
+
+    if (!userId) {
+      if (!token) return res.status(401).json({ error: 'Auth token required' });
+      const u = await db.execute({
+        sql: `SELECT id, health_token FROM users WHERE health_token = ? AND is_active = 1 AND deleted_at IS NULL`,
+        args: [token],
+      });
+      if (!u.rows.length) return res.status(401).json({ error: 'Invalid token' });
+      userId = u.rows[0].id;
+    } else {
+      // Session auth — look up or create token
+      const u = await db.execute({ sql: `SELECT health_token FROM users WHERE id = ?`, args: [userId] });
+      token = u.rows[0]?.health_token;
+      if (!token) {
+        token = crypto.randomBytes(32).toString('hex');
+        await db.execute({ sql: `UPDATE users SET health_token = ? WHERE id = ?`, args: [token, userId] });
+      }
+    }
+
+    const appUrl  = process.env.APP_URL || 'http://localhost:3000';
+    const syncUrl = `${appUrl}/api/customer/health/sync?token=${token}`;
+    const plist   = buildShortcutPlist(syncUrl);
+
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', 'attachment; filename="Fitanya-Health-Sync.shortcut"');
+    res.send(plist);
+  } catch (err) {
+    console.error('[health] shortcut error:', err.message);
+    res.status(500).json({ error: 'Could not generate shortcut.' });
+  }
+});
+
+function buildShortcutPlist(syncUrl) {
+  const OBJ = '￼'; // Unicode Object Replacement Character — Shortcuts attachment placeholder
+
+  const varAttach = name => `<dict>
+          <key>Value</key><dict><key>Type</key><string>Variable</string><key>VariableName</key><string>${name}</string></dict>
+          <key>WFSerializationType</key><string>WFTextTokenAttachment</string>
+        </dict>`;
+
+  const setVar = name => `<dict>
+      <key>WFWorkflowActionIdentifier</key><string>is.workflow.actions.setvariable</string>
+      <key>WFWorkflowActionParameters</key><dict><key>WFVariableName</key><string>${name}</string></dict>
+    </dict>`;
+
+  const healthAction = (hkType, varName) => `<dict>
+      <key>WFWorkflowActionIdentifier</key><string>is.workflow.actions.gethealthsample</string>
+      <key>WFWorkflowActionParameters</key>
+      <dict>
+        <key>WFHealthCategoryKey</key><string>${hkType}</string>
+        <key>WFHealthStartDate</key><dict><key>WFDateType</key><string>Start of Day</string></dict>
+        <key>WFHealthEndDate</key><dict><key>WFDateType</key><string>Now</string></dict>
+        <key>WFHealthQuantityAggregationStyle</key><integer>1</integer>
+        <key>CustomOutputName</key><string>${varName}</string>
+      </dict>
+    </dict>
+    ${setVar(varName)}`;
+
+  const jsonField = (key, varName) => `<dict>
+              <key>WFItemType</key><integer>0</integer>
+              <key>WFKey</key>
+              <dict>
+                <key>Value</key><dict><key>string</key><string>${key}</string></dict>
+                <key>WFSerializationType</key><string>WFTextTokenString</string>
+              </dict>
+              <key>WFValue</key>
+              <dict>
+                <key>Value</key>
+                <dict>
+                  <key>attachmentsByRange</key>
+                  <dict>
+                    <key>{0, 1}</key>
+                    <dict><key>Type</key><string>Variable</string><key>VariableName</key><string>${varName}</string></dict>
+                  </dict>
+                  <key>string</key><string>${OBJ}</string>
+                </dict>
+                <key>WFSerializationType</key><string>WFTextTokenString</string>
+              </dict>
+            </dict>`;
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>WFWorkflowActions</key>
+  <array>
+    <dict>
+      <key>WFWorkflowActionIdentifier</key><string>is.workflow.actions.date</string>
+      <key>WFWorkflowActionParameters</key><dict><key>CustomOutputName</key><string>NowDate</string></dict>
+    </dict>
+    ${setVar('NowDate')}
+    <dict>
+      <key>WFWorkflowActionIdentifier</key><string>is.workflow.actions.getformatteddate</string>
+      <key>WFWorkflowActionParameters</key>
+      <dict>
+        <key>WFDateFormatStyle</key><string>Custom</string>
+        <key>WFDateFormat</key><string>yyyy-MM-dd</string>
+        <key>WFInput</key>${varAttach('NowDate')}
+        <key>CustomOutputName</key><string>Today</string>
+      </dict>
+    </dict>
+    ${setVar('Today')}
+    ${healthAction('HKQuantityTypeIdentifierStepCount', 'Steps')}
+    ${healthAction('HKQuantityTypeIdentifierActiveEnergyBurned', 'Calories')}
+    ${healthAction('HKQuantityTypeIdentifierDistanceWalkingRunning', 'Distance')}
+    ${healthAction('HKQuantityTypeIdentifierAppleExerciseTime', 'ActiveMin')}
+    <dict>
+      <key>WFWorkflowActionIdentifier</key><string>is.workflow.actions.downloadurl</string>
+      <key>WFWorkflowActionParameters</key>
+      <dict>
+        <key>WFHTTPMethod</key><string>POST</string>
+        <key>WFURL</key><string>${syncUrl}</string>
+        <key>WFHTTPBodyType</key><string>JSON</string>
+        <key>WFHTTPRequestBody</key>
+        <dict>
+          <key>Value</key>
+          <dict>
+            <key>WFDictionaryFieldValueItems</key>
+            <array>
+              ${jsonField('steps', 'Steps')}
+              ${jsonField('calories', 'Calories')}
+              ${jsonField('distance_km', 'Distance')}
+              ${jsonField('active_minutes', 'ActiveMin')}
+              ${jsonField('date', 'Today')}
+            </array>
+          </dict>
+          <key>WFSerializationType</key><string>WFDictionaryFieldValue</string>
+        </dict>
+      </dict>
+    </dict>
+  </array>
+  <key>WFWorkflowClientVersion</key><string>1282</string>
+  <key>WFWorkflowHasShortcutInputVariables</key><false/>
+  <key>WFWorkflowIcon</key>
+  <dict>
+    <key>WFWorkflowIconStartColor</key><integer>4282601983</integer>
+    <key>WFWorkflowIconGlyphNumber</key><integer>59511</integer>
+  </dict>
+  <key>WFWorkflowImportQuestions</key><array/>
+  <key>WFWorkflowInputContentItemClasses</key><array/>
+  <key>WFWorkflowMinimumClientVersion</key><integer>900</integer>
+  <key>WFWorkflowMinimumClientVersionString</key><string>900</string>
+  <key>WFWorkflowOutputContentItemClasses</key><array/>
+  <key>WFWorkflowTypes</key><array/>
+</dict>
+</plist>`;
+}
+
 router.use(requireAuth);
 
 // ── Profile ───────────────────────────────────────────────────────────────────
