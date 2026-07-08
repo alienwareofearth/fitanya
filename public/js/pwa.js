@@ -25,8 +25,14 @@ function isAdminPage() {
   return window.location.pathname.startsWith('/admin');
 }
 
+function isDashboardHome() {
+  const p = window.location.pathname;
+  return p === '/dashboard' || p === '/dashboard/' || p === '/' || p === '/index.html';
+}
+
 function showInstallBanner() {
   if (isAdminPage()) return;
+  if (!isDashboardHome()) return;
   if (document.getElementById('pwa-install-bar')) return;
   // Don't show if already running as standalone (already installed)
   if (window.matchMedia('(display-mode: standalone)').matches) return;
@@ -83,6 +89,7 @@ function isIosSafari() {
 
 window.addEventListener('DOMContentLoaded', () => {
   if (isAdminPage()) return;
+  if (!isDashboardHome()) return;
   if (sessionStorage.getItem('pwa-dismissed')) return;
   if (window.matchMedia('(display-mode: standalone)').matches) return;
 
