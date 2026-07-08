@@ -211,7 +211,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 
 .sidebar {
   width: 260px;
-  min-height: 100vh;
+  height: 100vh;
   background: var(--dark);
   border-right: 1px solid var(--border);
   display: flex;
@@ -220,6 +220,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   top: 0; left: 0;
   z-index: 100;
   transition: transform 0.3s;
+  overflow: hidden;
 }
 
 .sidebar-logo {
@@ -234,7 +235,19 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 }
 .sidebar-logo span { color: var(--orange); }
 
-.sidebar-nav { flex: 1; padding: 20px 0; overflow-y: auto; }
+.sidebar-nav {
+  flex: 1;
+  padding: 20px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* thin scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) transparent;
+}
+.sidebar-nav::-webkit-scrollbar { width: 4px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 4px; }
+.sidebar-nav::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 
 .nav-item {
   display: flex;

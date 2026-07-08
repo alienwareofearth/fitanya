@@ -25,7 +25,11 @@ body {
   width: 240px;
   background: var(--dark);
   border-right: 1px solid var(--border);
+  /* height: 100vh already set in main.css; override scrollbar colour for violet theme */
+  scrollbar-color: var(--muted) transparent;
 }
+.sidebar .sidebar-nav::-webkit-scrollbar-thumb { background: #2e2850; }
+.sidebar .sidebar-nav::-webkit-scrollbar-thumb:hover { background: #3d3660; }
 
 .sidebar-logo {
   padding: 22px 20px 18px;
