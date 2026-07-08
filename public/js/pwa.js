@@ -21,7 +21,12 @@ window.addEventListener('appinstalled', () => {
   _installPrompt = null;
 });
 
+function isAdminPage() {
+  return window.location.pathname.startsWith('/admin');
+}
+
 function showInstallBanner() {
+  if (isAdminPage()) return;
   if (document.getElementById('pwa-install-bar')) return;
   // Don't show if already running as standalone (already installed)
   if (window.matchMedia('(display-mode: standalone)').matches) return;
@@ -77,6 +82,7 @@ function isIosSafari() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  if (isAdminPage()) return;
   if (sessionStorage.getItem('pwa-dismissed')) return;
   if (window.matchMedia('(display-mode: standalone)').matches) return;
 
