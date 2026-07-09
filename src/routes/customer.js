@@ -264,15 +264,17 @@ router.put('/profile', async (req, res) => {
 
     const VALID_TZ = ['Asia/Kolkata', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London', 'Asia/Dubai'];
     const tz = VALID_TZ.includes(timezone) ? timezone : 'Asia/Kolkata';
-    await db.execute({ sql: `UPDATE users SET name=?, phone=?, timezone=?, updated_at=datetime('now') WHERE id=?`, args: [name, phone, tz, userId] });
+    const n = v => (v === undefined || v === '') ? null : v;
+
+    await db.execute({ sql: `UPDATE users SET name=?, phone=?, timezone=?, updated_at=datetime('now') WHERE id=?`, args: [n(name), n(phone), tz, userId] });
     await db.execute({
       sql: `UPDATE customer_profiles SET occupation=?, height=?, waist=?, thigh=?, arm=?, chest=?, age=?, weight=?, ideal_weight=?, address=?, health_issues=?, allergies=?, food_preference=?, food_specific=?, prior_experience=?, fitness_goal=?, updated_at=datetime('now') WHERE user_id=?`,
-      args: [occupation, height, waist, thigh, arm, chest, age, weight, ideal_weight, address, health_issues, allergies, food_preference, food_specific, prior_experience, fitness_goal, userId],
+      args: [n(occupation), n(height), n(waist), n(thigh), n(arm), n(chest), n(age), n(weight), n(ideal_weight), n(address), n(health_issues), n(allergies), n(food_preference), n(food_specific), n(prior_experience), n(fitness_goal), userId],
     });
 
-    req.session.user.name = name;
+    req.session.user.name = name || req.session.user.name;
     res.json({ success: true });
-  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+  } catch (err) { console.error('[customer] profile update error:', err.message); res.status(500).json({ error: 'Failed to save profile. Please try again.' }); }
 });
 
 router.post('/profile/picture', upload.single('photo'), async (req, res) => {
