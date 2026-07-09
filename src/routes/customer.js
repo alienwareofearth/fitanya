@@ -34,10 +34,12 @@ router.post('/health/sync', async (req, res) => {
       return res.status(400).json({ error: 'date required in YYYY-MM-DD format' });
     }
 
-    const steps         = Math.max(0, parseInt(src.steps         || 0, 10));
-    const calories      = Math.max(0, parseInt(src.calories      || 0, 10));
-    const active_minutes = Math.max(0, parseInt(src.active_minutes || 0, 10));
-    const distance_km   = Math.max(0, parseFloat(src.distance_km || 0));
+    // iOS may format decimals with comma in Indian locale ("6,2" instead of "6.2")
+    const toNum  = v => parseFloat(String(v || 0).replace(',', '.')) || 0;
+    const steps          = Math.max(0, Math.round(toNum(src.steps)));
+    const calories       = Math.max(0, Math.round(toNum(src.calories)));
+    const active_minutes = Math.max(0, Math.round(toNum(src.active_minutes)));
+    const distance_km    = Math.max(0, Math.round(toNum(src.distance_km) * 100) / 100);
 
     await db.execute({
       sql: `INSERT INTO health_logs (user_id, date, steps, calories, active_minutes, distance_km, source, synced_at)
@@ -88,7 +90,8 @@ router.get('/health/shortcut', async (req, res) => {
     const syncUrl = `${appUrl}/api/customer/health/sync?token=${token}`;
     const plist   = buildShortcutPlist(syncUrl);
 
-    res.setHeader('Content-Type', 'application/octet-stream');
+    // application/x-apple-aspen-config triggers "Open in Shortcuts" on modern iOS
+    res.setHeader('Content-Type', 'application/x-apple-aspen-config');
     res.setHeader('Content-Disposition', 'attachment; filename="Fitanya-Health-Sync.shortcut"');
     res.send(plist);
   } catch (err) {
@@ -98,18 +101,51 @@ router.get('/health/shortcut', async (req, res) => {
 });
 
 function buildShortcutPlist(syncUrl) {
-  const OBJ = '￼'; // Unicode Object Replacement Character — Shortcuts attachment placeholder
+  // Use U+FFFC (Object Replacement Character) as variable placeholder
+  const OBJ = '￼';
 
-  const varAttach = name => `<dict>
-          <key>Value</key><dict><key>Type</key><string>Variable</string><key>VariableName</key><string>${name}</string></dict>
-          <key>WFSerializationType</key><string>WFTextTokenAttachment</string>
-        </dict>`;
-
+  // ── Helpers ───────────────────────────────────────────────────────────
   const setVar = name => `<dict>
       <key>WFWorkflowActionIdentifier</key><string>is.workflow.actions.setvariable</string>
       <key>WFWorkflowActionParameters</key><dict><key>WFVariableName</key><string>${name}</string></dict>
     </dict>`;
 
+  // Single-variable reference (for action inputs like WFInput)
+  const varAttach = name => `<dict>
+      <key>Value</key><dict><key>Type</key><string>Variable</string><key>VariableName</key><string>${name}</string></dict>
+      <key>WFSerializationType</key><string>WFTextTokenAttachment</string>
+    </dict>`;
+
+  // Build a Text action whose output is a string with variable tokens embedded.
+  // Positions are computed from the template string (with OBJ placeholders).
+  const textActionWithVars = (template, varNames, outputName) => {
+    const entries = [];
+    let idx = 0;
+    for (let i = 0; i < template.length; i++) {
+      if (template[i] === OBJ) {
+        entries.push(`<key>{${i}, 1}</key><dict><key>Type</key><string>Variable</string><key>VariableName</key><string>${varNames[idx++]}</string></dict>`);
+      }
+    }
+    return `<dict>
+      <key>WFWorkflowActionIdentifier</key><string>is.workflow.actions.text</string>
+      <key>WFWorkflowActionParameters</key>
+      <dict>
+        <key>WFTextActionText</key>
+        <dict>
+          <key>Value</key>
+          <dict>
+            <key>attachmentsByRange</key><dict>${entries.join('')}</dict>
+            <key>string</key><string>${template}</string>
+          </dict>
+          <key>WFSerializationType</key><string>WFTextTokenString</string>
+        </dict>
+        <key>CustomOutputName</key><string>${outputName}</string>
+      </dict>
+    </dict>
+    ${setVar(outputName)}`;
+  };
+
+  // Health sample action — fetches today's cumulative total for an HK type
   const healthAction = (hkType, varName) => `<dict>
       <key>WFWorkflowActionIdentifier</key><string>is.workflow.actions.gethealthsample</string>
       <key>WFWorkflowActionParameters</key>
@@ -123,27 +159,10 @@ function buildShortcutPlist(syncUrl) {
     </dict>
     ${setVar(varName)}`;
 
-  const jsonField = (key, varName) => `<dict>
-              <key>WFItemType</key><integer>0</integer>
-              <key>WFKey</key>
-              <dict>
-                <key>Value</key><dict><key>string</key><string>${key}</string></dict>
-                <key>WFSerializationType</key><string>WFTextTokenString</string>
-              </dict>
-              <key>WFValue</key>
-              <dict>
-                <key>Value</key>
-                <dict>
-                  <key>attachmentsByRange</key>
-                  <dict>
-                    <key>{0, 1}</key>
-                    <dict><key>Type</key><string>Variable</string><key>VariableName</key><string>${varName}</string></dict>
-                  </dict>
-                  <key>string</key><string>${OBJ}</string>
-                </dict>
-                <key>WFSerializationType</key><string>WFTextTokenString</string>
-              </dict>
-            </dict>`;
+  // ── URL template (query params — no JSON body needed) ─────────────────
+  // syncUrl already contains ?token=TOKEN
+  const urlTemplate = `${syncUrl}&date=${OBJ}&steps=${OBJ}&calories=${OBJ}&distance_km=${OBJ}&active_minutes=${OBJ}`;
+  const urlVarNames = ['Today', 'Steps', 'Calories', 'Distance', 'ActiveMin'];
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -151,6 +170,8 @@ function buildShortcutPlist(syncUrl) {
 <dict>
   <key>WFWorkflowActions</key>
   <array>
+
+    <!-- 1. Get today's date and format it as yyyy-MM-dd -->
     <dict>
       <key>WFWorkflowActionIdentifier</key><string>is.workflow.actions.date</string>
       <key>WFWorkflowActionParameters</key><dict><key>CustomOutputName</key><string>NowDate</string></dict>
@@ -167,34 +188,26 @@ function buildShortcutPlist(syncUrl) {
       </dict>
     </dict>
     ${setVar('Today')}
-    ${healthAction('HKQuantityTypeIdentifierStepCount', 'Steps')}
-    ${healthAction('HKQuantityTypeIdentifierActiveEnergyBurned', 'Calories')}
-    ${healthAction('HKQuantityTypeIdentifierDistanceWalkingRunning', 'Distance')}
-    ${healthAction('HKQuantityTypeIdentifierAppleExerciseTime', 'ActiveMin')}
+
+    <!-- 2-5. Health samples -->
+    ${healthAction('HKQuantityTypeIdentifierStepCount',               'Steps')}
+    ${healthAction('HKQuantityTypeIdentifierActiveEnergyBurned',      'Calories')}
+    ${healthAction('HKQuantityTypeIdentifierDistanceWalkingRunning',   'Distance')}
+    ${healthAction('HKQuantityTypeIdentifierAppleExerciseTime',        'ActiveMin')}
+
+    <!-- 6. Build sync URL with all params as query string (avoids JSON body complexity) -->
+    ${textActionWithVars(urlTemplate, urlVarNames, 'SyncURL')}
+
+    <!-- 7. POST to Fitanya (params already in URL, no body required) -->
     <dict>
       <key>WFWorkflowActionIdentifier</key><string>is.workflow.actions.downloadurl</string>
       <key>WFWorkflowActionParameters</key>
       <dict>
         <key>WFHTTPMethod</key><string>POST</string>
-        <key>WFURL</key><string>${syncUrl}</string>
-        <key>WFHTTPBodyType</key><string>JSON</string>
-        <key>WFHTTPRequestBody</key>
-        <dict>
-          <key>Value</key>
-          <dict>
-            <key>WFDictionaryFieldValueItems</key>
-            <array>
-              ${jsonField('steps', 'Steps')}
-              ${jsonField('calories', 'Calories')}
-              ${jsonField('distance_km', 'Distance')}
-              ${jsonField('active_minutes', 'ActiveMin')}
-              ${jsonField('date', 'Today')}
-            </array>
-          </dict>
-          <key>WFSerializationType</key><string>WFDictionaryFieldValue</string>
-        </dict>
+        <key>WFURL</key>${varAttach('SyncURL')}
       </dict>
     </dict>
+
   </array>
   <key>WFWorkflowClientVersion</key><string>1282</string>
   <key>WFWorkflowHasShortcutInputVariables</key><false/>

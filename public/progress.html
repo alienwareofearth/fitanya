@@ -108,15 +108,17 @@
               <div style="font-size:2.2rem">⬇️</div>
               <div style="flex:1;min-width:0">
                 <div style="font-weight:600;color:var(--white);margin-bottom:2px">Download Ready-Made Shortcut</div>
-                <div class="text-dim text-small">Tap the button below on your iPhone — it opens Shortcuts with everything pre-configured. You just tap "Add Shortcut".</div>
+                <div class="text-dim text-small">Tap the button on your iPhone in Safari — iOS will download and open it in Shortcuts automatically.</div>
               </div>
             </div>
             <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
-              <a id="shortcut-open-btn" href="#" class="btn btn-primary" style="text-decoration:none" onclick="openInShortcuts(event)">📲 Add to Shortcuts</a>
-              <a id="shortcut-dl-btn" href="/api/customer/health/shortcut" class="btn btn-outline btn-sm" style="text-decoration:none;align-self:center">⬇ Direct Download</a>
+              <a id="shortcut-dl-btn" href="/api/customer/health/shortcut" class="btn btn-primary" style="text-decoration:none">📲 Download Shortcut</a>
             </div>
-            <div id="shortcut-ios15-note" class="text-dim text-small" style="margin-top:10px;display:none">
-              ⚠️ iOS 15+: If blocked, go to <strong>Settings → Shortcuts → Allow Untrusted Shortcuts</strong> and enable it, then try again.
+            <!-- iOS 15+ "Allow Untrusted Shortcuts" instructions -->
+            <div style="margin-top:14px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:12px 14px;font-size:12px;color:#fbbf24">
+              <strong>⚠️ First-time setup (iOS 15 / 16 / 17 / 18 / 26):</strong><br>
+              Go to <strong>Settings → Shortcuts → Allow Untrusted Shortcuts</strong> → turn ON, then tap the button above.
+              After installing, tap "Allow" when Shortcuts asks for Health access.
             </div>
           </div>
 
@@ -279,30 +281,9 @@
     _syncUrl = `${origin}/api/customer/health/sync?token=${token}`;
     document.getElementById('sync-url-display').textContent = _syncUrl;
 
-    // Wire up download button with the token (for session-less access by Shortcuts app)
+    // Embed the user's token so Shortcuts app can fetch the file without a session
     const shortcutDlUrl = `/api/customer/health/shortcut?token=${token}`;
     document.getElementById('shortcut-dl-btn').href = shortcutDlUrl;
-
-    // "Open in Shortcuts" URL scheme — works on iPhone when app is installed
-    const shortcutsImportUrl = `shortcuts://import-workflow?url=${encodeURIComponent(origin + shortcutDlUrl)}&name=Fitanya%20Health%20Sync`;
-    document.getElementById('shortcut-open-btn').dataset.shortcutsUrl = shortcutsImportUrl;
-
-    // Show iOS 15 note only on iOS
-    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-    if (isIOS) document.getElementById('shortcut-ios15-note').style.display = 'block';
-  }
-
-  function openInShortcuts(e) {
-    e.preventDefault();
-    const url = e.currentTarget.dataset.shortcutsUrl;
-    if (!url) return;
-    // Try the shortcuts:// scheme; if it fails (not on iPhone) fall back to direct download
-    window.location.href = url;
-    // After 1.5s, if we're still here the scheme didn't open — fallback to download
-    setTimeout(() => {
-      const dl = document.getElementById('shortcut-dl-btn');
-      if (dl) window.location.href = dl.href;
-    }, 1500);
   }
 
   function switchPlatformTab(tab) {
