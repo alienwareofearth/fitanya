@@ -31,8 +31,14 @@
   </aside>
   <main class="main-content">
     <div class="page-header flex-between mb-32">
-      <div><h2>My Stories</h2><p>Share your transformation and inspire others</p></div>
-      <button class="btn btn-primary" onclick="document.getElementById('story-modal').classList.remove('hidden')">+ Add Story</button>
+      <div>
+        <h2>My Stories</h2>
+        <p>Share your transformation and inspire others &nbsp;<span id="cache-age" class="text-dim text-small"></span></p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-dark btn-sm" onclick="syncNow()" id="sync-btn">🔄 Refresh</button>
+        <button class="btn btn-primary" onclick="document.getElementById('story-modal').classList.remove('hidden')">+ Add Story</button>
+      </div>
     </div>
 
     <div class="card mb-24" style="background:var(--dark);border-color:var(--orange)">
@@ -68,11 +74,41 @@
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
+  const CACHE_KEY = 'stories';
+
   async function init() {
     await requireAuth();
+    const cached = pageCache.get(CACHE_KEY);
+    if (cached) {
+      renderStories(cached.stories || []);
+      showAge();
+    } else {
+      await fetchAndRender();
+    }
+  }
+
+  async function fetchAndRender() {
+    document.getElementById('stories-wrap').innerHTML = '<div class="spinner"></div>';
     const data = await api.get('/api/customer/stories');
+    if (data) pageCache.set(CACHE_KEY, data);
+    renderStories(data?.stories || []);
+    showAge();
+  }
+
+  function showAge() {
+    const age = pageCache.ageLabel(CACHE_KEY);
+    const el = document.getElementById('cache-age');
+    if (el && age) el.textContent = '· cached ' + age;
+  }
+
+  function syncNow() {
+    pageCache.bust(CACHE_KEY);
+    fetchAndRender();
+  }
+
+  function renderStories(stories) {
     const el = document.getElementById('stories-wrap');
-    if (!data?.stories?.length) {
+    if (!stories.length) {
       el.innerHTML = `<div class="card text-center" style="padding:48px">
         <div style="font-size:48px;margin-bottom:16px">📸</div>
         <h4 style="margin-bottom:8px">No stories yet</h4>
@@ -81,22 +117,19 @@
       </div>`;
       return;
     }
-
-    el.innerHTML = data.stories.map(s => {
-      const statusMap = { pending: 'badge-yellow', approved: 'badge-green', rejected: 'badge-red' };
-      return `
-        <div class="card mb-24">
-          <div class="flex-between mb-16">
-            <div style="font-family:var(--font-display);font-size:1.2rem;color:var(--white)">${s.title || 'My Story'}</div>
-            <span class="badge ${statusMap[s.status] || 'badge-yellow'}">${s.status}</span>
-          </div>
-          ${s.photo_url ? `<img src="${s.photo_url}" style="width:100%;max-height:260px;object-fit:cover;border-radius:var(--radius-sm);margin-bottom:16px" />` : ''}
-          <p style="color:var(--text);font-size:14px;line-height:1.7">${s.body}</p>
-          ${s.admin_note ? `<div class="card mt-16" style="background:var(--dark)"><strong class="text-dim text-small">Admin Note:</strong><p class="text-small mt-4">${s.admin_note}</p></div>` : ''}
-          <p class="text-dim text-small mt-16">Submitted: ${formatDate(s.created_at)}</p>
+    const statusMap = { pending: 'badge-yellow', approved: 'badge-green', rejected: 'badge-red' };
+    el.innerHTML = stories.map(s => `
+      <div class="card mb-24">
+        <div class="flex-between mb-16">
+          <div style="font-family:var(--font-display);font-size:1.2rem;color:var(--white)">${s.title || 'My Story'}</div>
+          <span class="badge ${statusMap[s.status] || 'badge-yellow'}">${s.status}</span>
         </div>
-      `;
-    }).join('');
+        ${s.photo_url ? `<img src="${s.photo_url}" style="width:100%;max-height:260px;object-fit:cover;border-radius:var(--radius-sm);margin-bottom:16px" />` : ''}
+        <p style="color:var(--text);font-size:14px;line-height:1.7">${s.body}</p>
+        ${s.admin_note ? `<div class="card mt-16" style="background:var(--dark)"><strong class="text-dim text-small">Admin Note:</strong><p class="text-small mt-4">${s.admin_note}</p></div>` : ''}
+        <p class="text-dim text-small mt-16">Submitted: ${formatDate(s.created_at)}</p>
+      </div>
+    `).join('');
   }
 
   async function submitStory() {
@@ -111,7 +144,8 @@
     if (data?.success) {
       toast('Story submitted for review!', 'success');
       document.getElementById('story-modal').classList.add('hidden');
-      init();
+      pageCache.bust(CACHE_KEY);
+      await fetchAndRender();
     } else toast(data?.error || 'Failed to submit', 'error');
   }
 

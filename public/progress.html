@@ -65,9 +65,12 @@
     <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
   </aside>
   <main class="main-content">
-    <div class="page-header mb-20">
-      <h2>My Progress</h2>
-      <p>Tap any section to expand and load your data</p>
+    <div class="page-header flex-between mb-20">
+      <div>
+        <h2>My Progress</h2>
+        <p>Tap any section to expand and load your data &nbsp;<span id="cache-age" class="text-dim text-small"></span></p>
+      </div>
+      <button class="btn btn-dark btn-sm" onclick="syncAll()">🔄 Sync</button>
     </div>
 
     <!-- ── 1. Daily Activity ────────────────────────────────────────────── -->
@@ -172,10 +175,38 @@
 <script src="/js/app.js"></script>
 <script>
   // ── State ───────────────────────────────────────────────────────────────
-  let _progressData = null;   // cached from /api/customer/progress
+  let _progressData = null;   // in-memory mirror of pageCache('progress_data')
   let _syncUrl = '';
   let weightChart, measChart;
   const _loaded = { log: true };  // log section is pre-populated
+
+  const CACHE_KEYS = {
+    activity: 'progress_activity',
+    setup:    'progress_token',
+    progress: 'progress_data',
+    notes:    'progress_notes',
+  };
+
+  function showAge() {
+    // Show age of the oldest loaded cache entry
+    const ages = Object.values(CACHE_KEYS).map(k => pageCache.ageLabel(k)).filter(Boolean);
+    const el = document.getElementById('cache-age');
+    if (el && ages.length) el.textContent = '· synced ' + ages[ages.length - 1];
+  }
+
+  async function syncAll() {
+    Object.values(CACHE_KEYS).forEach(k => pageCache.bust(k));
+    _progressData = null;
+    // Reload whichever sections are currently open
+    for (const name of Object.keys(CACHE_KEYS)) {
+      _loaded[name] = false;
+      if (document.getElementById('body-' + name)?.classList.contains('open')) {
+        await loadSection(name);
+      }
+    }
+    showAge();
+    toast('Progress synced from server', 'success');
+  }
 
   async function init() {
     await requireAuth();
@@ -208,33 +239,48 @@
     switch (name) {
 
       case 'activity': {
+        const cached = pageCache.get(CACHE_KEYS.activity);
+        if (cached) { renderActivity(cached); showAge(); break; }
         setInner('<div class="spinner"></div>');
         const data = await api.get('/api/customer/health/logs?days=7');
+        if (data?.logs) pageCache.set(CACHE_KEYS.activity, data.logs);
         renderActivity(data?.logs || []);
+        showAge();
         break;
       }
 
       case 'setup': {
+        const cached = pageCache.get(CACHE_KEYS.setup);
+        if (cached !== null) { renderSetupGuide(cached); showAge(); break; }
         setInner('<div class="spinner"></div>');
         const data = await api.get('/api/customer/health/token');
+        if (data?.token !== undefined) pageCache.set(CACHE_KEYS.setup, data.token || '');
         renderSetupGuide(data?.token || '');
+        showAge();
         break;
       }
 
       case 'progress': {
+        const cached = pageCache.get(CACHE_KEYS.progress);
+        if (cached) { _progressData = cached; renderProgress(cached); showAge(); break; }
         setInner('<div class="spinner"></div>');
-        if (!_progressData) {
-          const data = await api.get('/api/customer/progress');
-          _progressData = data?.logs || [];
-        }
+        const data = await api.get('/api/customer/progress');
+        _progressData = data?.logs || [];
+        if (data?.logs) pageCache.set(CACHE_KEYS.progress, _progressData);
         renderProgress(_progressData);
+        showAge();
         break;
       }
 
       case 'notes': {
+        const cached = pageCache.get(CACHE_KEYS.notes);
+        if (cached) { renderNotes(cached); showAge(); break; }
         setInner('<div class="spinner"></div>');
         const data = await api.get('/api/bookings/my');
-        renderNotes(data?.bookings?.filter(b => b.session_notes) || []);
+        const notes = data?.bookings?.filter(b => b.session_notes) || [];
+        pageCache.set(CACHE_KEYS.notes, notes);
+        renderNotes(notes);
+        showAge();
         break;
       }
     }
@@ -385,6 +431,7 @@
     if (!confirm('Regenerate your token? Your existing Shortcut will stop working until you update its URL.')) return;
     const data = await api.post('/api/customer/health/token/regenerate', {});
     if (data?.success) {
+      pageCache.bust(CACHE_KEYS.setup);
       _loaded.setup = false;
       await loadSection('setup');
       toast('Token regenerated. Re-download the Shortcut to apply the new URL.', 'success');
@@ -508,7 +555,8 @@
     const data = await api.post('/api/customer/progress', payload);
     if (data?.success) {
       toast('Progress saved! 💪', 'success');
-      // Clear cached progress and reload the section if it's open
+      // Bust cache + in-memory state, reload if section is open
+      pageCache.bust(CACHE_KEYS.progress);
       _progressData = null;
       _loaded.progress = false;
       if (document.getElementById('body-progress').classList.contains('open')) {

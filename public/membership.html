@@ -80,6 +80,7 @@
       <a href="/dashboard" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
       <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
       <a href="/dashboard/membership" class="nav-item active"><span class="icon">🎫</span>Membership</a>
+      <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
       <a href="/dashboard/progress" class="nav-item"><span class="icon">📊</span>Progress</a>
       <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
       <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
@@ -90,9 +91,12 @@
   </aside>
 
   <main class="main-content">
-    <div class="page-header mb-24">
-      <h2>Membership</h2>
-      <p>Manage your plan and payments</p>
+    <div class="page-header flex-between mb-24">
+      <div>
+        <h2>Membership</h2>
+        <p>Manage your plan and payments &nbsp;<span id="cache-age" class="text-dim text-small"></span></p>
+      </div>
+      <button class="btn btn-dark btn-sm" onclick="syncNow()">🔄 Refresh</button>
     </div>
 
     <!-- ── Section 1: Current Plan ─────────────────────────────────────── -->
@@ -103,7 +107,11 @@
 
     <!-- ── Section 2: Switch Plan ─────────────────────────────────────── -->
     <div class="switch-section">
-      <div class="section-title" id="switch-title">Switch / Upgrade Plan</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:4px 0" onclick="toggleSection('switch')">
+        <div class="section-title mb-0" id="switch-title">Switch / Upgrade Plan</div>
+        <span id="chev-switch" style="color:var(--text-dim);font-size:13px;transition:transform 0.2s">▶</span>
+      </div>
+      <div id="body-switch" style="display:none">
       <div class="card mt-16">
 
         <div class="form-group">
@@ -185,22 +193,30 @@
         </div>
 
       </div>
+      </div><!-- /body-switch -->
     </div>
 
     <!-- ── Section 3: Payment History ─────────────────────────────────── -->
-    <div class="section-title mt-32">Payment History</div>
-    <div class="card mt-16">
-      <div class="table-wrap">
-        <table class="history-table">
-          <thead>
-            <tr>
-              <th>Date</th><th>Amount</th><th>Discount</th>
-              <th>Carry Credit</th><th>Paid</th><th>Status</th><th>Ref</th>
-            </tr>
-          </thead>
-          <tbody id="payment-rows"><tr><td colspan="7" class="text-center text-dim">Loading...</td></tr></tbody>
-        </table>
+    <div style="margin-top:32px">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:4px 0" onclick="toggleSection('history')">
+        <div class="section-title mb-0">Payment History</div>
+        <span id="chev-history" style="color:var(--text-dim);font-size:13px;transition:transform 0.2s">▶</span>
       </div>
+      <div id="body-history" style="display:none">
+      <div class="card mt-16">
+        <div class="table-wrap">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Date</th><th>Amount</th><th>Discount</th>
+                <th>Carry Credit</th><th>Paid</th><th>Status</th><th>Ref</th>
+              </tr>
+            </thead>
+            <tbody id="payment-rows"><tr><td colspan="7" class="text-center text-dim">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      </div><!-- /body-history -->
     </div>
 
   </main>
@@ -208,6 +224,7 @@
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
+  const CACHE_KEY = 'membership';
   let _activeMem = null;
   let _pkgs = [];
   let _selPkg = null;
@@ -215,20 +232,54 @@
   let _discountAmount = 0;
   let _payConfig = null;
 
+  // ── Accordion toggle for Switch and History sections ────────────────────
+  function toggleSection(name) {
+    const body = document.getElementById('body-' + name);
+    const chev = document.getElementById('chev-' + name);
+    const open = body.style.display === 'none';
+    body.style.display = open ? '' : 'none';
+    chev.style.transform = open ? 'rotate(90deg)' : '';
+  }
+
+  // ── Cache helpers ───────────────────────────────────────────────────────
+  function showAge() {
+    const age = pageCache.ageLabel(CACHE_KEY);
+    const el = document.getElementById('cache-age');
+    if (el && age) el.textContent = '· cached ' + age;
+  }
+
+  function syncNow() { pageCache.bust(CACHE_KEY); fetchAndRender(); }
+
   // ── Init ───────────────────────────────────────────────────────────────
   async function init() {
     const auth = await requireAuth();
     if (!auth) return;
 
+    const cached = pageCache.get(CACHE_KEY);
+    if (cached) {
+      renderAll(cached);
+      showAge();
+    } else {
+      await fetchAndRender();
+    }
+  }
+
+  async function fetchAndRender() {
+    document.getElementById('current-plan-wrap').innerHTML = '<div class="spinner"></div>';
     const [memData, pkgData, payCfg] = await Promise.all([
       api.get('/api/customer/membership'),
       api.get('/api/public/packages'),
       api.get('/api/payments/config'),
     ]);
+    const bundle = { memData, pkgData, payCfg };
+    pageCache.set(CACHE_KEY, bundle);
+    renderAll(bundle);
+    showAge();
+  }
 
+  function renderAll({ memData, pkgData, payCfg }) {
     _payConfig = payCfg?.config || { mode: 'personal' };
     _pkgs = pkgData?.packages || [];
-
     renderCurrentPlan(memData);
     renderPackageDropdown();
     renderPaymentHistory(memData?.payments || []);
@@ -538,6 +589,7 @@
                 razorpay_signature:  response.razorpay_signature,
               });
               if (verify?.success) {
+                pageCache.bust(CACHE_KEY);
                 toast('Payment successful! Membership activated. 🎉', 'success');
                 setTimeout(() => window.location.reload(), 1500);
               } else {
@@ -563,6 +615,7 @@
     const data = await api.post('/api/payments/upi/submit', { method: 'upi' });
     btn.disabled = false; btn.textContent = "I've Paid →";
     if (data?.success) {
+      pageCache.bust(CACHE_KEY);
       toast('Payment submitted! Admin will verify and activate your plan shortly.', 'success');
       document.getElementById('upi-links-wrap').classList.add('hidden');
       document.getElementById('upi-initiate-wrap').classList.remove('hidden');
@@ -587,6 +640,7 @@
     const data = await api.post('/api/payments/confirm-free', {});
     btn.disabled = false; btn.textContent = 'Switch Plan →';
     if (data?.success) {
+      pageCache.bust(CACHE_KEY);
       toast('Plan switched successfully! 🎉', 'success');
       setTimeout(() => window.location.reload(), 1200);
     } else {

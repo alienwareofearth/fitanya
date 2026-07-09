@@ -30,9 +30,12 @@
     <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
   </aside>
   <main class="main-content">
-    <div class="page-header mb-32">
-      <h2>Refer & Earn</h2>
-      <p>Invite friends to Fitanya and earn credits towards your next membership</p>
+    <div class="page-header flex-between mb-32">
+      <div>
+        <h2>Refer &amp; Earn</h2>
+        <p>Invite friends and earn credits &nbsp;<span id="cache-age" class="text-dim text-small"></span></p>
+      </div>
+      <button class="btn btn-dark btn-sm" onclick="syncNow()">🔄 Refresh</button>
     </div>
 
     <!-- Hero referral card -->
@@ -74,25 +77,48 @@
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
+  const CACHE_KEY = 'referrals';
   let referralCode = '';
 
   async function init() {
     await requireAuth();
-    const data = await api.get('/api/customer/referrals');
-    if (!data?.success) return;
+    const cached = pageCache.get(CACHE_KEY);
+    if (cached) {
+      renderReferrals(cached);
+      showAge();
+    } else {
+      await fetchAndRender();
+    }
+  }
 
+  async function fetchAndRender() {
+    document.getElementById('ref-rows').innerHTML = '<tr><td colspan="4" class="text-center"><div class="spinner" style="margin:16px auto"></div></td></tr>';
+    const data = await api.get('/api/customer/referrals');
+    if (data?.success) pageCache.set(CACHE_KEY, data);
+    renderReferrals(data || {});
+    showAge();
+  }
+
+  function showAge() {
+    const age = pageCache.ageLabel(CACHE_KEY);
+    const el = document.getElementById('cache-age');
+    if (el && age) el.textContent = '· cached ' + age;
+  }
+
+  function syncNow() { pageCache.bust(CACHE_KEY); fetchAndRender(); }
+
+  function renderReferrals(data) {
+    if (!data?.success) return;
     referralCode = data.referral_code || '';
     document.getElementById('ref-code').textContent = referralCode;
     if (data.config?.reward_value) {
       document.getElementById('reward-amount').textContent = '₹' + data.config.reward_value;
     }
-
     const refs = data.referrals || [];
     document.getElementById('total-refs').textContent = refs.length;
     document.getElementById('done-refs').textContent = refs.filter(r => r.reward_credited).length;
     document.getElementById('credits-earned').textContent = '₹' + (refs.filter(r => r.reward_credited).length * (data.config?.reward_value || 500));
     document.getElementById('credits-avail').textContent = '₹' + (data.credits || 0);
-
     const tbody = document.getElementById('ref-rows');
     if (!refs.length) {
       tbody.innerHTML = '<tr><td colspan="4" class="text-center text-dim">No referrals yet. Start sharing!</td></tr>';

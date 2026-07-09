@@ -39,9 +39,12 @@
     <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
   </aside>
   <main class="main-content">
-    <div class="page-header mb-32">
-      <h2>Diet & Nutrition</h2>
-      <p>Your personalised meal plan based on your preferences and fitness goal</p>
+    <div class="page-header flex-between mb-32">
+      <div>
+        <h2>Diet &amp; Nutrition</h2>
+        <p>Your personalised meal plan &nbsp;<span id="cache-age" class="text-dim text-small"></span></p>
+      </div>
+      <button class="btn btn-dark btn-sm" onclick="syncDiet()">🔄 Refresh</button>
     </div>
 
     <div class="grid-2 gap-24">
@@ -88,23 +91,51 @@
   let currentGlasses = 0;
   let goalGlasses = 8;
   let today = new Date().toISOString().split('T')[0];
+  let _currentDate = today;
+
+  function dietCacheKey(date) { return 'diet_' + date; }
+
+  function showAge(date) {
+    const age = pageCache.ageLabel(dietCacheKey(date));
+    const el = document.getElementById('cache-age');
+    if (el) el.textContent = age ? '· cached ' + age : '';
+  }
+
+  function syncDiet() {
+    pageCache.bust(dietCacheKey(_currentDate));
+    loadDiet(_currentDate, true);
+  }
 
   async function init() {
     await requireAuth();
     flatpickr('#diet-date', {
       defaultDate: today,
       dateFormat: 'Y-m-d',
-      onChange: ([d]) => loadDiet(d.toISOString().split('T')[0]),
+      onChange: ([d]) => { _currentDate = d.toISOString().split('T')[0]; loadDiet(_currentDate); },
     });
     loadDiet(today);
     loadHydration(today);
   }
 
-  async function loadDiet(date) {
+  async function loadDiet(date, bust = false) {
+    if (bust) pageCache.bust(dietCacheKey(date));
+    const cacheKey = dietCacheKey(date);
+    const cached = pageCache.get(cacheKey);
+    if (cached) {
+      renderDietData(cached);
+      showAge(date);
+      return;
+    }
     document.getElementById('meals-wrap').innerHTML = '<div class="spinner"></div>';
     const data = await api.get('/api/customer/diet?date=' + date);
+    if (data?.success) pageCache.set(cacheKey, data);
     if (!data?.success) return;
 
+    renderDietData(data);
+    showAge(date);
+  }
+
+  function renderDietData(data) {
     if (data.plan) {
       document.getElementById('diet-plan-info').innerHTML = `
         <div class="flex-between">

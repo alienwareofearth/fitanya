@@ -65,9 +65,12 @@
   </aside>
 
   <main class="main-content">
-    <div class="page-header mb-24">
-      <h2>Pay Now</h2>
-      <p>Quick UPI payment for your Fitanya membership renewal</p>
+    <div class="page-header flex-between mb-24">
+      <div>
+        <h2>Pay Now</h2>
+        <p>Quick UPI payment for membership renewal &nbsp;<span id="cache-age" class="text-dim text-small"></span></p>
+      </div>
+      <button class="btn btn-dark btn-sm" onclick="syncNow()">🔄 Refresh</button>
     </div>
 
     <div id="main-wrap"><div class="spinner"></div></div>
@@ -76,16 +79,36 @@
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
+  const CACHE_KEY = 'payment_info';
   let _info = null;
   let _qrLoaded = false;
 
   async function init() {
     await requireAuth();
+    const cached = pageCache.get(CACHE_KEY);
+    if (cached) {
+      _info = cached; render(); showAge();
+    } else {
+      await fetchAndRender();
+    }
+  }
+
+  async function fetchAndRender() {
+    document.getElementById('main-wrap').innerHTML = '<div class="spinner"></div>';
+    _qrLoaded = false;
     const data = await api.get('/api/payments/renewal-info');
     if (!data?.success) { showError('Could not load payment info.'); return; }
-    _info = data;
-    render();
+    pageCache.set(CACHE_KEY, data);
+    _info = data; render(); showAge();
   }
+
+  function showAge() {
+    const age = pageCache.ageLabel(CACHE_KEY);
+    const el = document.getElementById('cache-age');
+    if (el && age) el.textContent = '· cached ' + age;
+  }
+
+  function syncNow() { pageCache.bust(CACHE_KEY); fetchAndRender(); }
 
   function showError(msg) {
     document.getElementById('main-wrap').innerHTML =
@@ -237,6 +260,7 @@
 
     const data = await api.post('/api/payments/renewal-submit', { txn_ref: txnRef });
     if (data?.success) {
+      pageCache.bust(CACHE_KEY);
       document.getElementById('paid-section').innerHTML = `
         <div class="paid-success">
           <div style="font-size:2.5rem;margin-bottom:10px">✅</div>

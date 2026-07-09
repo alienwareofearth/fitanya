@@ -1,5 +1,35 @@
 // ── FITANYA GLOBAL JS ────────────────────────────────────────────────────
 
+// ── 24-hour page cache (localStorage) ────────────────────────────────────
+const pageCache = {
+  TTL: 24 * 60 * 60 * 1000,
+  _key: k => 'fc_' + k,
+  get(key) {
+    try {
+      const raw = localStorage.getItem(this._key(key));
+      if (!raw) return null;
+      const { data, ts } = JSON.parse(raw);
+      if (Date.now() - ts > this.TTL) { localStorage.removeItem(this._key(key)); return null; }
+      return data;
+    } catch { return null; }
+  },
+  set(key, data) {
+    try { localStorage.setItem(this._key(key), JSON.stringify({ data, ts: Date.now() })); } catch {}
+  },
+  bust(key) { try { localStorage.removeItem(this._key(key)); } catch {} },
+  // Returns human-readable age string like "2h ago" or "just now"
+  ageLabel(key) {
+    try {
+      const raw = localStorage.getItem(this._key(key));
+      if (!raw) return null;
+      const ms = Date.now() - JSON.parse(raw).ts;
+      if (ms < 60000)   return 'just now';
+      if (ms < 3600000) return Math.floor(ms / 60000) + 'm ago';
+      return Math.floor(ms / 3600000) + 'h ago';
+    } catch { return null; }
+  },
+};
+
 // ── API Helper ────────────────────────────────────────────────────────────
 const api = {
   async get(url) {
