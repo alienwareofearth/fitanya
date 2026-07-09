@@ -467,4 +467,106 @@ router.post('/confirm-free', async (req, res) => {
   }
 });
 
+// ── GET /api/payments/renewal-info ──────────────────────────────────────────
+// Returns current plan amount + UPI deep links for the quick-pay page
+router.get('/renewal-info', async (req, res) => {
+  try {
+    const db = getDb();
+    const userId = req.session.user.id;
+
+    // Get active (or most recent) membership + package
+    const mem = await db.execute({
+      sql: `SELECT m.*, p.name AS package_name, p.price, p.sessions, p.days
+            FROM memberships m JOIN packages p ON p.id = m.package_id
+            WHERE m.user_id = ? AND m.status IN ('active','pending')
+            ORDER BY m.created_at DESC LIMIT 1`,
+      args: [userId],
+    });
+
+    if (!mem.rows.length) return res.json({ success: true, hasMembership: false });
+
+    const m    = mem.rows[0];
+    const mode = MODE();
+
+    let upiLinks = null;
+    if (mode === 'personal') {
+      const { buildUpiLink } = require('../services/personal-upi');
+      const remark = `Fitanya-${m.package_name}-Renewal`;
+      upiLinks = buildUpiLink(m.price, remark);
+    }
+
+    // Fetch recent payments for this user
+    const pays = await db.execute({
+      sql: `SELECT id, amount, final_amount, method, status, transaction_id, created_at
+            FROM payments WHERE user_id = ? ORDER BY created_at DESC LIMIT 10`,
+      args: [userId],
+    });
+
+    res.json({
+      success: true,
+      hasMembership: true,
+      membership: {
+        packageName: m.package_name,
+        price:       m.price,
+        endDate:     m.end_date,
+        status:      m.status,
+        sessionsTotal: m.sessions_total,
+        sessionsUsed:  m.sessions_used,
+      },
+      mode,
+      upiLinks,
+      payments: pays.rows,
+    });
+  } catch (err) {
+    console.error('[payment] renewal-info error:', err.message);
+    res.status(500).json({ error: 'Request failed. Please try again.' });
+  }
+});
+
+// ── POST /api/payments/renewal-submit ───────────────────────────────────────
+// Member has paid via UPI — create pending payment + pending membership
+router.post('/renewal-submit', async (req, res) => {
+  try {
+    const db = getDb();
+    const userId = req.session.user.id;
+    const { txn_ref = '' } = req.body;
+
+    // Get current package to renew
+    const mem = await db.execute({
+      sql: `SELECT m.*, p.* FROM memberships m JOIN packages p ON p.id = m.package_id
+            WHERE m.user_id = ? AND m.status IN ('active','pending')
+            ORDER BY m.created_at DESC LIMIT 1`,
+      args: [userId],
+    });
+    if (!mem.rows.length) return res.status(400).json({ error: 'No active membership to renew' });
+
+    const m   = mem.rows[0];
+    const txn = `UPI-RENEW-${Date.now()}-${userId}${txn_ref ? `-${txn_ref.slice(0,10)}` : ''}`;
+
+    // Record payment (pending_verification — admin approves)
+    await db.execute({
+      sql: `INSERT INTO payments (user_id, amount, discount_amount, credits_used, final_amount, method, status, transaction_id)
+            VALUES (?, ?, 0, 0, ?, 'upi', 'pending_verification', ?)`,
+      args: [userId, m.price, m.price, txn],
+    });
+
+    // Create a pending renewal membership starting from today
+    const startD = new Date().toISOString().split('T')[0];
+    const endD   = new Date(Date.now() + m.days * 86400000).toISOString().split('T')[0];
+    await db.execute({
+      sql: `INSERT INTO memberships (user_id, package_id, sessions_total, sessions_used, start_date, end_date, status)
+            VALUES (?, ?, ?, 0, ?, ?, 'pending')`,
+      args: [userId, m.package_id, m.sessions, startD, endD],
+    });
+
+    // In-app notification
+    await notify.paymentReceived(userId, m.price).catch(() => {});
+
+    res.json({ success: true, transactionId: txn });
+  } catch (err) {
+    console.error('[payment] renewal-submit error:', err.message);
+    res.status(500).json({ error: 'Request failed. Please try again.' });
+  }
+});
+
 module.exports = router;

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#FF5C00">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Fitanya">
+  <link rel="apple-touch-icon" href="/icons/icon.svg">
+  <title>Pay Now — Fitanya</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    .pay-amount {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      color: var(--white);
+      line-height: 1;
+    }
+    .pay-label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .upi-btn {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; border-radius: 12px;
+      border: 1.5px solid var(--border); background: var(--card);
+      cursor: pointer; text-decoration: none; color: var(--white);
+      font-weight: 600; font-size: 15px; transition: all 0.15s;
+      width: 100%;
+    }
+    .upi-btn:hover { border-color: var(--orange); background: rgba(255,92,0,0.08); }
+    .upi-btn img { width: 32px; height: 32px; border-radius: 6px; object-fit: contain; }
+    .upi-btn-icon { width: 32px; height: 32px; border-radius: 6px; display:flex; align-items:center; justify-content:center; font-size:20px; }
+    .upi-btn-meta { font-size: 12px; color: var(--text-dim); font-weight: 400; }
+    .qr-box {
+      background: #fff; border-radius: 16px; padding: 16px;
+      display: inline-block; line-height: 0;
+    }
+    .pay-methods { display: flex; flex-direction: column; gap: 10px; }
+    .divider { display: flex; align-items: center; gap: 12px; color: var(--text-dim); font-size: 12px; margin: 4px 0; }
+    .divider::before,.divider::after { content:''; flex:1; height:1px; background:var(--border); }
+    .txn-input { display: flex; gap: 8px; margin-top: 10px; }
+    .paid-success { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25); border-radius: 12px; padding: 20px; text-align: center; }
+    .history-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .history-row:last-child { border-bottom: none; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    @media(min-width:640px) { .pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; } }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <a href="/dashboard" class="sidebar-logo">FIT<span>ANYA</span></a>
+    <div id="sidebar-profile"></div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
+      <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
+      <a href="/dashboard/membership" class="nav-item"><span class="icon">🎫</span>Membership</a>
+      <a href="/dashboard/payment" class="nav-item active"><span class="icon">💳</span>Pay Now</a>
+      <a href="/dashboard/progress" class="nav-item"><span class="icon">📊</span>Progress</a>
+      <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
+      <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
+      <a href="/dashboard/referral" class="nav-item"><span class="icon">🎁</span>Refer & Earn</a>
+      <a href="/dashboard/profile" class="nav-item"><span class="icon">👤</span>Profile</a>
+    </nav>
+    <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header mb-24">
+      <h2>Pay Now</h2>
+      <p>Quick UPI payment for your Fitanya membership renewal</p>
+    </div>
+
+    <div id="main-wrap"><div class="spinner"></div></div>
+  </main>
+</div>
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script>
+  let _info = null;
+  let _qrLoaded = false;
+
+  async function init() {
+    await requireAuth();
+    const data = await api.get('/api/payments/renewal-info');
+    if (!data?.success) { showError('Could not load payment info.'); return; }
+    _info = data;
+    render();
+  }
+
+  function showError(msg) {
+    document.getElementById('main-wrap').innerHTML =
+      `<div class="card"><p class="text-dim">${msg}</p></div>`;
+  }
+
+  function render() {
+    if (!_info.hasMembership) {
+      showError('No active membership found. <a href="/dashboard/membership" class="text-orange">Get a plan →</a>');
+      return;
+    }
+
+    const m    = _info.membership;
+    const upi  = _info.upiLinks;
+    const fmt  = n => new Intl.NumberFormat('en-IN').format(n);
+    const expD = m.endDate ? new Date(m.endDate).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—';
+    const sessLeft = m.sessionsTotal - m.sessionsUsed;
+
+    document.getElementById('main-wrap').innerHTML = `
+      <!-- Plan summary -->
+      <div class="card mb-24">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <div class="pay-label">Current Plan</div>
+            <div style="font-family:var(--font-display);font-size:1.4rem;color:var(--white)">${m.packageName}</div>
+            <div class="text-dim text-small" style="margin-top:4px">Expires ${expD} · ${sessLeft} sessions left</div>
+          </div>
+          <div style="text-align:right">
+            <div class="pay-label">Renewal Amount</div>
+            <div class="pay-amount">₹${fmt(m.price)}</div>
+          </div>
+        </div>
+      </div>
+
+      ${_info.mode !== 'personal' || !upi ? `
+      <div class="card mb-24">
+        <p class="text-dim">Online payment for renewal is managed through the <a href="/dashboard/membership" class="text-orange">Membership page</a>.</p>
+      </div>` : `
+
+      <div class="pay-grid mb-24">
+        <!-- Left: UPI buttons -->
+        <div class="card">
+          <div class="section-title" style="margin-bottom:16px">Pay via UPI</div>
+          <div class="pay-methods">
+            <a href="${upi.gpay}" class="upi-btn">
+              <div class="upi-btn-icon" style="background:#f0fdf4">💚</div>
+              <div>
+                <div>Google Pay</div>
+                <div class="upi-btn-meta">Opens GPay app</div>
+              </div>
+            </a>
+            <a href="${upi.phonepe}" class="upi-btn">
+              <div class="upi-btn-icon" style="background:#f5f3ff">💜</div>
+              <div>
+                <div>PhonePe</div>
+                <div class="upi-btn-meta">Opens PhonePe app</div>
+              </div>
+            </a>
+            <div class="divider">or</div>
+            <a href="${upi.generic}" class="upi-btn">
+              <div class="upi-btn-icon" style="background:rgba(255,92,0,0.12)">💸</div>
+              <div>
+                <div>Any UPI App</div>
+                <div class="upi-btn-meta">BHIM, Paytm, CRED…</div>
+              </div>
+            </a>
+          </div>
+
+          <!-- UPI ID copy -->
+          <div style="display:flex;align-items:center;gap:10px;margin-top:16px;padding:12px 14px;background:var(--dark);border-radius:8px;border:1px solid var(--border)">
+            <div style="flex:1;min-width:0">
+              <div class="pay-label" style="margin:0">UPI ID</div>
+              <div style="color:var(--white);font-size:14px;font-weight:600;word-break:break-all">${upi.upiId}</div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="copyUpiId('${upi.upiId}')">Copy</button>
+          </div>
+        </div>
+
+        <!-- Right: QR code -->
+        <div class="card" style="text-align:center">
+          <div class="section-title" style="margin-bottom:16px">Scan QR Code</div>
+          <div style="display:flex;justify-content:center;margin-bottom:12px">
+            <div class="qr-box" id="qr-container"></div>
+          </div>
+          <div class="text-dim text-small">Scan with any UPI app camera</div>
+          <div style="margin-top:10px;font-size:13px;color:var(--text-dim)">₹${fmt(m.price)} · ${m.packageName}</div>
+        </div>
+      </div>
+
+      <!-- I've Paid section -->
+      <div class="card mb-32" id="paid-section">
+        <div class="section-title" style="margin-bottom:8px">After you pay</div>
+        <p class="text-dim text-small" style="margin-bottom:12px">Tap the button below once your payment is done. Your membership will be activated within a few hours after verification.</p>
+        <div class="txn-input">
+          <input class="form-control" id="txn-ref" placeholder="UPI transaction ID (optional)" style="flex:1" />
+          <button class="btn btn-primary" onclick="submitPaid()">✅ I've Paid</button>
+        </div>
+      </div>`}
+
+      <!-- Payment history -->
+      <div class="section-title mb-12">Payment History</div>
+      <div class="card" id="history-wrap">
+        ${renderHistory(_info.payments)}
+      </div>
+    `;
+
+    // Generate QR code
+    if (_info.mode === 'personal' && upi) loadQr(upi.generic);
+  }
+
+  function renderHistory(payments) {
+    if (!payments?.length) return '<p class="text-dim text-small">No payments yet.</p>';
+    const statusColor = { completed: '#4ade80', pending_verification: '#fbbf24', pending: '#94a3b8', failed: '#f87171' };
+    const statusLabel = { completed: 'Paid', pending_verification: 'Pending verification', pending: 'Pending', failed: 'Failed' };
+    return payments.map(p => `
+      <div class="history-row">
+        <div class="status-dot" style="background:${statusColor[p.status] || '#94a3b8'}"></div>
+        <div style="flex:1">
+          <div style="color:var(--white);font-weight:600">₹${new Intl.NumberFormat('en-IN').format(p.final_amount)}</div>
+          <div class="text-dim text-small">${new Date(p.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })} · ${p.method?.toUpperCase()}</div>
+        </div>
+        <span style="font-size:12px;color:${statusColor[p.status] || '#94a3b8'}">${statusLabel[p.status] || p.status}</span>
+      </div>`).join('');
+  }
+
+  function loadQr(upiString) {
+    if (_qrLoaded) return;
+    _qrLoaded = true;
+    const container = document.getElementById('qr-container');
+    if (!container) return;
+    if (window.QRCode) {
+      new QRCode(container, { text: upiString, width: 180, height: 180, colorDark: '#1a1a1a', colorLight: '#ffffff' });
+    } else {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+      s.onload = () => new QRCode(container, { text: upiString, width: 180, height: 180, colorDark: '#1a1a1a', colorLight: '#ffffff' });
+      document.head.appendChild(s);
+    }
+  }
+
+  function copyUpiId(id) {
+    navigator.clipboard.writeText(id).then(() => toast('UPI ID copied!', 'success'));
+  }
+
+  async function submitPaid() {
+    const txnRef = document.getElementById('txn-ref')?.value?.trim() || '';
+    const btn = document.querySelector('#paid-section .btn-primary');
+    if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+
+    const data = await api.post('/api/payments/renewal-submit', { txn_ref: txnRef });
+    if (data?.success) {
+      document.getElementById('paid-section').innerHTML = `
+        <div class="paid-success">
+          <div style="font-size:2.5rem;margin-bottom:10px">✅</div>
+          <div style="font-weight:600;color:var(--white);font-size:1.1rem;margin-bottom:6px">Payment submitted!</div>
+          <div class="text-dim text-small">Your membership will be activated within a few hours once we verify the payment.<br>Transaction ref: <strong style="color:var(--text)">${data.transactionId}</strong></div>
+        </div>`;
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = '✅ I\'ve Paid'; }
+      toast(data?.error || 'Failed to submit. Please try again.', 'error');
+    }
+  }
+
+  init();
+</script>
+<script src="/js/pwa.js" defer></script>
+</body>
+</html>

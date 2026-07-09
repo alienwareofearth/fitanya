@@ -38,6 +38,7 @@
       <a href="/dashboard" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
       <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
       <a href="/dashboard/membership" class="nav-item"><span class="icon">🎫</span>Membership</a>
+      <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
       <a href="/dashboard/progress" class="nav-item active"><span class="icon">📊</span>Progress</a>
       <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
       <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
@@ -182,7 +183,7 @@
 
     <!-- History table -->
     <div class="section-title">History</div>
-    <div class="card">
+    <div class="card mb-32">
       <div class="table-wrap">
         <table>
           <thead><tr><th>Week</th><th>Date</th><th>Weight (kg)</th><th>Waist"</th><th>Thigh"</th><th>Arm"</th><th>Chest"</th><th>Steps</th></tr></thead>
@@ -190,6 +191,10 @@
         </table>
       </div>
     </div>
+
+    <!-- Coach Notes -->
+    <div class="section-title">Coach Notes</div>
+    <div id="coach-notes-wrap"><div class="spinner"></div></div>
   </main>
 </div>
 <div id="toast-container"></div>
@@ -210,6 +215,31 @@
     renderTable(progressData?.logs || []);
     renderHealthSummary(healthData?.logs || []);
     initSetupGuide(tokenData?.token || '');
+    loadCoachNotes();
+  }
+
+  async function loadCoachNotes() {
+    const data = await api.get('/api/bookings/my');
+    const el = document.getElementById('coach-notes-wrap');
+    const withNotes = data?.bookings?.filter(b => b.session_notes);
+    if (!withNotes?.length) {
+      el.innerHTML = '<div class="card"><p class="text-dim">No coach notes yet. Notes appear here after each completed session.</p></div>';
+      return;
+    }
+    el.innerHTML = withNotes.map(b => `
+      <div class="card mb-16">
+        <div class="flex-between mb-12">
+          <div>
+            <div style="font-weight:600;color:var(--white)">${formatSessionDate(b.date, b.start_time)} · ${formatSessionTime(b.start_time, b.date)}</div>
+            <div class="text-dim text-small">Coach: ${b.coach_name}</div>
+          </div>
+          <span class="badge badge-green">Completed</span>
+        </div>
+        <p style="color:var(--text);font-size:14px;margin-bottom:10px"><strong class="text-orange">Notes:</strong><br>${b.session_notes}</p>
+        ${b.workout_done ? `<p style="font-size:13px;color:var(--text);margin-bottom:6px"><strong class="text-dim">Workout done:</strong> ${b.workout_done}</p>` : ''}
+        ${b.next_session_plan ? `<p style="font-size:13px;color:var(--text)"><strong class="text-dim">Next session plan:</strong> ${b.next_session_plan}</p>` : ''}
+      </div>
+    `).join('');
   }
 
   // ── Health summary widget ──────────────────────────────────────────────

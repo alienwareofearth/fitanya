@@ -69,6 +69,7 @@
       <a href="/dashboard" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
       <a href="/dashboard/schedule" class="nav-item active"><span class="icon">📅</span>Schedule</a>
       <a href="/dashboard/membership" class="nav-item"><span class="icon">🎫</span>Membership</a>
+      <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
       <a href="/dashboard/progress" class="nav-item"><span class="icon">📊</span>Progress</a>
       <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
       <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
@@ -212,8 +213,6 @@
     const data = await api.post('/api/bookings/book', { slot_id: selectedSlot.id, membership_id: membership.id });
     if (data?.success) {
       toast('Session booked! 🎉 Check your email for Meet link.', 'success');
-      document.getElementById('slot-date')._flatpickr.clear();
-      document.getElementById('clear-date-btn').style.display = 'none';
       loadSlots();
       loadMyBookings();
     } else {
