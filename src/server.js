@@ -78,19 +78,23 @@ const globalLimiter = rateLimit({
   legacyHeaders:   false,
 });
 
-// Strict limiter for auth endpoints — 10 attempts per 15 min per IP
+const isDev = (process.env.NODE_ENV || 'development') === 'development';
+
+// Strict limiter for auth endpoints — skip entirely in dev, 20 attempts per 15 min in prod
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max:      10,
-  message:  { error: 'Too many attempts. Please wait 15 minutes.' },
+  max:      20,
+  skip:     () => isDev,
+  message:  { error: 'Too many login attempts. Please wait 15 minutes and try again.' },
   standardHeaders: true,
   legacyHeaders:   false,
 });
 
-// Payment limiter — 8 per 10 min per IP
+// Payment limiter — skip in dev, 8 per 10 min in prod
 const paymentLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
   max:      8,
+  skip:     () => isDev,
   message:  { error: 'Too many payment attempts. Please wait.' },
   standardHeaders: true,
   legacyHeaders:   false,
