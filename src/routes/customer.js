@@ -90,8 +90,7 @@ router.get('/health/shortcut', async (req, res) => {
     const syncUrl = `${appUrl}/api/customer/health/sync?token=${token}`;
     const plist   = buildShortcutPlist(syncUrl);
 
-    // application/x-apple-aspen-config triggers "Open in Shortcuts" on modern iOS
-    res.setHeader('Content-Type', 'application/x-apple-aspen-config');
+    res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader('Content-Disposition', 'attachment; filename="Fitanya-Health-Sync.shortcut"');
     res.send(plist);
   } catch (err) {
@@ -116,8 +115,12 @@ function buildShortcutPlist(syncUrl) {
       <key>WFSerializationType</key><string>WFTextTokenAttachment</string>
     </dict>`;
 
-  // Build a Text action whose output is a string with variable tokens embedded.
-  // Positions are computed from the template string (with OBJ placeholders).
+  // XML-escape helper — & inside plist <string> tags must be &amp;
+  const xmlEsc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Build a Text action with variable tokens at computed positions.
+  // raw template (with OBJ chars) is used for position maths;
+  // the plist <string> gets the XML-escaped version.
   const textActionWithVars = (template, varNames, outputName) => {
     const entries = [];
     let idx = 0;
@@ -135,7 +138,7 @@ function buildShortcutPlist(syncUrl) {
           <key>Value</key>
           <dict>
             <key>attachmentsByRange</key><dict>${entries.join('')}</dict>
-            <key>string</key><string>${template}</string>
+            <key>string</key><string>${xmlEsc(template)}</string>
           </dict>
           <key>WFSerializationType</key><string>WFTextTokenString</string>
         </dict>
@@ -160,7 +163,7 @@ function buildShortcutPlist(syncUrl) {
     ${setVar(varName)}`;
 
   // ── URL template (query params — no JSON body needed) ─────────────────
-  // syncUrl already contains ?token=TOKEN
+  // syncUrl already contains ?token=TOKEN; OBJ placeholders stay literal (U+FFFC is safe in XML)
   const urlTemplate = `${syncUrl}&date=${OBJ}&steps=${OBJ}&calories=${OBJ}&distance_km=${OBJ}&active_minutes=${OBJ}`;
   const urlVarNames = ['Today', 'Steps', 'Calories', 'Distance', 'ActiveMin'];
 
