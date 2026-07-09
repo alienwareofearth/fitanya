@@ -47,6 +47,7 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ── TYPOGRAPHY ─────────────────────────────────────────────────────────── */
@@ -207,11 +208,12 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 
 /* ── SIDEBAR (Dashboard) ─────────────────────────────────────────────────── */
 
-.app-layout { display: flex; min-height: 100vh; }
+.app-layout { display: flex; min-height: 100vh; min-height: 100dvh; }
 
 .sidebar {
   width: 260px;
   height: 100vh;
+  height: 100dvh;
   background: var(--dark);
   border-right: 1px solid var(--border);
   display: flex;
@@ -220,7 +222,10 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   top: 0; left: 0;
   z-index: 100;
   transition: transform 0.3s;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  /* push content below status bar on iPhone PWA */
+  padding-top: env(safe-area-inset-top);
 }
 
 .sidebar-logo {
@@ -288,6 +293,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   padding: 20px 0;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   /* thin scrollbar */
   scrollbar-width: thin;
   scrollbar-color: var(--muted) transparent;
@@ -323,10 +329,12 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   background: rgba(255,92,0,0.1);
   border-left-color: var(--orange);
 }
-.nav-item .icon { font-size: 18px; width: 20px; }
+.nav-item .icon { font-size: 18px; min-width: 22px; flex-shrink: 0; text-align: center; }
 
 .sidebar-footer {
   padding: 20px 24px;
+  /* account for iPhone home indicator */
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--border);
 }
 
@@ -335,6 +343,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   flex: 1;
   padding: 32px;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ── GREETING ────────────────────────────────────────────────────────────── */
@@ -521,7 +530,8 @@ tr:hover td { background: rgba(255,92,0,0.03); }
 
 #toast-container {
   position: fixed;
-  bottom: 24px; right: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  right: calc(16px + env(safe-area-inset-right));
   z-index: 9999;
   display: flex;
   flex-direction: column;
@@ -585,8 +595,8 @@ tr:hover td { background: rgba(255,92,0,0.03); }
 #sidebar-toggle {
   display: none;
   position: fixed;
-  top: 14px;
-  left: 14px;
+  top: calc(14px + env(safe-area-inset-top));
+  left: calc(14px + env(safe-area-inset-left));
   z-index: 200;
   width: 42px;
   height: 42px;
@@ -625,9 +635,18 @@ tr:hover td { background: rgba(255,92,0,0.03); }
 
   #sidebar-toggle { display: flex; }
 
-  .sidebar { transform: translateX(-100%); }
+  .sidebar { transform: translateX(-260px); }
   .sidebar.open { transform: translateX(0); }
-  .main-content { margin-left: 0; padding: 20px 16px; padding-top: 64px; }
+
+  .main-content {
+    margin-left: 0;
+    padding: 16px;
+    /* top: clear the hamburger (42px) + its top offset + safe area */
+    padding-top: calc(56px + env(safe-area-inset-top));
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    padding-left: calc(16px + env(safe-area-inset-left));
+    padding-right: calc(16px + env(safe-area-inset-right));
+  }
 
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .modal { padding: 28px 20px; }
@@ -644,11 +663,18 @@ tr:hover td { background: rgba(255,92,0,0.03); }
 .gap-24 { gap: 24px; }
 .mt-4   { margin-top: 4px; }
 .mt-8   { margin-top: 8px; }
+.mt-12  { margin-top: 12px; }
 .mt-16  { margin-top: 16px; }
+.mt-20  { margin-top: 20px; }
 .mt-24  { margin-top: 24px; }
 .mt-32  { margin-top: 32px; }
-.mb-24  { margin-bottom: 24px; }
+.mb-0   { margin-bottom: 0; }
 .mb-4   { margin-bottom: 4px; }
+.mb-8   { margin-bottom: 8px; }
+.mb-12  { margin-bottom: 12px; }
+.mb-16  { margin-bottom: 16px; }
+.mb-20  { margin-bottom: 20px; }
+.mb-24  { margin-bottom: 24px; }
 .mb-32  { margin-bottom: 32px; }
 .text-center { text-align: center; }
 .text-right  { text-align: right; }
@@ -691,3 +717,35 @@ tr:hover td { background: rgba(255,92,0,0.03); }
   margin: 40px auto;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── PWA / iPhone layout fixes ───────────────────────────────────────────── */
+
+/* Prevent iOS rubber-band scroll on the outer html/body, let inner regions scroll */
+html { overflow-x: hidden; }
+
+/* Cards on small screens: reduce padding */
+@media (max-width: 480px) {
+  .card { padding: 16px; }
+  .modal { padding: 20px 16px; }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .page-header h2 { font-size: 1.6rem; }
+  .section-title { font-size: 1.2rem; }
+  /* Full-width buttons on small screens */
+  .btn-full-mobile { width: 100%; justify-content: center; }
+}
+
+/* Standalone PWA: sidebar already handles safe-area-inset-top via padding-top.
+   When sidebar is open on mobile, ensure it fills edge-to-edge */
+@media (max-width: 768px) {
+  .sidebar.open {
+    box-shadow: 4px 0 24px rgba(0,0,0,0.6);
+  }
+  /* cards inside main should not overflow horizontally */
+  .main-content > * { max-width: 100%; }
+  .table-wrap { -webkit-overflow-scrolling: touch; }
+}
+
+/* Ensure confirm bars (schedule booking) clear the home indicator */
+.confirm-bar {
+  padding-bottom: calc(14px + env(safe-area-inset-bottom));
+}
