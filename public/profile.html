@@ -80,6 +80,11 @@
             <option>Get Lean</option><option>Build Muscle</option><option>Tone &amp; Sculpt</option><option>Improve Fitness</option>
           </select>
         </div>
+        <div class="form-group">
+          <label>Preferred Workout Time <span class="text-dim text-small">— shown first on Schedule page</span></label>
+          <input class="form-control" type="time" id="f-preferred-time" />
+          <div class="text-dim text-small mt-4">Leave blank to see all available slots (no preference)</div>
+        </div>
         <div class="form-group"><label>Health Issues</label><input class="form-control" id="f-health" /></div>
         <div class="form-group"><label>Allergies</label><input class="form-control" id="f-allergies" /></div>
         <div class="grid-2 gap-12">
@@ -128,6 +133,7 @@
     document.getElementById('f-ideal-weight').value = profile?.ideal_weight || '';
     document.getElementById('f-waist').value = profile?.waist || '';
     document.getElementById('f-chest').value = profile?.chest || '';
+    document.getElementById('f-preferred-time').value = profile?.preferred_time || '';
 
     document.getElementById('quick-stats').innerHTML = `
       <div class="flex-between mb-8"><span class="text-dim">Member Since</span><span>${formatDate(user.created_at)}</span></div>
@@ -208,9 +214,13 @@
       waist: document.getElementById('f-waist').value,
       chest: document.getElementById('f-chest').value,
     };
-    const data = await api.put('/api/customer/profile', payload);
-    if (data?.success) { toast('Profile saved!', 'success'); init(); }
-    else toast(data?.error || 'Failed', 'error');
+    const preferredTime = document.getElementById('f-preferred-time').value || null;
+    const [profileRes, prefRes] = await Promise.all([
+      api.put('/api/customer/profile', payload),
+      api.put('/api/customer/preferred-slot', { preferred_time: preferredTime }),
+    ]);
+    if (profileRes?.success) { toast('Profile saved!', 'success'); init(); }
+    else toast(profileRes?.error || 'Failed', 'error');
   }
 
   async function uploadPhoto(input) {

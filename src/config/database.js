@@ -118,6 +118,11 @@ async function initDb() {
     await client.execute(`ALTER TABLE users ADD COLUMN health_token TEXT DEFAULT NULL`);
   } catch (_) { /* column already exists */ }
 
+  // Migrate: preferred workout time for quick slot booking
+  try {
+    await client.execute(`ALTER TABLE customer_profiles ADD COLUMN preferred_time TEXT DEFAULT NULL`);
+  } catch (_) { /* column already exists */ }
+
   // Health logs — daily data synced from iPhone Health via iOS Shortcuts
   await client.execute(`CREATE TABLE IF NOT EXISTS health_logs (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,

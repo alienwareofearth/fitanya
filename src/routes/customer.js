@@ -277,6 +277,32 @@ router.put('/profile', async (req, res) => {
   } catch (err) { console.error('[customer] profile update error:', err.message); res.status(500).json({ error: 'Failed to save profile. Please try again.' }); }
 });
 
+// GET /api/customer/preferred-slot
+router.get('/preferred-slot', async (req, res) => {
+  try {
+    const db = getDb();
+    const row = await db.execute({ sql: `SELECT preferred_time FROM customer_profiles WHERE user_id = ?`, args: [req.session.user.id] });
+    res.json({ success: true, preferred_time: row.rows[0]?.preferred_time || null });
+  } catch (err) {
+    console.error('[customer] preferred-slot GET error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch preferred slot' });
+  }
+});
+
+// PUT /api/customer/preferred-slot
+router.put('/preferred-slot', async (req, res) => {
+  try {
+    const db = getDb();
+    const { preferred_time } = req.body;
+    const time = (preferred_time && /^\d{2}:\d{2}$/.test(preferred_time)) ? preferred_time : null;
+    await db.execute({ sql: `UPDATE customer_profiles SET preferred_time = ?, updated_at = datetime('now') WHERE user_id = ?`, args: [time, req.session.user.id] });
+    res.json({ success: true, preferred_time: time });
+  } catch (err) {
+    console.error('[customer] preferred-slot PUT error:', err.message);
+    res.status(500).json({ error: 'Failed to save preferred slot' });
+  }
+});
+
 router.post('/profile/picture', upload.single('photo'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
