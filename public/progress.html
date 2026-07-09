@@ -12,21 +12,38 @@
   <link rel="stylesheet" href="/css/main.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    .health-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; margin-bottom:16px; }
-    .health-stat { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; text-align:center; }
-    .health-stat-icon { font-size:1.6rem; margin-bottom:6px; }
-    .health-stat-val { font-family:var(--font-display); font-size:1.8rem; color:var(--white); line-height:1; }
-    .health-stat-label { font-size:11px; color:var(--text-dim); margin-top:4px; letter-spacing:0.5px; text-transform:uppercase; }
-    .steps-bar-wrap { display:flex; align-items:flex-end; gap:6px; height:80px; margin:12px 0 4px; }
-    .steps-bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
-    .steps-bar { width:100%; background:var(--orange); border-radius:4px 4px 0 0; min-height:3px; transition:height 0.4s ease; }
-    .steps-bar.today { background:var(--grad); box-shadow:0 0 10px rgba(255,92,0,0.4); }
-    .steps-bar-day { font-size:10px; color:var(--text-dim); }
-    .setup-step { display:flex; gap:14px; align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--border); font-size:13px; color:var(--text); line-height:1.6; }
-    .setup-step:last-child { border-bottom:none; }
-    .setup-step-num { width:24px; height:24px; background:var(--grad); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; flex-shrink:0; margin-top:1px; }
-    .health-sync-badge { display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--text-dim); margin-top:8px; }
-    .health-sync-dot { width:6px; height:6px; background:#4ade80; border-radius:50%; }
+    .prog-section { border: 1px solid var(--border); border-radius: 14px; margin-bottom: 10px; overflow: hidden; }
+    .prog-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 15px 18px; cursor: pointer; background: var(--card);
+      transition: background 0.15s; user-select: none; gap: 12px;
+    }
+    .prog-section-header:hover { background: rgba(255,92,0,0.06); }
+    .prog-section-header.open { border-bottom: 1px solid var(--border); }
+    .prog-section-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .prog-section-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .prog-section-name { font-weight: 600; font-size: 15px; color: var(--white); }
+    .prog-section-sub { font-size: 12px; color: var(--text-dim); margin-top: 1px; }
+    .prog-section-chev { color: var(--text-dim); font-size: 13px; transition: transform 0.2s; flex-shrink: 0; }
+    .prog-section-chev.open { transform: rotate(90deg); }
+    .prog-section-body { display: none; }
+    .prog-section-body.open { display: block; }
+    .prog-section-inner { padding: 20px; }
+    /* health stats */
+    .health-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .health-stat { background: var(--dark); border: 1px solid var(--border); border-radius: 12px; padding: 14px; text-align: center; }
+    .health-stat-icon { font-size: 1.4rem; margin-bottom: 4px; }
+    .health-stat-val { font-family: var(--font-display); font-size: 1.6rem; color: var(--white); line-height: 1; }
+    .health-stat-label { font-size: 11px; color: var(--text-dim); margin-top: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
+    .steps-bar-wrap { display: flex; align-items: flex-end; gap: 6px; height: 72px; margin: 12px 0 4px; }
+    .steps-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; }
+    .steps-bar { width: 100%; background: var(--orange); border-radius: 3px 3px 0 0; min-height: 3px; transition: height 0.4s ease; }
+    .steps-bar.today { background: var(--grad); box-shadow: 0 0 8px rgba(255,92,0,0.4); }
+    .steps-bar-day { font-size: 10px; color: var(--text-dim); }
+    /* setup guide */
+    .setup-step { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text); line-height: 1.6; }
+    .setup-step:last-child { border-bottom: none; }
+    .setup-step-num { width: 22px; height: 22px; background: var(--grad); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0; margin-top: 2px; }
   </style>
 </head>
 <body>
@@ -48,202 +65,183 @@
     <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
   </aside>
   <main class="main-content">
-    <div class="page-header mb-24">
+    <div class="page-header mb-20">
       <h2>My Progress</h2>
-      <p>Track your weekly measurements and see your transformation over time</p>
+      <p>Tap any section to expand and load your data</p>
     </div>
 
-    <!-- ── Health Sync Summary ──────────────────────────────────────────── -->
-    <div id="health-summary-wrap" class="mb-24">
-      <div class="card" style="border-color:rgba(255,92,0,0.15)">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <!-- ── 1. Daily Activity ────────────────────────────────────────────── -->
+    <div class="prog-section">
+      <div class="prog-section-header" id="hdr-activity" onclick="toggle('activity')">
+        <div class="prog-section-title">
+          <span class="prog-section-icon">📊</span>
           <div>
-            <div style="font-family:var(--font-display);font-size:1.2rem;color:var(--white)">Daily Activity</div>
-            <div id="health-sync-status" class="text-dim text-small" style="margin-top:4px">Loading health data…</div>
+            <div class="prog-section-name">Daily Activity</div>
+            <div class="prog-section-sub" id="sub-activity">Steps, calories &amp; health sync</div>
           </div>
-          <button class="btn btn-outline btn-sm" onclick="toggleSetupGuide()" id="setup-toggle-btn">📱 Connect Health App</button>
         </div>
-        <div id="health-stats-wrap" class="hidden" style="margin-top:16px"></div>
+        <span class="prog-section-chev" id="chev-activity">▶</span>
+      </div>
+      <div class="prog-section-body" id="body-activity">
+        <div class="prog-section-inner" id="inner-activity"></div>
       </div>
     </div>
 
-    <!-- ── Health Setup Guide (always visible until dismissed) ─────────── -->
-    <div id="health-setup-wrap" class="mb-32">
-      <div class="card" style="border-color:rgba(255,92,0,0.25)">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
-          <div style="display:flex;align-items:center;gap:12px">
-            <span style="font-size:2rem">📱</span>
-            <div>
-              <div style="font-family:var(--font-display);font-size:1.1rem;color:var(--white)">Connect Health App</div>
-              <div class="text-dim text-small">Auto-sync steps, calories & activity daily</div>
-            </div>
-          </div>
-          <button class="btn btn-dark btn-sm" onclick="toggleSetupGuide()">Hide ▲</button>
-        </div>
-
-        <!-- Sync URL box -->
-        <div style="background:var(--dark);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:20px">
-          <div class="stat-label" style="margin-bottom:8px">Your Personal Sync URL</div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <code id="sync-url-display" style="flex:1;font-size:12px;color:var(--orange);word-break:break-all;background:rgba(255,92,0,0.06);padding:8px 12px;border-radius:6px;min-width:0">Loading…</code>
-            <button class="btn btn-outline btn-sm" onclick="copySyncUrl()" style="flex-shrink:0">Copy</button>
-          </div>
-          <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <button class="btn btn-dark btn-sm" onclick="testSync()">🧪 Test Connection</button>
-            <button class="btn btn-dark btn-sm" onclick="regenerateToken()" style="color:var(--text-dim)">↻ New Token</button>
-            <span id="test-result" class="text-small hidden"></span>
+    <!-- ── 2. Connect Health App ────────────────────────────────────────── -->
+    <div class="prog-section">
+      <div class="prog-section-header" id="hdr-setup" onclick="toggle('setup')">
+        <div class="prog-section-title">
+          <span class="prog-section-icon">📱</span>
+          <div>
+            <div class="prog-section-name">Connect Health App</div>
+            <div class="prog-section-sub">iPhone Shortcut · Android setup</div>
           </div>
         </div>
+        <span class="prog-section-chev" id="chev-setup">▶</span>
+      </div>
+      <div class="prog-section-body" id="body-setup">
+        <div class="prog-section-inner" id="inner-setup"></div>
+      </div>
+    </div>
 
-        <!-- Platform tabs -->
-        <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px">
-          <button id="tab-ios" onclick="switchPlatformTab('ios')" style="flex:1;padding:9px;font-size:13px;font-weight:600;background:var(--orange);color:#fff;border:none;cursor:pointer">🍎 iPhone</button>
-          <button id="tab-android" onclick="switchPlatformTab('android')" style="flex:1;padding:9px;font-size:13px;font-weight:600;background:var(--card);color:var(--text-dim);border:none;cursor:pointer">🤖 Android</button>
-        </div>
-
-        <!-- iOS steps -->
-        <div id="guide-ios">
-          <!-- Download button -->
-          <div style="background:linear-gradient(135deg,rgba(255,92,0,0.12),rgba(124,58,237,0.12));border:1px solid rgba(255,92,0,0.25);border-radius:12px;padding:18px 20px;margin-bottom:20px">
-            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-              <div style="font-size:2.2rem">⬇️</div>
-              <div style="flex:1;min-width:0">
-                <div style="font-weight:600;color:var(--white);margin-bottom:2px">Download Ready-Made Shortcut</div>
-                <div class="text-dim text-small">Tap the button on your iPhone in Safari — iOS will download and open it in Shortcuts automatically.</div>
-              </div>
-            </div>
-            <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
-              <a id="shortcut-dl-btn" href="/api/customer/health/shortcut" class="btn btn-primary" style="text-decoration:none">📲 Download Shortcut</a>
-            </div>
-            <!-- iOS 15+ "Allow Untrusted Shortcuts" instructions -->
-            <div style="margin-top:14px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:12px 14px;font-size:12px;color:#fbbf24">
-              <strong>⚠️ First-time setup (iOS 15 / 16 / 17 / 18 / 26):</strong><br>
-              Go to <strong>Settings → Shortcuts → Allow Untrusted Shortcuts</strong> → turn ON, then tap the button above.
-              After installing, tap "Allow" when Shortcuts asks for Health access.
-            </div>
-          </div>
-
-          <div class="stat-label" style="margin-bottom:10px">Or set it up manually — one-time, ~3 minutes</div>
-          <div class="setup-step"><span class="setup-step-num">1</span><div>Open <strong>Shortcuts</strong> app → tap <strong>+</strong> → name it <strong>"Fitanya Sync"</strong></div></div>
-          <div class="setup-step"><span class="setup-step-num">2</span><div>Add Action → search <strong>Health</strong> → <strong>Find Health Samples</strong> · Type=Steps · Today · Sum → variable <em>Steps</em></div></div>
-          <div class="setup-step"><span class="setup-step-num">3</span><div>Repeat for <strong>Active Energy Burned</strong> → <em>Calories</em>, <strong>Walking Distance</strong> → <em>Distance</em>, <strong>Exercise Minutes</strong> → <em>ActiveMin</em></div></div>
-          <div class="setup-step"><span class="setup-step-num">4</span><div>Add <strong>Get Contents of URL</strong> → Method=POST · URL=your Sync URL above · Body=JSON<br>
-            <span class="text-dim text-small">Keys: steps=Steps · calories=Calories · distance_km=Distance · active_minutes=ActiveMin · date=Current Date (yyyy-MM-dd)</span>
-          </div></div>
-          <div class="setup-step"><span class="setup-step-num">5</span><div><strong>Automation tab</strong> → New Automation → Time of Day → 10 PM Daily → Run "Fitanya Sync" · disable "Ask Before Running"</div></div>
-          <div style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:8px;padding:12px 16px;margin-top:14px;font-size:13px;color:#4ade80">
-            ✅ Once set up, steps & activity sync automatically every night at 10 PM.
+    <!-- ── 3. Log This Week (pre-opened, no data load needed) ──────────── -->
+    <div class="prog-section">
+      <div class="prog-section-header open" id="hdr-log" onclick="toggle('log')">
+        <div class="prog-section-title">
+          <span class="prog-section-icon">📝</span>
+          <div>
+            <div class="prog-section-name">Log This Week</div>
+            <div class="prog-section-sub">Record your measurements</div>
           </div>
         </div>
-
-        <!-- Android steps -->
-        <div id="guide-android" class="hidden">
-          <div class="stat-label" style="margin-bottom:10px">Android setup via HTTP Request Shortcuts — one-time, ~5 minutes</div>
-          <div class="setup-step"><span class="setup-step-num">1</span><div>Install <strong>HTTP Request Shortcuts</strong> from the Play Store (free, by Waboodoo)</div></div>
-          <div class="setup-step"><span class="setup-step-num">2</span><div>Open the app → tap <strong>+</strong> → choose <strong>Regular Shortcut</strong></div></div>
-          <div class="setup-step"><span class="setup-step-num">3</span><div>Set:<br><span class="text-dim text-small">• Name: <strong>Fitanya Sync</strong><br>• Method: <strong>POST</strong><br>• URL: paste your Sync URL above<br>• Content Type: <strong>application/json</strong></span></div></div>
-          <div class="setup-step"><span class="setup-step-num">4</span><div>Under <strong>Request Body</strong> paste this JSON:<br>
-            <code style="font-size:11px;color:var(--orange);line-height:1.8;display:block;margin-top:6px;background:rgba(255,92,0,0.06);padding:8px;border-radius:6px">{"steps":8000,"calories":400,"active_minutes":45,"distance_km":6.2,"date":"2024-01-15"}</code>
-            <span class="text-dim text-small" style="margin-top:4px;display:block">Replace values with your actual step count each day, or use a variable if your launcher supports it</span>
-          </div></div>
-          <div class="setup-step"><span class="setup-step-num">5</span><div>Tap the shortcut to sync manually anytime, or use a launcher like <strong>Tasker</strong> to run it automatically at 10 PM daily</div></div>
-          <div style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:8px;padding:12px 16px;margin-top:14px;font-size:13px;color:#4ade80">
-            ✅ For full automation on Android use <strong>Tasker</strong> (paid) + HTTP Request plugin for daily auto-sync from Google Fit.
+        <span class="prog-section-chev open" id="chev-log">▶</span>
+      </div>
+      <div class="prog-section-body open" id="body-log">
+        <div class="prog-section-inner">
+          <div class="grid-2 gap-16">
+            <div class="form-group"><label>Weight (kg)</label><input class="form-control" type="number" id="log-weight" placeholder="e.g. 72.5" step="0.1"></div>
+            <div class="form-group"><label>Steps Today</label><input class="form-control" type="number" id="log-steps" placeholder="e.g. 8000"></div>
+            <div class="form-group"><label>Waist (inches)</label><input class="form-control" type="number" id="log-waist" placeholder="e.g. 32" step="0.5"></div>
+            <div class="form-group"><label>Thigh (inches)</label><input class="form-control" type="number" id="log-thigh" placeholder="e.g. 22" step="0.5"></div>
+            <div class="form-group"><label>Arm (inches)</label><input class="form-control" type="number" id="log-arm" placeholder="e.g. 12" step="0.5"></div>
+            <div class="form-group"><label>Chest (inches)</label><input class="form-control" type="number" id="log-chest" placeholder="e.g. 36" step="0.5"></div>
           </div>
+          <div class="form-group"><label>Notes</label><textarea class="form-control" id="log-notes" rows="2" placeholder="How are you feeling this week?"></textarea></div>
+          <button class="btn btn-primary" onclick="saveProgress()">Save Progress 💪</button>
         </div>
       </div>
     </div>
 
-    <!-- Log form -->
-    <div class="card mb-32">
-      <div class="section-title">Log This Week</div>
-      <div class="grid-2 gap-16">
-        <div class="form-group"><label>Weight (kg)</label><input class="form-control" type="number" id="log-weight" placeholder="e.g. 72.5" step="0.1" /></div>
-        <div class="form-group"><label>Steps Today</label><input class="form-control" type="number" id="log-steps" placeholder="e.g. 8000" /></div>
-        <div class="form-group"><label>Waist (inches)</label><input class="form-control" type="number" id="log-waist" placeholder="e.g. 32" step="0.5" /></div>
-        <div class="form-group"><label>Thigh (inches)</label><input class="form-control" type="number" id="log-thigh" placeholder="e.g. 22" step="0.5" /></div>
-        <div class="form-group"><label>Arm (inches)</label><input class="form-control" type="number" id="log-arm" placeholder="e.g. 12" step="0.5" /></div>
-        <div class="form-group"><label>Chest (inches)</label><input class="form-control" type="number" id="log-chest" placeholder="e.g. 36" step="0.5" /></div>
+    <!-- ── 4. Charts & History (shared progress API call) ──────────────── -->
+    <div class="prog-section">
+      <div class="prog-section-header" id="hdr-progress" onclick="toggle('progress')">
+        <div class="prog-section-title">
+          <span class="prog-section-icon">📈</span>
+          <div>
+            <div class="prog-section-name">Charts &amp; History</div>
+            <div class="prog-section-sub" id="sub-progress">Weight trend, measurements &amp; log history</div>
+          </div>
+        </div>
+        <span class="prog-section-chev" id="chev-progress">▶</span>
       </div>
-      <div class="form-group"><label>Notes</label><textarea class="form-control" id="log-notes" rows="2" placeholder="How are you feeling this week?"></textarea></div>
-      <button class="btn btn-primary" onclick="saveProgress()">Save Progress 💪</button>
-    </div>
-
-    <!-- Charts -->
-    <div class="grid-2 gap-24 mb-32">
-      <div class="card">
-        <div class="section-title">Weight Trend (kg)</div>
-        <canvas id="weight-chart" height="180"></canvas>
-      </div>
-      <div class="card">
-        <div class="section-title">Measurements Trend</div>
-        <canvas id="measurements-chart" height="180"></canvas>
+      <div class="prog-section-body" id="body-progress">
+        <div class="prog-section-inner" id="inner-progress"></div>
       </div>
     </div>
 
-    <!-- History table -->
-    <div class="section-title">History</div>
-    <div class="card mb-32">
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Week</th><th>Date</th><th>Weight (kg)</th><th>Waist"</th><th>Thigh"</th><th>Arm"</th><th>Chest"</th><th>Steps</th></tr></thead>
-          <tbody id="progress-rows"><tr><td colspan="8" class="text-center"><div class="spinner"></div></td></tr></tbody>
-        </table>
+    <!-- ── 5. Coach Notes ───────────────────────────────────────────────── -->
+    <div class="prog-section">
+      <div class="prog-section-header" id="hdr-notes" onclick="toggle('notes')">
+        <div class="prog-section-title">
+          <span class="prog-section-icon">🗒️</span>
+          <div>
+            <div class="prog-section-name">Coach Notes</div>
+            <div class="prog-section-sub" id="sub-notes">Session feedback &amp; next-session plans</div>
+          </div>
+        </div>
+        <span class="prog-section-chev" id="chev-notes">▶</span>
+      </div>
+      <div class="prog-section-body" id="body-notes">
+        <div class="prog-section-inner" id="inner-notes"></div>
       </div>
     </div>
 
-    <!-- Coach Notes -->
-    <div class="section-title">Coach Notes</div>
-    <div id="coach-notes-wrap"><div class="spinner"></div></div>
   </main>
 </div>
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
-  let weightChart, measChart;
+  // ── State ───────────────────────────────────────────────────────────────
+  let _progressData = null;   // cached from /api/customer/progress
   let _syncUrl = '';
+  let weightChart, measChart;
+  const _loaded = { log: true };  // log section is pre-populated
 
   async function init() {
     await requireAuth();
-    const [progressData, healthData, tokenData] = await Promise.all([
-      api.get('/api/customer/progress'),
-      api.get('/api/customer/health/logs?days=7'),
-      api.get('/api/customer/health/token'),
-    ]);
-
-    renderCharts(progressData?.logs || []);
-    renderTable(progressData?.logs || []);
-    renderHealthSummary(healthData?.logs || []);
-    initSetupGuide(tokenData?.token || '');
-    loadCoachNotes();
   }
 
-  async function loadCoachNotes() {
-    const data = await api.get('/api/bookings/my');
-    const el = document.getElementById('coach-notes-wrap');
-    const withNotes = data?.bookings?.filter(b => b.session_notes);
-    if (!withNotes?.length) {
-      el.innerHTML = '<div class="card"><p class="text-dim">No coach notes yet. Notes appear here after each completed session.</p></div>';
-      return;
+  // ── Accordion toggle ────────────────────────────────────────────────────
+  async function toggle(name) {
+    const body = document.getElementById('body-' + name);
+    const hdr  = document.getElementById('hdr-'  + name);
+    const chev = document.getElementById('chev-' + name);
+    const opening = !body.classList.contains('open');
+
+    body.classList.toggle('open', opening);
+    hdr.classList.toggle('open',  opening);
+    chev.classList.toggle('open', opening);
+
+    if (opening && !_loaded[name]) {
+      _loaded[name] = true;
+      await loadSection(name);
     }
-    el.innerHTML = withNotes.map(b => `
-      <div class="card mb-16">
-        <div class="flex-between mb-12">
-          <div>
-            <div style="font-weight:600;color:var(--white)">${formatSessionDate(b.date, b.start_time)} · ${formatSessionTime(b.start_time, b.date)}</div>
-            <div class="text-dim text-small">Coach: ${b.coach_name}</div>
-          </div>
-          <span class="badge badge-green">Completed</span>
-        </div>
-        <p style="color:var(--text);font-size:14px;margin-bottom:10px"><strong class="text-orange">Notes:</strong><br>${b.session_notes}</p>
-        ${b.workout_done ? `<p style="font-size:13px;color:var(--text);margin-bottom:6px"><strong class="text-dim">Workout done:</strong> ${b.workout_done}</p>` : ''}
-        ${b.next_session_plan ? `<p style="font-size:13px;color:var(--text)"><strong class="text-dim">Next session plan:</strong> ${b.next_session_plan}</p>` : ''}
-      </div>
-    `).join('');
   }
 
-  // ── Health summary widget ──────────────────────────────────────────────
-  function renderHealthSummary(logs) {
+  // ── Lazy section loaders ────────────────────────────────────────────────
+  async function loadSection(name) {
+    const setInner = html => {
+      const el = document.getElementById('inner-' + name);
+      if (el) el.innerHTML = html;
+    };
+
+    switch (name) {
+
+      case 'activity': {
+        setInner('<div class="spinner"></div>');
+        const data = await api.get('/api/customer/health/logs?days=7');
+        renderActivity(data?.logs || []);
+        break;
+      }
+
+      case 'setup': {
+        setInner('<div class="spinner"></div>');
+        const data = await api.get('/api/customer/health/token');
+        renderSetupGuide(data?.token || '');
+        break;
+      }
+
+      case 'progress': {
+        setInner('<div class="spinner"></div>');
+        if (!_progressData) {
+          const data = await api.get('/api/customer/progress');
+          _progressData = data?.logs || [];
+        }
+        renderProgress(_progressData);
+        break;
+      }
+
+      case 'notes': {
+        setInner('<div class="spinner"></div>');
+        const data = await api.get('/api/bookings/my');
+        renderNotes(data?.bookings?.filter(b => b.session_notes) || []);
+        break;
+      }
+    }
+  }
+
+  // ── Section: Daily Activity ─────────────────────────────────────────────
+  function renderActivity(logs) {
     const today    = new Date().toLocaleDateString('en-CA');
     const todayLog = logs.find(l => l.date === today);
     const hasData  = logs.length > 0;
@@ -254,80 +252,129 @@
     const dist  = todayLog?.distance_km    || 0;
     const goal  = 10000;
     const pct   = Math.min(100, Math.round((steps / goal) * 100));
+
     const lastSync = todayLog?.synced_at
-      ? new Date(todayLog.synced_at).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })
+      ? new Date(todayLog.synced_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
       : null;
 
-    // Status line
-    const statusEl = document.getElementById('health-sync-status');
-    const btnEl    = document.getElementById('setup-toggle-btn');
+    // Update section subtitle
+    const sub = document.getElementById('sub-activity');
     if (hasData) {
-      statusEl.innerHTML = lastSync
-        ? `<span class="health-sync-badge"><span class="health-sync-dot"></span>Synced today at ${lastSync}</span>`
-        : 'Connected · not synced today';
-      btnEl.textContent = '⚙️ Setup Guide';
-      // hide setup card by default once data is coming in
-      document.getElementById('health-setup-wrap').classList.add('hidden');
+      sub.innerHTML = lastSync
+        ? `<span style="color:#4ade80">●</span> Synced today at ${lastSync}`
+        : '<span style="color:#4ade80">●</span> Connected';
     } else {
-      statusEl.textContent = 'Not connected yet — tap to set up';
-      btnEl.textContent = '📱 Connect Health App';
+      sub.textContent = 'Not connected yet';
     }
 
-    if (!hasData) return;
+    if (!hasData) {
+      document.getElementById('inner-activity').innerHTML = `
+        <p class="text-dim" style="margin-bottom:14px">No health data yet. Expand <strong style="color:var(--white)">Connect Health App</strong> below to set up iPhone or Android sync.</p>
+        <button class="btn btn-outline btn-sm" onclick="toggle('setup')">📱 Open Setup Guide →</button>
+      `;
+      return;
+    }
 
-    // 7-day bar chart
+    // 7-day bar data
     const last7 = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
       const key = d.toLocaleDateString('en-CA');
       const log = logs.find(l => l.date === key);
-      last7.push({ day: d.toLocaleDateString('en-US', { weekday:'short' }).slice(0,2), steps: log?.steps || 0, isToday: i === 0 });
+      last7.push({ day: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2), steps: log?.steps || 0, isToday: i === 0 });
     }
     const maxSteps = Math.max(...last7.map(d => d.steps), goal);
+    const avg7 = Math.round(last7.reduce((s, d) => s + d.steps, 0) / 7);
 
-    const statsWrap = document.getElementById('health-stats-wrap');
-    statsWrap.classList.remove('hidden');
-    statsWrap.innerHTML = `
+    document.getElementById('inner-activity').innerHTML = `
       <div class="health-grid">
         <div class="health-stat"><div class="health-stat-icon">👟</div><div class="health-stat-val">${steps.toLocaleString('en-IN')}</div><div class="health-stat-label">Steps</div></div>
         <div class="health-stat"><div class="health-stat-icon">🔥</div><div class="health-stat-val">${cals.toLocaleString('en-IN')}</div><div class="health-stat-label">Calories</div></div>
         <div class="health-stat"><div class="health-stat-icon">⏱️</div><div class="health-stat-val">${mins}</div><div class="health-stat-label">Active Min</div></div>
-        <div class="health-stat"><div class="health-stat-icon">📍</div><div class="health-stat-val">${dist.toFixed(1)}</div><div class="health-stat-label">km walked</div></div>
+        <div class="health-stat"><div class="health-stat-icon">📍</div><div class="health-stat-val">${Number(dist).toFixed(1)}</div><div class="health-stat-label">km walked</div></div>
       </div>
-      <div class="stat-label" style="margin-top:4px;margin-bottom:4px">7-Day Steps <span class="text-dim" style="font-weight:400">· Goal: ${goal.toLocaleString('en-IN')}/day</span></div>
+      <div class="stat-label" style="margin-bottom:6px">7-Day Steps <span class="text-dim" style="font-weight:400">· Goal: ${goal.toLocaleString('en-IN')}/day</span></div>
       <div class="steps-bar-wrap">
-        ${last7.map(d => `<div class="steps-bar-col"><div class="steps-bar${d.isToday ? ' today' : ''}" style="height:${d.steps ? Math.max(8, Math.round((d.steps/maxSteps)*72)) : 3}px" title="${d.steps.toLocaleString('en-IN')} steps"></div><div class="steps-bar-day">${d.day}</div></div>`).join('')}
+        ${last7.map(d => `<div class="steps-bar-col">
+          <div class="steps-bar${d.isToday ? ' today' : ''}" style="height:${d.steps ? Math.max(6, Math.round((d.steps / maxSteps) * 62)) : 3}px" title="${d.steps.toLocaleString('en-IN')} steps"></div>
+          <div class="steps-bar-day">${d.day}</div>
+        </div>`).join('')}
       </div>
-      <div style="display:flex;justify-content:space-between;margin-top:4px">
-        <span class="text-dim text-small">7-day avg: ${Math.round(last7.reduce((s,d)=>s+d.steps,0)/7).toLocaleString('en-IN')} steps</span>
-        <span class="text-small" style="color:${pct>=100?'#4ade80':'var(--orange)'}">${pct}% of daily goal</span>
+      <div style="display:flex;justify-content:space-between;margin-top:6px">
+        <span class="text-dim text-small">7-day avg: ${avg7.toLocaleString('en-IN')} steps</span>
+        <span class="text-small" style="color:${pct >= 100 ? '#4ade80' : 'var(--orange)'}">${pct}% of daily goal</span>
       </div>
     `;
   }
 
-  // ── Setup guide ────────────────────────────────────────────────────────
-  function initSetupGuide(token) {
+  // ── Section: Connect Health App ─────────────────────────────────────────
+  function renderSetupGuide(token) {
     const origin = window.location.origin;
     _syncUrl = `${origin}/api/customer/health/sync?token=${token}`;
-    document.getElementById('sync-url-display').textContent = _syncUrl;
+    const dlUrl = `/api/customer/health/shortcut?token=${token}`;
 
-    // Embed the user's token so Shortcuts app can fetch the file without a session
-    const shortcutDlUrl = `/api/customer/health/shortcut?token=${token}`;
-    document.getElementById('shortcut-dl-btn').href = shortcutDlUrl;
+    document.getElementById('inner-setup').innerHTML = `
+      <!-- Sync URL -->
+      <div style="background:var(--dark);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:18px">
+        <div class="stat-label" style="margin-bottom:8px">Your Personal Sync URL</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <code id="sync-url-display" style="flex:1;font-size:11px;color:var(--orange);word-break:break-all;background:rgba(255,92,0,0.06);padding:8px 10px;border-radius:6px;min-width:0">${_syncUrl}</code>
+          <button class="btn btn-outline btn-sm" onclick="copySyncUrl()" style="flex-shrink:0">Copy</button>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-dark btn-sm" onclick="testSync()">🧪 Test</button>
+          <button class="btn btn-dark btn-sm" onclick="regenerateToken()" style="color:var(--text-dim)">↻ New Token</button>
+          <span id="test-result" class="text-small hidden"></span>
+        </div>
+      </div>
+
+      <!-- Platform tabs -->
+      <div style="display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px">
+        <button id="tab-ios" onclick="switchTab('ios')" style="flex:1;padding:9px;font-size:13px;font-weight:600;background:var(--orange);color:#fff;border:none;cursor:pointer">🍎 iPhone</button>
+        <button id="tab-android" onclick="switchTab('android')" style="flex:1;padding:9px;font-size:13px;font-weight:600;background:var(--card);color:var(--text-dim);border:none;cursor:pointer">🤖 Android</button>
+      </div>
+
+      <!-- iOS guide -->
+      <div id="guide-ios">
+        <div style="background:linear-gradient(135deg,rgba(255,92,0,0.12),rgba(124,58,237,0.12));border:1px solid rgba(255,92,0,0.25);border-radius:12px;padding:16px 18px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span style="font-size:2rem">⬇️</span>
+            <div style="flex:1">
+              <div style="font-weight:600;color:var(--white);margin-bottom:2px">Download Ready-Made Shortcut</div>
+              <div class="text-dim text-small">Tap on your iPhone in Safari — iOS downloads and opens it in Shortcuts.</div>
+            </div>
+          </div>
+          <div style="margin-top:12px">
+            <a href="${dlUrl}" class="btn btn-primary" style="text-decoration:none">📲 Download Shortcut</a>
+          </div>
+          <div style="margin-top:12px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:10px 12px;font-size:12px;color:#fbbf24">
+            <strong>⚠️ iOS 15–26:</strong> Settings → Shortcuts → <strong>Allow Untrusted Shortcuts</strong> → ON, then tap the button above.
+          </div>
+        </div>
+        <div class="stat-label" style="margin-bottom:8px">Or set up manually — ~3 min</div>
+        <div class="setup-step"><span class="setup-step-num">1</span><div>Open <strong>Shortcuts</strong> app → tap <strong>+</strong> → name it <strong>"Fitanya Sync"</strong></div></div>
+        <div class="setup-step"><span class="setup-step-num">2</span><div>Add Action → search <strong>Health</strong> → <strong>Find Health Samples</strong> · Steps · Today · Sum → variable <em>Steps</em></div></div>
+        <div class="setup-step"><span class="setup-step-num">3</span><div>Repeat for <strong>Active Energy Burned</strong> → <em>Calories</em>, <strong>Walking Distance</strong> → <em>Distance</em>, <strong>Exercise Minutes</strong> → <em>ActiveMin</em></div></div>
+        <div class="setup-step"><span class="setup-step-num">4</span><div><strong>Get Contents of URL</strong> → POST · URL = Sync URL above · Body = JSON<br><span class="text-dim text-small">Keys: steps · calories · distance_km · active_minutes · date (yyyy-MM-dd)</span></div></div>
+        <div class="setup-step"><span class="setup-step-num">5</span><div><strong>Automation</strong> tab → Time of Day → 10 PM daily → Run shortcut · disable "Ask Before Running"</div></div>
+      </div>
+
+      <!-- Android guide -->
+      <div id="guide-android" class="hidden">
+        <div class="stat-label" style="margin-bottom:8px">Android via HTTP Request Shortcuts — ~5 min</div>
+        <div class="setup-step"><span class="setup-step-num">1</span><div>Install <strong>HTTP Request Shortcuts</strong> from Play Store (by Waboodoo, free)</div></div>
+        <div class="setup-step"><span class="setup-step-num">2</span><div>Tap <strong>+</strong> → Regular Shortcut → Method: POST → URL: your Sync URL above</div></div>
+        <div class="setup-step"><span class="setup-step-num">3</span><div>Content Type: <strong>application/json</strong> · Body:<br><code style="font-size:11px;color:var(--orange);background:rgba(255,92,0,0.06);padding:6px 8px;border-radius:4px;display:block;margin-top:4px">{"steps":8000,"calories":400,"active_minutes":45,"distance_km":6.2,"date":"2024-01-15"}</code></div></div>
+        <div class="setup-step"><span class="setup-step-num">4</span><div>Use <strong>Tasker</strong> + HTTP Request plugin for 10 PM daily automation</div></div>
+      </div>
+    `;
   }
 
-  function switchPlatformTab(tab) {
+  function switchTab(tab) {
     document.getElementById('guide-ios').classList.toggle('hidden', tab !== 'ios');
     document.getElementById('guide-android').classList.toggle('hidden', tab !== 'android');
-    document.getElementById('tab-ios').style.background     = tab === 'ios'     ? 'var(--orange)' : 'var(--card)';
-    document.getElementById('tab-ios').style.color          = tab === 'ios'     ? '#fff' : 'var(--text-dim)';
-    document.getElementById('tab-android').style.background = tab === 'android' ? 'var(--orange)' : 'var(--card)';
-    document.getElementById('tab-android').style.color      = tab === 'android' ? '#fff' : 'var(--text-dim)';
-  }
-
-  function toggleSetupGuide() {
-    const wrap = document.getElementById('health-setup-wrap');
-    wrap.classList.toggle('hidden');
+    document.getElementById('tab-ios').style.cssText     = `flex:1;padding:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:${tab === 'ios' ? 'var(--orange);color:#fff' : 'var(--card);color:var(--text-dim)'}`;
+    document.getElementById('tab-android').style.cssText = `flex:1;padding:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:${tab === 'android' ? 'var(--orange);color:#fff' : 'var(--card);color:var(--text-dim)'}`;
   }
 
   function copySyncUrl() {
@@ -338,70 +385,35 @@
     if (!confirm('Regenerate your token? Your existing Shortcut will stop working until you update its URL.')) return;
     const data = await api.post('/api/customer/health/token/regenerate', {});
     if (data?.success) {
-      _syncUrl = _syncUrl.replace(/token=[^&]+/, `token=${data.token}`);
-      document.getElementById('sync-url-display').textContent = _syncUrl;
-      toast('Token regenerated. Update your Shortcut URL.', 'success');
+      _loaded.setup = false;
+      await loadSection('setup');
+      toast('Token regenerated. Re-download the Shortcut to apply the new URL.', 'success');
     }
   }
 
   async function testSync() {
-    const btn = document.getElementById('test-result');
+    const el = document.getElementById('test-result');
+    el.textContent = 'Testing…'; el.classList.remove('hidden'); el.style.color = 'var(--text-dim)';
     const today = new Date().toLocaleDateString('en-CA');
-    btn.textContent = 'Testing…'; btn.classList.remove('hidden');
-    btn.style.color = 'var(--text-dim)';
-    // Post test data (0 steps so it doesn't overwrite real data if already synced today)
     const r = await fetch(_syncUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date: today, steps: 0, calories: 0, active_minutes: 0, distance_km: 0 }),
     });
     const d = await r.json();
-    if (d?.success) {
-      btn.textContent = '✅ Connection works!';
-      btn.style.color = '#4ade80';
-    } else {
-      btn.textContent = '❌ ' + (d?.error || 'Failed');
-      btn.style.color = '#f87171';
+    if (d?.success) { el.textContent = '✅ Connection works!'; el.style.color = '#4ade80'; }
+    else { el.textContent = '❌ ' + (d?.error || 'Failed'); el.style.color = '#f87171'; }
+  }
+
+  // ── Section: Charts & History ───────────────────────────────────────────
+  function renderProgress(logs) {
+    if (!logs.length) {
+      document.getElementById('inner-progress').innerHTML = '<p class="text-dim">No progress logs yet. Use the <strong style="color:var(--white)">Log This Week</strong> section above to get started.</p>';
+      return;
     }
-  }
 
-  function renderCharts(logs) {
-    const reversed = [...logs].reverse();
-    const labels = reversed.map(l => `Wk ${l.week_number}`);
+    document.getElementById('sub-progress').textContent = `${logs.length} log${logs.length !== 1 ? 's' : ''}`;
 
-    weightChart = new Chart(document.getElementById('weight-chart'), {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Weight (kg)',
-          data: reversed.map(l => l.weight),
-          borderColor: '#FF5C00',
-          backgroundColor: 'rgba(255,92,0,0.1)',
-          fill: true, tension: 0.4, pointBackgroundColor: '#FF5C00',
-        }]
-      },
-      options: { plugins: { legend: { labels: { color: '#888' } } }, scales: { x: { ticks: { color: '#888' } }, y: { ticks: { color: '#888' } } } }
-    });
-
-    measChart = new Chart(document.getElementById('measurements-chart'), {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          { label: 'Waist', data: reversed.map(l => l.waist), borderColor: '#3b82f6', tension: 0.4 },
-          { label: 'Chest', data: reversed.map(l => l.chest), borderColor: '#22c55e', tension: 0.4 },
-          { label: 'Arm',   data: reversed.map(l => l.arm),   borderColor: '#f59e0b', tension: 0.4 },
-        ]
-      },
-      options: { plugins: { legend: { labels: { color: '#888' } } }, scales: { x: { ticks: { color: '#888' } }, y: { ticks: { color: '#888' } } } }
-    });
-  }
-
-  function renderTable(logs) {
-    const tbody = document.getElementById('progress-rows');
-    if (!logs.length) { tbody.innerHTML = '<tr><td colspan="8" class="text-center text-dim">No logs yet</td></tr>'; return; }
-    tbody.innerHTML = logs.map(l => `
+    const rows = logs.map(l => `
       <tr>
         <td>Week ${l.week_number}, ${l.year}</td>
         <td>${formatDate(l.log_date)}</td>
@@ -410,11 +422,79 @@
         <td>${l.thigh || '—'}</td>
         <td>${l.arm || '—'}</td>
         <td>${l.chest || '—'}</td>
-        <td>${l.steps ? l.steps.toLocaleString('en-IN') : '—'}</td>
-      </tr>
-    `).join('');
+        <td>${l.steps ? Number(l.steps).toLocaleString('en-IN') : '—'}</td>
+      </tr>`).join('');
+
+    document.getElementById('inner-progress').innerHTML = `
+      <div class="grid-2 gap-24" style="margin-bottom:24px">
+        <div>
+          <div class="section-title" style="margin-bottom:10px">Weight Trend (kg)</div>
+          <canvas id="weight-chart" height="180"></canvas>
+        </div>
+        <div>
+          <div class="section-title" style="margin-bottom:10px">Measurements Trend</div>
+          <canvas id="measurements-chart" height="180"></canvas>
+        </div>
+      </div>
+      <div class="section-title" style="margin-bottom:10px">History</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Week</th><th>Date</th><th>Weight (kg)</th><th>Waist"</th><th>Thigh"</th><th>Arm"</th><th>Chest"</th><th>Steps</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+
+    // Destroy old charts if they exist (e.g. after save + re-render)
+    if (weightChart) { weightChart.destroy(); weightChart = null; }
+    if (measChart)   { measChart.destroy();   measChart   = null; }
+
+    const reversed = [...logs].reverse();
+    const labels   = reversed.map(l => `Wk ${l.week_number}`);
+    const opts     = { plugins: { legend: { labels: { color: '#888' } } }, scales: { x: { ticks: { color: '#888' } }, y: { ticks: { color: '#888' } } } };
+
+    weightChart = new Chart(document.getElementById('weight-chart'), {
+      type: 'line',
+      data: { labels, datasets: [{ label: 'Weight (kg)', data: reversed.map(l => l.weight), borderColor: '#FF5C00', backgroundColor: 'rgba(255,92,0,0.1)', fill: true, tension: 0.4, pointBackgroundColor: '#FF5C00' }] },
+      options: opts,
+    });
+
+    measChart = new Chart(document.getElementById('measurements-chart'), {
+      type: 'line',
+      data: { labels, datasets: [
+        { label: 'Waist', data: reversed.map(l => l.waist), borderColor: '#3b82f6', tension: 0.4 },
+        { label: 'Chest', data: reversed.map(l => l.chest), borderColor: '#22c55e', tension: 0.4 },
+        { label: 'Arm',   data: reversed.map(l => l.arm),   borderColor: '#f59e0b', tension: 0.4 },
+      ] },
+      options: opts,
+    });
   }
 
+  // ── Section: Coach Notes ────────────────────────────────────────────────
+  function renderNotes(sessions) {
+    const sub = document.getElementById('sub-notes');
+    if (!sessions.length) {
+      sub.textContent = 'Session feedback & next-session plans';
+      document.getElementById('inner-notes').innerHTML = '<p class="text-dim">No coach notes yet. Notes appear here after each completed session.</p>';
+      return;
+    }
+    sub.textContent = `${sessions.length} session${sessions.length !== 1 ? 's' : ''} with notes`;
+    document.getElementById('inner-notes').innerHTML = sessions.map(b => `
+      <div style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px">
+        <div class="flex-between mb-12">
+          <div>
+            <div style="font-weight:600;color:var(--white)">${formatSessionDate(b.date, b.start_time)} · ${formatSessionTime(b.start_time, b.date)}</div>
+            <div class="text-dim text-small">Coach: ${b.coach_name}</div>
+          </div>
+          <span class="badge badge-green">Completed</span>
+        </div>
+        <p style="color:var(--text);font-size:14px;margin-bottom:8px"><strong class="text-orange">Notes:</strong><br>${b.session_notes}</p>
+        ${b.workout_done ? `<p style="font-size:13px;color:var(--text);margin-bottom:6px"><strong class="text-dim">Workout done:</strong> ${b.workout_done}</p>` : ''}
+        ${b.next_session_plan ? `<p style="font-size:13px;color:var(--text)"><strong class="text-dim">Next session plan:</strong> ${b.next_session_plan}</p>` : ''}
+      </div>`).join('');
+  }
+
+  // ── Log form save ───────────────────────────────────────────────────────
   async function saveProgress() {
     const payload = {
       weight: document.getElementById('log-weight').value,
@@ -426,8 +506,17 @@
       notes:  document.getElementById('log-notes').value,
     };
     const data = await api.post('/api/customer/progress', payload);
-    if (data?.success) { toast('Progress saved! 💪', 'success'); init(); }
-    else toast(data?.error || 'Failed to save', 'error');
+    if (data?.success) {
+      toast('Progress saved! 💪', 'success');
+      // Clear cached progress and reload the section if it's open
+      _progressData = null;
+      _loaded.progress = false;
+      if (document.getElementById('body-progress').classList.contains('open')) {
+        await loadSection('progress');
+      }
+    } else {
+      toast(data?.error || 'Failed to save', 'error');
+    }
   }
 
   init();
