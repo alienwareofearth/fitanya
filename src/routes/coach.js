@@ -109,6 +109,45 @@ router.post('/slots', async (req, res) => {
   } catch (err) { console.error('[coach]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
+// POST /api/coach/slots/bulk — open many slots at once (Select All)
+router.post('/slots/bulk', async (req, res) => {
+  try {
+    const { date, hours } = req.body; // hours: ['06:00','07:00',...]
+    if (!date || !Array.isArray(hours) || !hours.length) return res.status(400).json({ error: 'date and hours required' });
+    const db = getDb();
+    const coachId = req.session.user.id;
+    // Fetch already-open slots for that day so we don't duplicate
+    const existing = await db.execute({
+      sql: `SELECT start_time FROM schedule_slots WHERE coach_id = ? AND date = ?`,
+      args: [coachId, date],
+    });
+    const taken = new Set(existing.rows.map(r => r.start_time));
+    const toAdd = hours.filter(h => !taken.has(h));
+    for (const h of toAdd) {
+      const endH = String(parseInt(h, 10) + 1).padStart(2, '0') + ':00';
+      await db.execute({
+        sql: `INSERT INTO schedule_slots (coach_id, date, start_time, end_time) VALUES (?, ?, ?, ?)`,
+        args: [coachId, date, h, endH],
+      });
+    }
+    res.json({ success: true, added: toAdd.length });
+  } catch (err) { console.error('[coach]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+});
+
+// POST /api/coach/slots/clear-date — remove all free slots for a date (Clear All)
+router.post('/slots/clear-date', async (req, res) => {
+  try {
+    const { date } = req.body;
+    if (!date) return res.status(400).json({ error: 'date required' });
+    const db = getDb();
+    await db.execute({
+      sql: `DELETE FROM schedule_slots WHERE coach_id = ? AND date = ? AND is_booked = 0`,
+      args: [req.session.user.id, date],
+    });
+    res.json({ success: true });
+  } catch (err) { console.error('[coach]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+});
+
 router.delete('/slots/:id', async (req, res) => {
   try {
     const db = getDb();

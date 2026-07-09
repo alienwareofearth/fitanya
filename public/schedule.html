@@ -11,29 +11,53 @@
   <link rel="apple-touch-icon" href="/icons/icon.svg">
   <title>Schedule — Fitanya</title>
   <link rel="stylesheet" href="/css/main.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <style>
-    .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 20px; }
-    .slot-btn {
-      background: var(--card); border: 1.5px solid var(--border);
-      border-radius: var(--radius-sm); padding: 16px; text-align: center;
-      cursor: pointer; transition: all 0.2s; color: var(--text); font-family: var(--font-body);
+    /* Accordion date groups */
+    .date-group { border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; overflow: hidden; }
+    .date-group-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px; cursor: pointer; background: var(--card);
+      transition: background 0.15s; user-select: none;
     }
-    .slot-btn:hover { border-color: var(--orange); background: rgba(255,92,0,0.06); }
-    .slot-btn.selected { border-color: var(--orange); background: rgba(255,92,0,0.12); }
-    .slot-time { font-family: var(--font-display); font-size: 1.3rem; color: var(--white); }
-    .slot-coach { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+    .date-group-header:hover { background: rgba(255,92,0,0.06); }
+    .date-group-header.open { background: rgba(255,92,0,0.08); border-bottom: 1px solid var(--border); }
+    .date-group-label { font-weight: 600; color: var(--white); font-size: 15px; }
+    .date-group-meta { display: flex; align-items: center; gap: 10px; }
+    .date-slot-count { font-size: 12px; background: rgba(255,92,0,0.15); color: var(--orange); padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+    .date-chevron { color: var(--text-dim); font-size: 13px; transition: transform 0.2s; }
+    .date-chevron.open { transform: rotate(180deg); }
+    .date-group-body { display: none; padding: 14px 18px; }
+    .date-group-body.open { display: block; }
+    /* Compact slot chips */
+    .slot-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .slot-chip {
+      padding: 8px 14px; border-radius: 8px; border: 1.5px solid var(--border);
+      background: var(--muted); cursor: pointer; transition: all 0.15s;
+      font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap;
+    }
+    .slot-chip:hover { border-color: var(--orange); color: var(--white); background: rgba(255,92,0,0.08); }
+    .slot-chip.selected { border-color: var(--orange); background: rgba(255,92,0,0.15); color: var(--white); }
+    .slot-coach-tag { font-size: 11px; color: var(--text-dim); font-weight: 400; }
+    /* Booking rows */
     .booking-row {
-      display: flex; align-items: center; gap: 20px;
+      display: flex; align-items: center; gap: 16px;
       background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 20px; margin-bottom: 12px;
+      border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
     }
     .booking-date-box {
       background: var(--grad); border-radius: var(--radius-sm);
-      padding: 10px 14px; text-align: center; min-width: 56px;
+      padding: 8px 12px; text-align: center; min-width: 50px; flex-shrink: 0;
     }
-    .booking-day { font-family: var(--font-display); font-size: 1.6rem; color: #fff; line-height: 1; }
+    .booking-day { font-family: var(--font-display); font-size: 1.4rem; color: #fff; line-height: 1; }
     .booking-mon { font-size: 10px; color: rgba(255,255,255,0.8); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+    /* Confirm bar */
+    .confirm-bar {
+      position: sticky; bottom: 0; background: var(--dark);
+      border-top: 1px solid var(--border); padding: 14px 20px;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+      margin: 0 -20px; z-index: 10;
+    }
+    @media (max-width: 600px) { .booking-row { flex-wrap: wrap; } }
   </style>
 </head>
 <body>
@@ -62,20 +86,21 @@
     </div>
 
     <!-- Book a session -->
-    <div class="card mb-32">
-      <div class="section-title">Book a New Session</div>
-      <div class="form-group" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <input class="form-control" id="slot-date" placeholder="Filter by date (optional)" readonly style="max-width:260px" />
-        <button class="btn btn-dark btn-sm" onclick="clearDateFilter()" id="clear-date-btn" style="display:none">✕ Clear filter</button>
+    <div class="card mb-24">
+      <div class="flex-between mb-16" style="flex-wrap:wrap;gap:10px">
+        <div class="section-title" style="margin:0">Book a New Session</div>
+        <button class="btn btn-dark btn-sm" onclick="toggleExpandAll()" id="expand-toggle-btn">Expand All ▼</button>
       </div>
-      <div id="slots-wrap">
-        <div class="spinner"></div>
+      <div id="slots-wrap"><div class="spinner"></div></div>
+    </div>
+
+    <!-- Sticky confirm bar (shown when slot selected) -->
+    <div id="book-confirm" class="confirm-bar hidden">
+      <div style="flex:1;min-width:0">
+        <div id="selected-slot-preview" style="font-size:14px;color:var(--white)"></div>
       </div>
-      <div id="book-confirm" class="hidden" style="margin-top:24px">
-        <div class="card" style="background:var(--dark);margin-bottom:16px" id="selected-slot-preview"></div>
-        <button class="btn btn-primary" onclick="confirmBook()">Confirm Booking →</button>
-        <button class="btn btn-dark" onclick="clearSelection()" style="margin-left:12px">Cancel</button>
-      </div>
+      <button class="btn btn-primary btn-sm" onclick="confirmBook()">Confirm Booking →</button>
+      <button class="btn btn-dark btn-sm" onclick="clearSelection()">✕ Cancel</button>
     </div>
 
     <!-- Upcoming bookings -->
@@ -84,11 +109,11 @@
   </main>
 </div>
 <div id="toast-container"></div>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="/js/app.js"></script>
 <script>
   let membership = null;
   let selectedSlot = null;
+  let allExpanded = false;
 
   async function init() {
     const data = await requireAuth();
@@ -97,97 +122,88 @@
     membership = data.membership;
     const rem = membership ? membership.sessions_total - membership.sessions_used : 0;
     document.getElementById('sessions-badge').textContent = rem + ' Sessions Remaining';
-
-    flatpickr('#slot-date', {
-      minDate: 'today',
-      dateFormat: 'Y-m-d',
-      onChange: ([date]) => {
-        document.getElementById('clear-date-btn').style.display = '';
-        // Convert selected date to the member's local YYYY-MM-DD (not UTC, not IST)
-        const localDate = date.toLocaleDateString('en-CA', { timeZone: window.__userTz });
-        loadSlots(localDate);
-      },
-    });
-
     loadSlots();
     loadMyBookings();
   }
 
-  function clearDateFilter() {
-    document.getElementById('slot-date')._flatpickr.clear();
-    document.getElementById('clear-date-btn').style.display = 'none';
-    loadSlots();
-  }
-
-  async function loadSlots(filterLocalDate = null) {
+  async function loadSlots() {
     document.getElementById('slots-wrap').innerHTML = '<div class="spinner"></div>';
     clearSelection();
 
-    // Always load all upcoming slots — never filter by date on the server.
-    // Server dates are stored in IST; filtering server-side gives wrong results
-    // for members in other timezones. We group by local date here instead.
     const data = await api.get('/api/bookings/slots');
     if (!data?.slots?.length) {
-      document.getElementById('slots-wrap').innerHTML = filterLocalDate
-        ? '<p class="text-dim">No available slots on this date. Try another day.</p>'
-        : '<p class="text-dim">No upcoming slots available yet. Check back soon.</p>';
+      document.getElementById('slots-wrap').innerHTML = '<p class="text-dim" style="padding:8px 0">No upcoming slots available yet. Check back soon.</p>';
       return;
     }
 
-    // Group every slot by the member's LOCAL calendar date
+    // Group by member's LOCAL date
     const grouped = {};
     data.slots.forEach(s => {
       const localDate = new Date(`${s.date}T${s.start_time}:00+05:30`)
-        .toLocaleDateString('en-CA', { timeZone: window.__userTz }); // YYYY-MM-DD in member tz
+        .toLocaleDateString('en-CA', { timeZone: window.__userTz });
       (grouped[localDate] = grouped[localDate] || []).push(s);
     });
 
-    const slotCard = s => `
-      <div class="slot-btn" onclick="selectSlot(${JSON.stringify(s).replace(/"/g,'&quot;')})">
-        <div class="slot-time">${formatSessionTime(s.start_time, s.date)}</div>
-        <div class="slot-coach">Coach: ${s.coach_name}</div>
-      </div>`;
-
-    if (filterLocalDate) {
-      // Show only the slots that fall on the selected local date
-      const slots = grouped[filterLocalDate] || [];
-      if (!slots.length) {
-        document.getElementById('slots-wrap').innerHTML = '<p class="text-dim">No available slots on this date. Try another day.</p>';
-        return;
-      }
-      document.getElementById('slots-wrap').innerHTML = `<div class="slot-grid">${slots.map(slotCard).join('')}</div>`;
-    } else {
-      // Show all upcoming grouped by local date
-      const entries = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
-      document.getElementById('slots-wrap').innerHTML = entries.map(([d, slots]) => {
-        const label = new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short' });
-        return `
-          <div style="margin-top:20px">
-            <div class="text-dim text-small" style="font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">${label}</div>
-            <div class="slot-grid">${slots.map(slotCard).join('')}</div>
-          </div>`;
+    const entries = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+    document.getElementById('slots-wrap').innerHTML = entries.map(([d, slots], idx) => {
+      const isOpen = idx === 0; // first date open by default
+      const dateLabel = new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short' });
+      const chips = slots.map(s => {
+        const enc = JSON.stringify(s).replace(/"/g, '&quot;');
+        return `<div class="slot-chip" id="chip-${s.id}" onclick="selectSlot(${enc})">
+          ${formatSessionTime(s.start_time, s.date)}
+          <div class="slot-coach-tag">${s.coach_name}</div>
+        </div>`;
       }).join('');
-    }
+      return `<div class="date-group" id="dg-${d}">
+        <div class="date-group-header${isOpen ? ' open' : ''}" onclick="toggleGroup('${d}')">
+          <span class="date-group-label">${dateLabel}</span>
+          <div class="date-group-meta">
+            <span class="date-slot-count">${slots.length} slot${slots.length !== 1 ? 's' : ''}</span>
+            <span class="date-chevron${isOpen ? ' open' : ''}">▼</span>
+          </div>
+        </div>
+        <div class="date-group-body${isOpen ? ' open' : ''}">
+          <div class="slot-chips">${chips}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleGroup(d) {
+    const header = document.querySelector(`#dg-${d} .date-group-header`);
+    const body   = document.querySelector(`#dg-${d} .date-group-body`);
+    const chev   = document.querySelector(`#dg-${d} .date-chevron`);
+    const opening = !body.classList.contains('open');
+    header.classList.toggle('open', opening);
+    body.classList.toggle('open', opening);
+    chev.classList.toggle('open', opening);
+  }
+
+  function toggleExpandAll() {
+    allExpanded = !allExpanded;
+    document.querySelectorAll('.date-group-header').forEach(h => h.classList.toggle('open', allExpanded));
+    document.querySelectorAll('.date-group-body').forEach(b => b.classList.toggle('open', allExpanded));
+    document.querySelectorAll('.date-chevron').forEach(c => c.classList.toggle('open', allExpanded));
+    document.getElementById('expand-toggle-btn').textContent = allExpanded ? 'Collapse All ▲' : 'Expand All ▼';
   }
 
   function selectSlot(slot) {
     selectedSlot = slot;
-    document.querySelectorAll('.slot-btn').forEach(el => el.classList.remove('selected'));
-    event.currentTarget.classList.add('selected');
-    document.getElementById('selected-slot-preview').innerHTML = `
-      <div class="flex-between">
-        <div><strong class="text-white">${formatSessionDate(slot.date, slot.start_time)}</strong><br>
-        <span class="text-dim text-small">${formatSessionTime(slot.start_time, slot.date)} – ${formatSessionTime(slot.end_time, slot.date)} · Coach: ${slot.coach_name} · ${tzLabel()}</span></div>
-        <span class="badge badge-orange">1 Hour</span>
-      </div>
-    `;
+    document.querySelectorAll('.slot-chip').forEach(el => el.classList.remove('selected'));
+    const chip = document.getElementById('chip-' + slot.id);
+    if (chip) chip.classList.add('selected');
+    document.getElementById('selected-slot-preview').innerHTML =
+      `<strong>${formatSessionDate(slot.date, slot.start_time)}</strong> &nbsp;·&nbsp; ` +
+      `${formatSessionTime(slot.start_time, slot.date)} – ${formatSessionTime(slot.end_time, slot.date)} &nbsp;·&nbsp; ` +
+      `Coach: ${slot.coach_name} &nbsp;<span class="badge badge-orange" style="vertical-align:middle">1 hr</span>`;
     document.getElementById('book-confirm').classList.remove('hidden');
   }
 
   function clearSelection() {
     selectedSlot = null;
     document.getElementById('book-confirm').classList.add('hidden');
-    document.querySelectorAll('.slot-btn').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('.slot-chip').forEach(el => el.classList.remove('selected'));
   }
 
   async function confirmBook() {

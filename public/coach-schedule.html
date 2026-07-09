@@ -68,15 +68,21 @@
 
     <!-- Hour picker for selected day -->
     <div class="card hidden" id="hour-picker">
-      <div class="flex-between mb-16">
+      <div class="flex-between mb-12" style="flex-wrap:wrap;gap:10px">
         <div>
           <div style="font-family:var(--font-display);font-size:1.1rem;color:var(--white)" id="picker-date-label"></div>
-          <div class="text-dim text-small mt-4">Click a slot to add or remove it from your availability</div>
+          <div class="text-dim text-small" style="margin-top:4px">Tap a slot to toggle. Green = open, Orange = booked.</div>
         </div>
-        <div class="flex gap-16 text-small">
-          <span><span class="cal-dot dot-green" style="display:inline-block;vertical-align:middle;margin-right:4px"></span>Open</span>
-          <span><span class="cal-dot dot-orange" style="display:inline-block;vertical-align:middle;margin-right:4px"></span>Booked</span>
+        <div style="display:flex;gap-8px;gap:8px;align-items:center;flex-wrap:wrap">
+          <span class="text-small"><span class="cal-dot dot-green" style="display:inline-block;vertical-align:middle;margin-right:3px"></span>Open</span>
+          <span class="text-small"><span class="cal-dot dot-orange" style="display:inline-block;vertical-align:middle;margin-right:3px"></span>Booked</span>
         </div>
+      </div>
+      <!-- Bulk action bar -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        <button class="btn btn-dark btn-sm" onclick="selectAllHours()">✅ Select All</button>
+        <button class="btn btn-dark btn-sm" onclick="selectWorkingHours()">🏋️ Working Hours (6 AM–10 PM)</button>
+        <button class="btn btn-dark btn-sm" onclick="clearAllHours()" style="color:#f87171">✕ Clear All</button>
       </div>
       <div class="hour-grid" id="hour-grid"></div>
     </div>
@@ -187,6 +193,44 @@
     const ampm = h >= 12 ? 'PM' : 'AM';
     const h12 = h > 12 ? h - 12 : (h === 0 ? 12 : h);
     return `${h12}:00 ${ampm}`;
+  }
+
+  async function selectAllHours() {
+    if (!selectedDate) return;
+    const freeHours = HOURS.filter(h => {
+      const s = (slotsByDate[selectedDate] || []).find(s => s.start_time === h);
+      return !s; // only hours with no slot yet
+    });
+    if (!freeHours.length) return toast('All hours already open', 'info');
+    const data = await api.post('/api/coach/slots/bulk', { date: selectedDate, hours: freeHours });
+    if (data?.success) {
+      toast(`${data.added} slot${data.added !== 1 ? 's' : ''} added!`, 'success');
+      await refreshSlots(); renderHourPicker(selectedDate);
+    } else toast(data?.error || 'Failed', 'error');
+  }
+
+  async function selectWorkingHours() {
+    if (!selectedDate) return;
+    const working = HOURS.filter(h => parseInt(h) >= 6 && parseInt(h) <= 21);
+    const freeHours = working.filter(h => !(slotsByDate[selectedDate] || []).find(s => s.start_time === h));
+    if (!freeHours.length) return toast('Working hours already open', 'info');
+    const data = await api.post('/api/coach/slots/bulk', { date: selectedDate, hours: freeHours });
+    if (data?.success) {
+      toast(`${data.added} slot${data.added !== 1 ? 's' : ''} added (6 AM–10 PM)`, 'success');
+      await refreshSlots(); renderHourPicker(selectedDate);
+    } else toast(data?.error || 'Failed', 'error');
+  }
+
+  async function clearAllHours() {
+    if (!selectedDate) return;
+    const freeCount = (slotsByDate[selectedDate] || []).filter(s => !s.is_booked).length;
+    if (!freeCount) return toast('No open slots to clear', 'info');
+    if (!confirm(`Remove all ${freeCount} open slot(s) on this day? Booked slots won't be affected.`)) return;
+    const data = await api.post('/api/coach/slots/clear-date', { date: selectedDate });
+    if (data?.success) {
+      toast('Open slots cleared', 'info');
+      await refreshSlots(); renderHourPicker(selectedDate);
+    } else toast(data?.error || 'Failed', 'error');
   }
 
   async function addSlot(date, start_time, end_time) {
