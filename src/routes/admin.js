@@ -691,4 +691,86 @@ router.post('/payments/:id/reject', async (req, res) => {
   } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
+// ── Monthly Games ────────────────────────────────────────────────────────────
+router.get('/monthly-games', async (req, res) => {
+  try {
+    const db = getDb();
+    const result = await db.execute(`SELECT * FROM monthly_games ORDER BY created_at DESC LIMIT 1`);
+    res.json({ success: true, game: result.rows[0] || null });
+  } catch (err) { console.error('[admin] monthly-games get:', err.message); res.status(500).json({ error: 'Failed to load.' }); }
+});
+
+router.post('/monthly-games', async (req, res) => {
+  try {
+    const db = getDb();
+    const { id, title, edition, tagline, challenge_title, challenge_desc,
+            start_date, end_date, reward_percent, reward_sessions } = req.body;
+    if (!start_date || !end_date) return res.status(400).json({ error: 'Start and end dates are required.' });
+
+    if (id) {
+      await db.execute({
+        sql: `UPDATE monthly_games SET title=?, edition=?, tagline=?, challenge_title=?, challenge_desc=?,
+              start_date=?, end_date=?, reward_percent=?, reward_sessions=?, updated_at=datetime('now') WHERE id=?`,
+        args: [title||'Monthly Games', edition||'', tagline||'', challenge_title||'', challenge_desc||null,
+               start_date, end_date, reward_percent||5, reward_sessions||3, id],
+      });
+      return res.json({ success: true, message: 'Game updated.' });
+    }
+    const ins = await db.execute({
+      sql: `INSERT INTO monthly_games (title, edition, tagline, challenge_title, challenge_desc,
+            start_date, end_date, reward_percent, reward_sessions, created_by)
+            VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      args: [title||'Monthly Games', edition||'', tagline||'', challenge_title||'', challenge_desc||null,
+             start_date, end_date, reward_percent||5, reward_sessions||3, req.session.user.id],
+    });
+    res.json({ success: true, message: 'Game created.', id: Number(ins.lastInsertRowid) });
+  } catch (err) { console.error('[admin] monthly-games post:', err.message); res.status(500).json({ error: 'Failed to save.' }); }
+});
+
+router.put('/monthly-games/:id/toggle', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+    const db = getDb();
+    await db.execute({
+      sql: `UPDATE monthly_games SET is_active=?, updated_at=datetime('now') WHERE id=?`,
+      args: [is_active ? 1 : 0, id],
+    });
+
+    if (is_active) {
+      // Check if notification already sent
+      const gameRow = await db.execute({ sql: `SELECT * FROM monthly_games WHERE id=?`, args: [id] });
+      const game = gameRow.rows[0];
+      if (game && !game.notification_sent) {
+        const { createNotification } = require('../services/notifications');
+        const members = await db.execute(`SELECT id FROM users WHERE role='customer' AND is_active=1 AND deleted_at IS NULL`);
+        const msg = `Respected Clients!\n\nWe're kicking off something exciting — FITANYA MONTHLY GAMES are officially here!\n\nEvery single month, we'll be running a fresh challenge — packed with new games, offers, and surprises just for you.\n\n📅 This Month's Challenge (${game.start_date} – ${game.end_date}):\n${game.challenge_title}\n\n🎁 Your Reward:\n✅ ${game.reward_percent}% OFF on your next renewal\n✅ ${game.reward_sessions} sessions absolutely FREE\n\nTrain. Transform. Transcend.\n— Fitanya`;
+        for (const m of members.rows) {
+          await createNotification({ userId: m.id, type: 'games', title: '🏆 Fitanya Monthly Games are Here!', body: msg, link: '/dashboard/monthly-games' }).catch(() => {});
+        }
+        await db.execute({ sql: `UPDATE monthly_games SET notification_sent=1 WHERE id=?`, args: [id] });
+      }
+    }
+    res.json({ success: true });
+  } catch (err) { console.error('[admin] monthly-games toggle:', err.message); res.status(500).json({ error: 'Failed to update.' }); }
+});
+
+router.post('/monthly-games/:id/notify', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = getDb();
+    const gameRow = await db.execute({ sql: `SELECT * FROM monthly_games WHERE id=?`, args: [id] });
+    const game = gameRow.rows[0];
+    if (!game) return res.status(404).json({ error: 'Game not found.' });
+    const { createNotification } = require('../services/notifications');
+    const members = await db.execute(`SELECT id FROM users WHERE role='customer' AND is_active=1 AND deleted_at IS NULL`);
+    const msg = `Respected Clients!\n\nWe're kicking off something exciting — FITANYA MONTHLY GAMES are officially here!\n\nEvery single month, we'll be running a fresh challenge — packed with new games, offers, and surprises just for you.\n\n📅 This Month's Challenge (${game.start_date} – ${game.end_date}):\n${game.challenge_title}\n\n🎁 Your Reward:\n✅ ${game.reward_percent}% OFF on your next renewal\n✅ ${game.reward_sessions} sessions absolutely FREE\n\nTrain. Transform. Transcend.\n— Fitanya`;
+    for (const m of members.rows) {
+      await createNotification({ userId: m.id, type: 'games', title: '🏆 Fitanya Monthly Games are Here!', body: msg, link: '/dashboard/monthly-games' }).catch(() => {});
+    }
+    await db.execute({ sql: `UPDATE monthly_games SET notification_sent=1 WHERE id=?`, args: [id] });
+    res.json({ success: true, message: `Notification sent to ${members.rows.length} members.` });
+  } catch (err) { console.error('[admin] monthly-games notify:', err.message); res.status(500).json({ error: 'Failed to notify.' }); }
+});
+
 module.exports = router;

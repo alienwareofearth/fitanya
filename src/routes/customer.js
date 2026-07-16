@@ -625,4 +625,13 @@ router.post('/account/cancel-deletion', async (req, res) => {
   } catch (err) { console.error('[customer] cancel-deletion error:', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
+// GET /api/customer/monthly-games
+router.get('/monthly-games', async (req, res) => {
+  try {
+    const db = getDb();
+    const result = await db.execute(`SELECT * FROM monthly_games WHERE is_active=1 ORDER BY created_at DESC LIMIT 1`);
+    res.json({ success: true, game: result.rows[0] || null });
+  } catch (err) { res.status(500).json({ error: 'Failed to load.' }); }
+});
+
 module.exports = router;

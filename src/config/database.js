@@ -378,6 +378,25 @@ async function initDb() {
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`);
 
+  // Monthly Games / Competitions
+  await client.execute(`CREATE TABLE IF NOT EXISTS monthly_games (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL DEFAULT 'Monthly Games',
+    edition TEXT NOT NULL DEFAULT 'July Edition',
+    tagline TEXT NOT NULL DEFAULT 'Show Up. Get Rewarded.',
+    challenge_title TEXT NOT NULL DEFAULT 'Be Regular for the Full Week',
+    challenge_desc TEXT,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    reward_percent INTEGER NOT NULL DEFAULT 5,
+    reward_sessions INTEGER NOT NULL DEFAULT 3,
+    is_active INTEGER NOT NULL DEFAULT 0,
+    notification_sent INTEGER NOT NULL DEFAULT 0,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
+
   // Sessions table for express-session
   await client.execute(`CREATE TABLE IF NOT EXISTS sessions (
     sid TEXT PRIMARY KEY,

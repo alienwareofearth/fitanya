@@ -165,7 +165,8 @@ app.get('/dashboard/payment',   (req, res) => res.sendFile(path.join(pages, 'pay
 app.get('/dashboard/progress',  (req, res) => res.sendFile(path.join(pages, 'progress.html')));
 app.get('/dashboard/diet',      (req, res) => res.sendFile(path.join(pages, 'diet.html')));
 app.get('/dashboard/stories',   (req, res) => res.sendFile(path.join(pages, 'stories.html')));
-app.get('/dashboard/referral',  (req, res) => res.sendFile(path.join(pages, 'referral.html')));
+app.get('/dashboard/referral',       (req, res) => res.sendFile(path.join(pages, 'referral.html')));
+app.get('/dashboard/monthly-games',  (req, res) => res.sendFile(path.join(pages, 'monthly-games.html')));
 
 app.get('/coach',               (req, res) => res.sendFile(path.join(pages, 'coach-dashboard.html')));
 app.get('/coach/schedule',      (req, res) => res.sendFile(path.join(pages, 'coach-schedule.html')));
@@ -182,6 +183,7 @@ app.get('/admin/discounts',     (req, res) => res.sendFile(path.join(pages, 'adm
 app.get('/admin/diet',          (req, res) => res.sendFile(path.join(pages, 'admin-diet.html')));
 app.get('/admin/settings',      (req, res) => res.sendFile(path.join(pages, 'admin-settings.html')));
 app.get('/admin/schedule',      (req, res) => res.sendFile(path.join(pages, 'admin-schedule.html')));
+app.get('/admin/monthly-games', (req, res) => res.sendFile(path.join(pages, 'admin-monthly-games.html')));
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((req, res) => {

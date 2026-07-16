@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#FF5C00">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Fitanya">
+  <link rel="apple-touch-icon" href="/icons/icon.svg">
+  <title>Monthly Games — Fitanya</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    /* ── Monthly Games Page ──────────────────────────────────────────────── */
+    .mg-wrap {
+      max-width: 540px;
+      margin: 0 auto;
+      padding: 0 0 40px;
+    }
+
+    /* Top banner */
+    .mg-banner {
+      background: var(--orange);
+      padding: 10px 24px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 3px;
+      color: #fff;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+
+    /* Main card */
+    .mg-card {
+      background: linear-gradient(160deg, #1c1c1c 0%, #111 100%);
+      border: 2px solid var(--orange);
+      border-top: none;
+      border-radius: 0 0 20px 20px;
+      padding: 32px 24px;
+    }
+
+    /* Logo */
+    .mg-logo-wrap { text-align: center; margin-bottom: 20px; }
+    .mg-logo-circle {
+      width: 88px; height: 88px; border-radius: 50%;
+      border: 3px solid var(--orange);
+      background: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 38px; box-shadow: 0 0 30px rgba(255,92,0,.25);
+    }
+
+    /* Title */
+    .mg-title {
+      font-family: var(--font-display);
+      font-size: 2.4rem;
+      color: var(--white);
+      text-align: center;
+      line-height: 1.1;
+      margin-bottom: 6px;
+    }
+    .mg-edition {
+      color: var(--orange);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .mg-tagline {
+      color: var(--text-dim);
+      font-size: 13px;
+      font-style: italic;
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    /* Challenge box */
+    .mg-challenge {
+      border: 1px solid var(--orange);
+      border-radius: 14px;
+      padding: 24px 20px 20px;
+      margin-bottom: 20px;
+      background: rgba(255,92,0,.03);
+    }
+    .mg-challenge-label {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 2.5px;
+      color: var(--orange);
+      margin-bottom: 14px;
+    }
+    .mg-challenge-title {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      color: var(--white);
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .mg-dates {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: var(--white);
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .mg-dates-sep { color: var(--orange); }
+    .mg-challenge-desc {
+      color: var(--text-dim);
+      font-size: 13px;
+      text-align: center;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    /* Rewards */
+    .mg-rewards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .mg-reward {
+      background: rgba(255,92,0,.06);
+      border: 1px solid rgba(255,92,0,.2);
+      border-radius: 10px;
+      padding: 16px 12px;
+      text-align: center;
+    }
+    .mg-reward-val {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      color: var(--orange);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .mg-reward-lbl {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+    }
+    .mg-reward-note {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-align: center;
+      margin-top: 12px;
+      font-style: italic;
+    }
+
+    /* How it works */
+    .mg-how { margin-top: 24px; }
+    .mg-how-title {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+    .mg-step { display: flex; gap: 16px; margin-bottom: 16px; align-items: flex-start; }
+    .mg-step-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(255,92,0,.1); border: 1px solid rgba(255,92,0,.3);
+      color: var(--orange); font-weight: 800; font-size: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 2px;
+    }
+    .mg-step-text { font-size: 14px; color: var(--text-dim); line-height: 1.5; }
+    .mg-step-text strong { color: var(--white); }
+
+    /* Footer */
+    .mg-footer {
+      margin-top: 28px;
+      background: rgba(255,92,0,.06);
+      border: 1px solid rgba(255,92,0,.15);
+      border-radius: 10px;
+      padding: 16px 20px;
+      text-align: center;
+    }
+    .mg-footer-title { font-weight: 700; color: var(--white); font-size: 13px; margin-bottom: 4px; }
+    .mg-footer-desc { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+    /* Inactive / loading */
+    .mg-inactive {
+      text-align: center; padding: 60px 24px;
+      border: 2px dashed var(--border); border-radius: 16px;
+    }
+    .mg-inactive-icon { font-size: 48px; margin-bottom: 16px; }
+    .mg-inactive-title { font-family: var(--font-display); font-size: 1.4rem; color: var(--white); margin-bottom: 8px; }
+
+    /* ── Responsive: wider screens get more room ── */
+    @media (min-width: 900px) {
+      .mg-wrap { padding: 0 24px 40px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <a href="/dashboard" class="sidebar-logo">FIT<span>ANYA</span></a>
+    <div id="sidebar-profile"></div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
+      <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
+      <a href="/dashboard/membership" class="nav-item"><span class="icon">🎫</span>Membership</a>
+      <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
+      <a href="/dashboard/progress" class="nav-item"><span class="icon">📊</span>Progress</a>
+      <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
+      <a href="/dashboard/monthly-games" class="nav-item active"><span class="icon">🏆</span>Monthly Games</a>
+      <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
+      <a href="/dashboard/referral" class="nav-item"><span class="icon">🎁</span>Refer & Earn</a>
+      <a href="/dashboard/profile" class="nav-item"><span class="icon">👤</span>Profile</a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="nav-item" onclick="logout()" style="width:100%"><span class="icon">🚪</span>Logout</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main-content">
+    <div class="mg-wrap">
+      <div id="page-content"><div class="spinner"></div></div>
+    </div>
+  </main>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+  async function init() {
+    const data = await api.get('/api/customer/monthly-games');
+    const wrap = document.getElementById('page-content');
+
+    if (!data?.game) {
+      wrap.innerHTML = `
+        <div class="mg-inactive">
+          <div class="mg-inactive-icon">🏆</div>
+          <div class="mg-inactive-title">No Active Competition</div>
+          <p class="text-dim mt-8">Check back soon — Fitanya Monthly Games are coming your way!</p>
+          <p class="text-dim text-small mt-16" style="font-style:italic">Every month brings a fresh challenge, new rewards, and surprises. Stay tuned!</p>
+        </div>`;
+      return;
+    }
+
+    const g = data.game;
+    const pct = g.reward_percent;
+    const sess = g.reward_sessions;
+    const startFmt = fmtDate(g.start_date);
+    const endFmt   = fmtDate(g.end_date);
+
+    wrap.innerHTML = `
+      <div class="mg-banner">FITANYA PRESENTS</div>
+      <div class="mg-card">
+
+        <div class="mg-logo-wrap">
+          <div class="mg-logo-circle">🏆</div>
+        </div>
+
+        <div class="mg-title">${esc(g.title || 'MONTHLY GAMES')}</div>
+        <div class="mg-edition">${esc(g.edition || '').toUpperCase()} &bull; ${esc(g.tagline || '').toUpperCase()}</div>
+        <div class="mg-tagline">Train. Transform. Transcend.</div>
+
+        <div class="mg-challenge">
+          <div class="mg-challenge-label">THIS MONTH'S CHALLENGE</div>
+          <div class="mg-challenge-title">${esc(g.challenge_title)}</div>
+          <div class="mg-dates">${startFmt} <span class="mg-dates-sep">—</span> ${endFmt}</div>
+          ${g.challenge_desc ? `<div class="mg-challenge-desc">${esc(g.challenge_desc)}</div>` : ''}
+          <div class="mg-rewards">
+            <div class="mg-reward">
+              <div class="mg-reward-val">${pct}% OFF</div>
+              <div class="mg-reward-lbl">ON YOUR NEXT RENEWAL</div>
+            </div>
+            <div class="mg-reward">
+              <div class="mg-reward-val">${sess} SESSIONS</div>
+              <div class="mg-reward-lbl">ABSOLUTELY FREE</div>
+            </div>
+          </div>
+          <div class="mg-reward-note">Rewards apply to your very next renewal cycle after the challenge.</div>
+        </div>
+
+        <div class="mg-how">
+          <div class="mg-how-title">HOW IT WORKS</div>
+          <div class="mg-step">
+            <div class="mg-step-num">01</div>
+            <div class="mg-step-text">Attend all your scheduled Fitanya sessions between <strong>${startFmt} – ${endFmt}</strong>.</div>
+          </div>
+          <div class="mg-step">
+            <div class="mg-step-num">02</div>
+            <div class="mg-step-text">Zero missed sessions during the challenge week — <strong>consistency is the game.</strong></div>
+          </div>
+          <div class="mg-step">
+            <div class="mg-step-num">03</div>
+            <div class="mg-step-text">Unlock a <strong>${pct}% discount</strong> on your next renewal + <strong>${sess} free sessions</strong>, credited automatically.</div>
+          </div>
+        </div>
+
+        <div class="mg-footer">
+          <div class="mg-footer-title">FITANYA MONTHLY GAMES</div>
+          <div class="mg-footer-desc">A brand-new challenge drops every month — fresh games, offers & surprises for our Fitanya family.</div>
+        </div>
+      </div>`;
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    const dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }).toUpperCase();
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  init();
+</script>
+<script src="/js/pwa.js" defer></script>
+</body>
+</html>

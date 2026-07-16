@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#FF5C00">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Fitanya">
+  <link rel="apple-touch-icon" href="/icons/icon.svg">
+  <title>Monthly Games — Fitanya Admin</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .toggle-wrap { display:flex; align-items:center; gap:14px; }
+    .toggle-switch { position:relative; width:52px; height:28px; flex-shrink:0; }
+    .toggle-switch input { opacity:0; width:0; height:0; }
+    .toggle-slider {
+      position:absolute; inset:0; background:var(--muted); border-radius:28px;
+      cursor:pointer; transition:.3s;
+    }
+    .toggle-slider:before {
+      content:''; position:absolute; width:20px; height:20px; background:#fff;
+      border-radius:50%; left:4px; top:4px; transition:.3s;
+    }
+    .toggle-switch input:checked + .toggle-slider { background:var(--orange); }
+    .toggle-switch input:checked + .toggle-slider:before { transform:translateX(24px); }
+    .status-badge {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:4px 14px; border-radius:20px; font-size:13px; font-weight:600;
+    }
+    .status-badge.active { background:rgba(34,197,94,.12); color:#22c55e; border:1px solid rgba(34,197,94,.25); }
+    .status-badge.inactive { background:rgba(255,92,0,.08); color:var(--text-dim); border:1px solid var(--border); }
+    .preview-card {
+      background: linear-gradient(160deg, #1a1a1a 0%, #111 100%);
+      border: 2px solid var(--orange);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .preview-header {
+      background: var(--orange);
+      padding: 8px 24px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #fff;
+    }
+    .preview-body { padding: 28px 24px; }
+    .preview-logo-wrap {
+      text-align: center; margin-bottom: 20px;
+    }
+    .preview-logo-circle {
+      width: 72px; height: 72px; border-radius: 50%;
+      border: 3px solid var(--orange); background: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 30px;
+    }
+    .preview-title { font-family:var(--font-display); font-size:2rem; text-align:center; color:var(--white); line-height:1.2; }
+    .preview-edition { color:var(--orange); font-size:12px; font-weight:700; letter-spacing:1.5px; text-align:center; margin-top:6px; }
+    .preview-tagline { text-align:center; color:var(--text-dim); font-size:12px; font-style:italic; margin-top:6px; margin-bottom:20px; }
+    .preview-challenge-box {
+      border: 1px solid var(--orange); border-radius: 10px; padding: 20px; margin-bottom: 16px;
+    }
+    .preview-challenge-label {
+      text-align:center; font-size:10px; font-weight:700; letter-spacing:2px;
+      color:var(--orange); margin-bottom:12px;
+    }
+    .preview-challenge-title { text-align:center; font-weight:800; font-size:1.1rem; color:var(--white); }
+    .preview-dates { text-align:center; font-family:var(--font-display); font-size:1.3rem; color:var(--white); margin:8px 0; }
+    .preview-rewards { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px; }
+    .preview-reward-item { background:rgba(255,92,0,.06); border:1px solid rgba(255,92,0,.2); border-radius:8px; padding:14px; text-align:center; }
+    .preview-reward-val { font-family:var(--font-display); font-size:1.6rem; color:var(--orange); line-height:1; }
+    .preview-reward-lbl { font-size:10px; color:var(--text-dim); letter-spacing:1px; margin-top:4px; font-weight:600; }
+    .notify-btn { background: linear-gradient(135deg,#7c3aed,#4f46e5); border-color:#7c3aed; }
+    .notify-btn:hover { background: linear-gradient(135deg,#6d28d9,#4338ca); }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <a href="/admin" class="sidebar-logo">FIT<span>ANYA</span></a>
+    <div class="admin-profile">
+      <div class="admin-avatar">A</div>
+      <div class="admin-info">
+        <div class="admin-name">Admin</div>
+        <span class="admin-role-badge">Super Admin</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-group-label">Overview</div>
+      <a href="/admin" class="nav-item"><span class="icon">📊</span>Dashboard</a>
+      <div class="nav-group-label">Management</div>
+      <a href="/admin/members" class="nav-item"><span class="icon">👥</span>Members</a>
+      <a href="/admin/coaches" class="nav-item"><span class="icon">🏋️</span>Coaches</a>
+      <a href="/admin/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
+      <div class="nav-group-label">Revenue</div>
+      <a href="/admin/packages" class="nav-item"><span class="icon">📦</span>Packages</a>
+      <a href="/admin/discounts" class="nav-item"><span class="icon">🏷️</span>Discounts</a>
+      <div class="nav-group-label">Content</div>
+      <a href="/admin/stories" class="nav-item"><span class="icon">📸</span>Stories</a>
+      <a href="/admin/diet" class="nav-item"><span class="icon">🥗</span>Diet Plans</a>
+      <a href="/admin/monthly-games" class="nav-item active"><span class="icon">🏆</span>Monthly Games</a>
+      <div class="nav-group-label">System</div>
+      <a href="/admin/settings" class="nav-item"><span class="icon">⚙️</span>Settings</a>
+    </nav>
+    <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
+  </aside>
+
+  <main class="main-content">
+    <div class="admin-topbar">
+      <div class="admin-topbar-left">
+        <div class="admin-topbar-title">Monthly Games</div>
+        <div class="breadcrumb">Fitanya Admin <span class="bc-sep">›</span> <span class="bc-current">Content › Monthly Games</span></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start">
+
+      <!-- LEFT: Form -->
+      <div>
+        <!-- Status card -->
+        <div class="card mb-20">
+          <div class="flex-between">
+            <div>
+              <div class="section-title mb-4" style="margin-bottom:4px">Competition Status</div>
+              <div class="text-dim text-small">Members only see this page when the competition is active.</div>
+            </div>
+            <div class="flex gap-12 align-center">
+              <span id="status-badge" class="status-badge inactive">● Inactive</span>
+              <label class="toggle-switch" title="Enable / Disable">
+                <input type="checkbox" id="toggle-active" onchange="toggleActive(this)">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form -->
+        <div class="card">
+          <div class="section-title mb-20">Game Details</div>
+          <input type="hidden" id="game-id" />
+
+          <div class="grid-2 gap-12">
+            <div class="form-group">
+              <label>Page Title</label>
+              <input class="form-control" id="f-title" placeholder="Monthly Games" />
+            </div>
+            <div class="form-group">
+              <label>Edition Label</label>
+              <input class="form-control" id="f-edition" placeholder="July Edition" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Tagline <span class="text-dim">(shown below edition)</span></label>
+            <input class="form-control" id="f-tagline" placeholder="Show Up. Get Rewarded." />
+          </div>
+
+          <div class="form-group">
+            <label>Challenge Title</label>
+            <input class="form-control" id="f-challenge-title" placeholder="Be Regular for the Full Week" />
+          </div>
+
+          <div class="form-group">
+            <label>Challenge Description <span class="text-dim">(optional, shown below title)</span></label>
+            <textarea class="form-control" id="f-challenge-desc" rows="2" placeholder="Attend every scheduled session this week. No skips, no excuses."></textarea>
+          </div>
+
+          <div class="grid-2 gap-12">
+            <div class="form-group">
+              <label>Challenge Start Date</label>
+              <input class="form-control" type="date" id="f-start" />
+            </div>
+            <div class="form-group">
+              <label>Challenge End Date</label>
+              <input class="form-control" type="date" id="f-end" />
+            </div>
+          </div>
+
+          <div class="grid-2 gap-12">
+            <div class="form-group">
+              <label>Renewal Discount (%)</label>
+              <input class="form-control" type="number" id="f-percent" min="1" max="100" placeholder="5" />
+            </div>
+            <div class="form-group">
+              <label>Free Sessions</label>
+              <input class="form-control" type="number" id="f-sessions" min="1" placeholder="3" />
+            </div>
+          </div>
+
+          <div class="flex gap-12 mt-8">
+            <button class="btn btn-primary" style="flex:1" onclick="saveGame()">Save Game</button>
+            <button class="btn notify-btn" id="notify-btn" onclick="sendNotification()" title="Send push notification to all active members">
+              📣 Notify All Members
+            </button>
+          </div>
+          <p class="text-dim text-small mt-8" id="notify-hint"></p>
+        </div>
+      </div>
+
+      <!-- RIGHT: Live Preview -->
+      <div>
+        <div class="section-title mb-12">Member Preview</div>
+        <div class="preview-card">
+          <div class="preview-header" id="pv-header">FITANYA PRESENTS</div>
+          <div class="preview-body">
+            <div class="preview-logo-wrap"><div class="preview-logo-circle">🏆</div></div>
+            <div class="preview-title" id="pv-title">MONTHLY GAMES</div>
+            <div class="preview-edition" id="pv-edition">JULY EDITION &bull; SHOW UP. GET REWARDED.</div>
+            <div class="preview-tagline" id="pv-tagline">Train. Transform. Transcend.</div>
+            <div class="preview-challenge-box">
+              <div class="preview-challenge-label">THIS WEEK'S CHALLENGE</div>
+              <div class="preview-challenge-title" id="pv-challenge-title">Be Regular for the Full Week</div>
+              <div class="preview-dates" id="pv-dates">20 JUL — 25 JUL 2026</div>
+              <p class="text-dim text-small" id="pv-desc" style="text-align:center;margin-top:4px"></p>
+              <div class="preview-rewards">
+                <div class="preview-reward-item">
+                  <div class="preview-reward-val" id="pv-percent">5% OFF</div>
+                  <div class="preview-reward-lbl">ON YOUR NEXT RENEWAL</div>
+                </div>
+                <div class="preview-reward-item">
+                  <div class="preview-reward-val" id="pv-sessions">3 SESSIONS</div>
+                  <div class="preview-reward-lbl">ABSOLUTELY FREE</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-dim text-small mt-12 text-center">This is how members see the competition page.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+  let _game = null;
+
+  async function init() {
+    const data = await api.get('/api/admin/monthly-games');
+    if (data?.game) {
+      _game = data.game;
+      populateForm(_game);
+      updatePreview();
+    }
+  }
+
+  function populateForm(g) {
+    document.getElementById('game-id').value = g.id;
+    document.getElementById('f-title').value = g.title || '';
+    document.getElementById('f-edition').value = g.edition || '';
+    document.getElementById('f-tagline').value = g.tagline || '';
+    document.getElementById('f-challenge-title').value = g.challenge_title || '';
+    document.getElementById('f-challenge-desc').value = g.challenge_desc || '';
+    document.getElementById('f-start').value = g.start_date || '';
+    document.getElementById('f-end').value = g.end_date || '';
+    document.getElementById('f-percent').value = g.reward_percent || 5;
+    document.getElementById('f-sessions').value = g.reward_sessions || 3;
+    const active = !!g.is_active;
+    document.getElementById('toggle-active').checked = active;
+    setStatusBadge(active);
+    document.getElementById('notify-hint').textContent = g.notification_sent
+      ? '✅ Notification already sent for this game. You can re-send anytime.'
+      : 'Notification not sent yet.';
+  }
+
+  function setStatusBadge(active) {
+    const b = document.getElementById('status-badge');
+    b.textContent = active ? '● Active' : '● Inactive';
+    b.className = 'status-badge ' + (active ? 'active' : 'inactive');
+  }
+
+  async function saveGame() {
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const payload = {
+      id: document.getElementById('game-id').value || null,
+      title: document.getElementById('f-title').value || 'Monthly Games',
+      edition: document.getElementById('f-edition').value,
+      tagline: document.getElementById('f-tagline').value,
+      challenge_title: document.getElementById('f-challenge-title').value,
+      challenge_desc: document.getElementById('f-challenge-desc').value,
+      start_date: document.getElementById('f-start').value,
+      end_date: document.getElementById('f-end').value,
+      reward_percent: parseInt(document.getElementById('f-percent').value) || 5,
+      reward_sessions: parseInt(document.getElementById('f-sessions').value) || 3,
+    };
+    try {
+      const data = await api.post('/api/admin/monthly-games', payload);
+      if (data?.success) {
+        toast(data.message || 'Saved!', 'success');
+        if (data.id) document.getElementById('game-id').value = data.id;
+        _game = { ..._game, ...payload, id: data.id || payload.id };
+        updatePreview();
+      } else toast(data?.error || 'Failed', 'error');
+    } finally { btn.disabled = false; btn.textContent = 'Save Game'; }
+  }
+
+  async function toggleActive(el) {
+    const id = document.getElementById('game-id').value;
+    if (!id) { el.checked = !el.checked; return toast('Save the game first before enabling it.', 'error'); }
+    const data = await api.put('/api/admin/monthly-games/' + id + '/toggle', { is_active: el.checked });
+    if (data?.success) {
+      setStatusBadge(el.checked);
+      toast(el.checked ? 'Competition enabled! Notification sent to all members.' : 'Competition disabled.', 'success');
+    } else { el.checked = !el.checked; toast(data?.error || 'Failed', 'error'); }
+  }
+
+  async function sendNotification() {
+    const id = document.getElementById('game-id').value;
+    if (!id) return toast('Save the game first.', 'error');
+    const btn = document.getElementById('notify-btn');
+    btn.disabled = true; btn.textContent = '📣 Sending…';
+    try {
+      const data = await api.post('/api/admin/monthly-games/' + id + '/notify', {});
+      if (data?.success) {
+        toast(data.message, 'success');
+        document.getElementById('notify-hint').textContent = '✅ Notification sent successfully.';
+      } else toast(data?.error || 'Failed', 'error');
+    } finally { btn.disabled = false; btn.textContent = '📣 Notify All Members'; }
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    const dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }).toUpperCase();
+  }
+
+  function updatePreview() {
+    const title = document.getElementById('f-title').value || 'MONTHLY GAMES';
+    const edition = document.getElementById('f-edition').value || 'EDITION';
+    const tagline = document.getElementById('f-tagline').value || 'Train. Transform. Transcend.';
+    const ct = document.getElementById('f-challenge-title').value || 'Challenge Title';
+    const cd = document.getElementById('f-challenge-desc').value || '';
+    const s = document.getElementById('f-start').value;
+    const e = document.getElementById('f-end').value;
+    const pct = document.getElementById('f-percent').value || 5;
+    const sess = document.getElementById('f-sessions').value || 3;
+
+    document.getElementById('pv-title').textContent = title.toUpperCase();
+    document.getElementById('pv-edition').innerHTML = edition.toUpperCase() + ' &bull; ' + tagline.toUpperCase();
+    document.getElementById('pv-tagline').textContent = tagline;
+    document.getElementById('pv-challenge-title').textContent = ct;
+    document.getElementById('pv-desc').textContent = cd;
+    document.getElementById('pv-dates').textContent = (s ? fmtDate(s) : '??') + ' — ' + (e ? fmtDate(e) : '??');
+    document.getElementById('pv-percent').textContent = pct + '% OFF';
+    document.getElementById('pv-sessions').textContent = sess + ' SESSIONS';
+  }
+
+  // Live preview on input
+  ['f-title','f-edition','f-tagline','f-challenge-title','f-challenge-desc','f-start','f-end','f-percent','f-sessions']
+    .forEach(id => document.getElementById(id).addEventListener('input', updatePreview));
+
+  init();
+</script>
+<script src="/js/pwa.js" defer></script>
+</body>
+</html>
