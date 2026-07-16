@@ -11,6 +11,42 @@
   <title>Members — Fitanya Admin</title>
   <link rel="stylesheet" href="/css/main.css">
   <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    /* ── Improved modal layout ─────────────────────────────────── */
+    .modal-hdr {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 12px; padding-bottom: 18px; margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-hdr .modal-title { margin: 0; font-size: 1.4rem; line-height: 1.3; }
+    .modal-hdr .modal-sub   { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+    .modal-x {
+      background: var(--dark); border: 1px solid var(--border);
+      border-radius: 8px; width: 34px; height: 34px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-dim); font-size: 18px; cursor: pointer;
+      transition: all 0.15s; line-height: 1;
+    }
+    .modal-x:hover { border-color: var(--orange); color: var(--white); }
+    .modal-ftr {
+      display: flex; gap: 10px; padding-top: 20px; margin-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .modal-ftr .btn { flex: 1; }
+    .modal-warn {
+      background: rgba(251,191,36,0.07); border: 1px solid rgba(251,191,36,0.28);
+      border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;
+      font-size: 13px; color: #fbbf24; line-height: 1.6;
+    }
+    .modal-info-row {
+      display: flex; gap: 24px; flex-wrap: wrap;
+      background: var(--dark); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;
+    }
+    .modal-info-row .minfo { display: flex; flex-direction: column; gap: 2px; }
+    .modal-info-row .minfo-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+    .modal-info-row .minfo-val   { font-size: 14px; font-weight: 600; color: var(--white); }
+  </style>
 </head>
 <body>
 <div class="app-layout">
@@ -56,27 +92,40 @@
 </div>
 
 <!-- Add Sessions Modal -->
-<div class="modal-overlay hidden" id="sessions-modal">
-  <div class="modal" style="position:relative">
-    <button class="modal-close" onclick="document.getElementById('sessions-modal').classList.add('hidden')">×</button>
-    <h3 class="modal-title">Add Sessions</h3>
-    <p class="text-dim mt-4 mb-24">Member: <strong class="text-white" id="sessions-member-name"></strong></p>
-    <p class="text-dim mb-16">Current: <strong class="text-white" id="sessions-current"></strong></p>
+<div class="modal-overlay hidden" id="sessions-modal" onclick="overlayClose(event,'sessions-modal')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div>
+        <h3 class="modal-title">➕ Add Sessions</h3>
+        <div class="modal-sub">Member: <strong id="sessions-member-name"></strong></div>
+      </div>
+      <button class="modal-x" onclick="closeModal('sessions-modal')" title="Close">✕</button>
+    </div>
     <input type="hidden" id="sessions-member-id" />
+    <div class="modal-info-row">
+      <div class="minfo"><span class="minfo-label">Current Usage</span><span class="minfo-val" id="sessions-current">—</span></div>
+    </div>
     <div class="form-group">
       <label>Sessions to Add</label>
       <input class="form-control" type="number" id="sessions-to-add" min="1" placeholder="e.g. 4" />
     </div>
-    <button class="btn btn-primary btn-full" onclick="doAddSessions()">Add Sessions</button>
+    <div class="modal-ftr">
+      <button class="btn btn-dark" onclick="closeModal('sessions-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="doAddSessions()">Add Sessions</button>
+    </div>
   </div>
 </div>
 
 <!-- Assign Package Modal -->
-<div class="modal-overlay hidden" id="pkg-modal">
-  <div class="modal" style="position:relative">
-    <button class="modal-close" onclick="document.getElementById('pkg-modal').classList.add('hidden')">×</button>
-    <h3 class="modal-title">Assign Package</h3>
-    <p class="text-dim mt-4 mb-24">Member: <strong class="text-white" id="pkg-member-name"></strong></p>
+<div class="modal-overlay hidden" id="pkg-modal" onclick="overlayClose(event,'pkg-modal')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div>
+        <h3 class="modal-title">📦 Assign Package</h3>
+        <div class="modal-sub">Member: <strong id="pkg-member-name"></strong></div>
+      </div>
+      <button class="modal-x" onclick="closeModal('pkg-modal')" title="Close">✕</button>
+    </div>
     <input type="hidden" id="pkg-member-id" />
     <div class="form-group">
       <label>Package</label>
@@ -86,17 +135,24 @@
       <label>Start Date</label>
       <input class="form-control" type="date" id="pkg-start" />
     </div>
-    <p class="text-dim text-small mb-16">Any existing active membership will be expired and replaced with this one.</p>
-    <button class="btn btn-primary btn-full" onclick="doAssignPackage()">Assign Package</button>
+    <p class="text-dim text-small mb-8">Any existing active membership will be expired and replaced with this one.</p>
+    <div class="modal-ftr">
+      <button class="btn btn-dark" onclick="closeModal('pkg-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="doAssignPackage()">Assign Package</button>
+    </div>
   </div>
 </div>
 
-<!-- Reassign Coach Modal -->
-<div class="modal-overlay hidden" id="tz-modal">
-  <div class="modal" style="position:relative;max-width:400px">
-    <button class="modal-close" onclick="document.getElementById('tz-modal').classList.add('hidden')">×</button>
-    <h3 class="modal-title">Set Member Timezone</h3>
-    <p class="text-dim mt-4 mb-24">Member: <strong class="text-white" id="tz-member-name"></strong></p>
+<!-- Set Timezone Modal -->
+<div class="modal-overlay hidden" id="tz-modal" onclick="overlayClose(event,'tz-modal')">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hdr">
+      <div>
+        <h3 class="modal-title">🌐 Set Timezone</h3>
+        <div class="modal-sub">Member: <strong id="tz-member-name"></strong></div>
+      </div>
+      <button class="modal-x" onclick="closeModal('tz-modal')" title="Close">✕</button>
+    </div>
     <input type="hidden" id="tz-member-id" />
     <div class="form-group">
       <label>Timezone</label>
@@ -111,49 +167,74 @@
         <option value="Australia/Sydney">Australia — AEST (UTC+10/+11)</option>
       </select>
     </div>
-    <button class="btn btn-primary btn-full" onclick="doSetTimezone()">Save Timezone</button>
+    <div class="modal-ftr">
+      <button class="btn btn-dark" onclick="closeModal('tz-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="doSetTimezone()">Save Timezone</button>
+    </div>
   </div>
 </div>
 
-<div class="modal-overlay hidden" id="reassign-modal">
-  <div class="modal" style="position:relative">
-    <button class="modal-close" onclick="document.getElementById('reassign-modal').classList.add('hidden')">×</button>
-    <h3 class="modal-title">Assign Coach</h3>
-    <p class="text-dim mt-4 mb-24">Member: <strong class="text-white" id="reassign-member-name"></strong></p>
+<!-- Assign Coach Modal -->
+<div class="modal-overlay hidden" id="reassign-modal" onclick="overlayClose(event,'reassign-modal')">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hdr">
+      <div>
+        <h3 class="modal-title">🏋️ Assign Coach</h3>
+        <div class="modal-sub">Member: <strong id="reassign-member-name"></strong></div>
+      </div>
+      <button class="modal-x" onclick="closeModal('reassign-modal')" title="Close">✕</button>
+    </div>
     <input type="hidden" id="reassign-member-id" />
     <div class="form-group">
       <label>Select Coach</label>
       <select class="form-control" id="reassign-coach-id"></select>
     </div>
-    <button class="btn btn-primary btn-full" onclick="doReassign()">Save Assignment</button>
+    <div class="modal-ftr">
+      <button class="btn btn-dark" onclick="closeModal('reassign-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="doReassign()">Save Assignment</button>
+    </div>
   </div>
 </div>
 
 <!-- Deduct Session Modal (Option A) -->
-<div class="modal-overlay hidden" id="deduct-modal">
-  <div class="modal" style="position:relative;max-width:420px">
-    <button class="modal-close" onclick="document.getElementById('deduct-modal').classList.add('hidden')">×</button>
-    <h3 class="modal-title">− Deduct Session (Offline)</h3>
-    <p class="text-dim mt-4 mb-4">Member: <strong class="text-white" id="deduct-member-name"></strong></p>
-    <p class="text-dim mb-24">Sessions: <strong class="text-white" id="deduct-sessions-display"></strong></p>
+<div class="modal-overlay hidden" id="deduct-modal" onclick="overlayClose(event,'deduct-modal')">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-hdr">
+      <div>
+        <h3 class="modal-title">➖ Deduct Session</h3>
+        <div class="modal-sub">Mark 1 offline session as used</div>
+      </div>
+      <button class="modal-x" onclick="closeModal('deduct-modal')" title="Close">✕</button>
+    </div>
     <input type="hidden" id="deduct-member-id" />
-    <div class="card mb-16" style="background:rgba(251,191,36,0.06);border-color:rgba(251,191,36,0.25)">
-      <p class="text-small" style="color:#fbbf24">⚠️ This marks 1 session as used without creating a booking record. Use <strong>📝 Offline</strong> instead if you want the session to appear in the member's history.</p>
+    <div class="modal-info-row">
+      <div class="minfo"><span class="minfo-label">Member</span><span class="minfo-val" id="deduct-member-name">—</span></div>
+      <div class="minfo"><span class="minfo-label">Sessions</span><span class="minfo-val" id="deduct-sessions-display">—</span></div>
+    </div>
+    <div class="modal-warn">
+      ⚠️ This updates the session counter only — <strong>no booking record is created</strong>. Use <strong>📝 Log Offline</strong> instead if you want this session to appear in the member's history with date and notes.
     </div>
     <div class="form-group">
-      <label>Reason <span class="text-dim">(for your records)</span></label>
-      <input class="form-control" id="deduct-reason" placeholder="e.g. Offline session on 12 Jul" />
+      <label>Reason <span class="text-dim">(internal note)</span></label>
+      <input class="form-control" id="deduct-reason" placeholder="e.g. Outdoor session on 12 Jul" />
     </div>
-    <button class="btn btn-primary btn-full" style="background:#b91c1c;border-color:#b91c1c" onclick="doDeduct()">Confirm Deduct</button>
+    <div class="modal-ftr">
+      <button class="btn btn-dark" onclick="closeModal('deduct-modal')">Cancel</button>
+      <button class="btn btn-primary" style="background:#b91c1c;border-color:#b91c1c;flex:1.5" onclick="doDeduct()">Confirm Deduct</button>
+    </div>
   </div>
 </div>
 
 <!-- Log Offline Session Modal (Option B) -->
-<div class="modal-overlay hidden" id="offline-modal">
-  <div class="modal" style="position:relative">
-    <button class="modal-close" onclick="document.getElementById('offline-modal').classList.add('hidden')">×</button>
-    <h3 class="modal-title">📝 Log Offline Session</h3>
-    <p class="text-dim mt-4 mb-24">Member: <strong class="text-white" id="offline-member-name"></strong></p>
+<div class="modal-overlay hidden" id="offline-modal" onclick="overlayClose(event,'offline-modal')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div>
+        <h3 class="modal-title">📝 Log Offline Session</h3>
+        <div class="modal-sub">Member: <strong id="offline-member-name"></strong></div>
+      </div>
+      <button class="modal-x" onclick="closeModal('offline-modal')" title="Close">✕</button>
+    </div>
     <input type="hidden" id="offline-member-id" />
     <div class="grid-2 gap-12">
       <div class="form-group">
@@ -181,8 +262,11 @@
       <label>Session Notes <span class="text-dim">(optional)</span></label>
       <textarea class="form-control" id="offline-notes" rows="3" placeholder="Coach feedback, next steps…"></textarea>
     </div>
-    <p class="text-dim text-small mb-16">This creates a completed session record in the member's history and deducts 1 session from their membership.</p>
-    <button class="btn btn-primary btn-full" onclick="doOffline()">Log Session →</button>
+    <p class="text-dim text-small mb-8">Creates a completed session in the member's history and deducts 1 session from their balance.</p>
+    <div class="modal-ftr">
+      <button class="btn btn-dark" onclick="closeModal('offline-modal')">Cancel</button>
+      <button class="btn btn-primary" style="flex:1.5" onclick="doOffline()">Log Session →</button>
+    </div>
   </div>
 </div>
 
@@ -265,7 +349,7 @@
       const data = await api.post('/api/admin/members/' + memberId + '/add-sessions', { sessions_to_add: parseInt(toAdd) });
       if (data?.success) {
         toast('Sessions added!', 'success');
-        document.getElementById('sessions-modal').classList.add('hidden');
+        closeModal('sessions-modal');
         init();
       } else toast(data?.error || 'Failed', 'error');
     } finally {
@@ -292,7 +376,7 @@
       const data = await api.post('/api/admin/members/' + memberId + '/reassign-coach', { coach_id: coachId });
       if (data?.success) {
         toast('Coach assigned!', 'success');
-        document.getElementById('reassign-modal').classList.add('hidden');
+        closeModal('reassign-modal');
         init();
       } else toast(data?.error || 'Failed', 'error');
     } finally {
@@ -322,7 +406,7 @@
       const data = await api.post('/api/admin/members/' + memberId + '/assign-package', { package_id: packageId, start_date: startDate });
       if (data?.success) {
         toast('Package assigned!', 'success');
-        document.getElementById('pkg-modal').classList.add('hidden');
+        closeModal('pkg-modal');
         init();
       } else toast(data?.error || 'Failed', 'error');
     } finally {
@@ -349,7 +433,7 @@
       });
       if (data?.success) {
         toast('Session deducted (' + data.sessions_used + '/' + data.sessions_total + ' used)', 'success');
-        document.getElementById('deduct-modal').classList.add('hidden');
+        closeModal('deduct-modal');
         init();
       } else toast(data?.error || 'Failed', 'error');
     } finally { btn.disabled = false; btn.textContent = 'Confirm Deduct'; }
@@ -388,7 +472,7 @@
       });
       if (data?.success) {
         toast('Offline session logged and session deducted!', 'success');
-        document.getElementById('offline-modal').classList.add('hidden');
+        closeModal('offline-modal');
         init();
       } else toast(data?.error || 'Failed', 'error');
     } finally { btn.disabled = false; btn.textContent = 'Log Session →'; }
@@ -410,7 +494,7 @@
       const data = await api.put('/api/admin/members/' + memberId + '/timezone', { timezone });
       if (data?.success) {
         toast('Timezone updated!', 'success');
-        document.getElementById('tz-modal').classList.add('hidden');
+        closeModal('tz-modal');
         // Update local data so re-render is instant without full reload
         const m = allMembers.find(x => x.id === parseInt(memberId));
         if (m) m.timezone = timezone;
@@ -419,6 +503,13 @@
       btn.disabled = false; btn.textContent = 'Save Timezone';
     }
   }
+
+  // ── Modal helpers ─────────────────────────────────────────────────────────
+  function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+  function overlayClose(e, id) { if (e.target === e.currentTarget) closeModal(id); }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(m => m.classList.add('hidden'));
+  });
 
   init();
 </script>
