@@ -227,28 +227,45 @@
   }
 
   function renderProgress(p, pct, sess) {
-    const { expected, completed, cancelled, status, officialWinner } = p;
+    const { totalDays, completedDays, missedDays, daysElapsed,
+            completedDates, status, officialWinner } = p;
+    const futureDays = Math.max(0, totalDays - daysElapsed);
 
     const labels = {
-      upcoming:    { icon: '📅', text: 'CHALLENGE UPCOMING', msg: 'The challenge hasn\'t started yet. Book your sessions now so you\'re ready!' },
-      in_progress: { icon: '🔥', text: 'YOUR PROGRESS', msg: `Keep going! Attend every session and don't cancel — you're in the running.` },
-      won:         { icon: '🏆', text: 'CHALLENGE COMPLETE!', msg: officialWinner ? `🎉 Congratulations! You've officially won! Your rewards (${pct}% off + ${sess} free sessions) will be applied to your account.` : `🎉 You completed every session this week! Our team is reviewing results and your rewards will be applied shortly.` },
-      failed:      { icon: '❌', text: 'CHALLENGE MISSED', msg: `You had ${cancelled} cancelled session(s) this period. Don't worry — a fresh challenge drops next month!` },
-      ended:       { icon: '🏁', text: 'CHALLENGE ENDED', msg: expected === 0 ? 'You had no sessions scheduled during this challenge period.' : 'Results are being reviewed. Check back soon!' },
+      upcoming:    { icon: '📅', text: 'CHALLENGE UPCOMING',  msg: `${totalDays}-day challenge. Complete 1 session every day to win!` },
+      in_progress: { icon: '🔥', text: 'YOUR PROGRESS',       msg: missedDays > 0
+        ? `You missed ${missedDays} day(s). Keep going — complete remaining days to stay eligible!`
+        : `${completedDays}/${totalDays} days done. Keep it up — don't skip a day!` },
+      won:         { icon: '🏆', text: 'CHALLENGE COMPLETE!', msg: officialWinner
+        ? `🎉 You've officially won! Your ${pct}% off + ${sess} free sessions will be applied to your account.`
+        : `🎉 You completed all ${totalDays} days! Results are being reviewed — rewards coming soon.` },
+      failed:      { icon: '❌', text: 'CHALLENGE MISSED',    msg: `You missed ${missedDays} day(s) during the challenge. A fresh challenge drops next month — don't miss it!` },
+      ended:       { icon: '🏁', text: 'CHALLENGE ENDED',     msg: completedDays === 0 ? 'You had no sessions during this challenge.' : 'Results are being reviewed. Check back soon!' },
     };
     const l = labels[status] || labels.ended;
 
-    // Build session dots: completed = ✓, cancelled = ✗, pending = circle
+    // One dot per challenge day.
+    // ✓ = completed a session that day (regardless of any cancellations)
+    // ✗ = strictly past day (yesterday or earlier) with no completed session
+    // ○ = today (still time to complete) or a future day
+    const startDt = new Date(p.start_date + 'T00:00:00');
+    const completedSet = new Set(completedDates || []);
+    const today = new Date().toISOString().split('T')[0];
     let dotsHtml = '';
-    if (expected > 0 || cancelled > 0) {
-      const total = Math.max(expected + cancelled, 1);
-      for (let i = 0; i < completed; i++)  dotsHtml += `<div class="mg-dot done">✓</div>`;
-      for (let i = 0; i < cancelled; i++)  dotsHtml += `<div class="mg-dot missed">✗</div>`;
-      const pending = Math.max(0, expected - completed);
-      for (let i = 0; i < pending; i++)    dotsHtml += `<div class="mg-dot pending">○</div>`;
+    for (let i = 0; i < totalDays; i++) {
+      const dayDt = new Date(startDt.getTime() + i * 86400000);
+      const dayStr = dayDt.toISOString().split('T')[0];
+      const isStrictlyPast = dayStr < today; // yesterday or earlier
+      if (completedSet.has(dayStr)) {
+        dotsHtml += `<div class="mg-dot done" title="${dayStr}">✓</div>`;
+      } else if (isStrictlyPast) {
+        dotsHtml += `<div class="mg-dot missed" title="${dayStr}">✗</div>`;
+      } else {
+        dotsHtml += `<div class="mg-dot pending" title="${dayStr}">○</div>`;
+      }
     }
 
-    const barPct = expected > 0 ? Math.round((completed / expected) * 100) : 0;
+    const barPct = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0;
 
     return `
       <div class="mg-progress ${status}">
@@ -256,17 +273,16 @@
           <span class="mg-progress-label">${l.text}</span>
           <span class="mg-progress-icon">${l.icon}</span>
         </div>
-        ${dotsHtml ? `<div class="mg-session-dots">${dotsHtml}</div>` : ''}
-        ${expected > 0 ? `
-          <div class="mg-progress-bar-wrap">
-            <div class="mg-progress-bar" style="width:${barPct}%"></div>
-          </div>
-          <div class="mg-progress-stats">
-            <div class="mg-stat"><span class="mg-stat-val">${completed}</span><span class="mg-stat-lbl">Completed</span></div>
-            <div class="mg-stat"><span class="mg-stat-val">${expected}</span><span class="mg-stat-lbl">Scheduled</span></div>
-            ${cancelled > 0 ? `<div class="mg-stat"><span class="mg-stat-val" style="color:#ef4444">${cancelled}</span><span class="mg-stat-lbl">Cancelled</span></div>` : ''}
-          </div>
-        ` : ''}
+        <div class="mg-session-dots">${dotsHtml}</div>
+        <div class="mg-progress-bar-wrap">
+          <div class="mg-progress-bar" style="width:${barPct}%"></div>
+        </div>
+        <div class="mg-progress-stats">
+          <div class="mg-stat"><span class="mg-stat-val">${completedDays}</span><span class="mg-stat-lbl">Days Done</span></div>
+          <div class="mg-stat"><span class="mg-stat-val">${totalDays}</span><span class="mg-stat-lbl">Total Days</span></div>
+          ${futureDays > 0 ? `<div class="mg-stat"><span class="mg-stat-val">${futureDays}</span><span class="mg-stat-lbl">Days Left</span></div>` : ''}
+          ${missedDays > 0 ? `<div class="mg-stat"><span class="mg-stat-val" style="color:#ef4444">${missedDays}</span><span class="mg-stat-lbl">Missed</span></div>` : ''}
+        </div>
         <div class="mg-progress-msg">${l.msg}</div>
       </div>`;
   }

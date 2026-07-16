@@ -383,16 +383,16 @@
     const data = await api.get('/api/admin/monthly-games/' + id + '/participants');
     if (!data?.success) { wrap.innerHTML = '<p class="text-dim">Failed to load.</p>'; return; }
 
-    const list = data.participants;
-    const today = new Date().toISOString().split('T')[0];
-    const game  = data.game;
-    const ended = today > game.end_date;
-    const started = today >= game.start_date;
+    const list      = data.participants;
+    const totalDays = data.totalDays;
+    const today     = new Date().toISOString().split('T')[0];
+    const game      = data.game;
+    const ended     = today > game.end_date;
+    const started   = today >= game.start_date;
 
     if (!list.length) { wrap.innerHTML = '<p class="text-dim">No active members found.</p>'; return; }
 
     const winners = list.filter(m => m.is_winner).length;
-    const active  = list.filter(m => m.sessions_expected > 0).length;
 
     let html = `
       <div class="flex gap-16 mb-16 flex-wrap">
@@ -401,48 +401,51 @@
           <div class="text-dim text-small">Total Members</div>
         </div>
         <div class="card" style="flex:1;min-width:100px;padding:14px 16px;text-align:center">
-          <div style="font-size:1.4rem;font-weight:700;color:var(--orange)">${active}</div>
-          <div class="text-dim text-small">Have Sessions</div>
+          <div style="font-size:1.4rem;font-weight:700;color:var(--orange)">${totalDays}</div>
+          <div class="text-dim text-small">Challenge Days</div>
         </div>
         <div class="card" style="flex:1;min-width:100px;padding:14px 16px;text-align:center">
           <div style="font-size:1.4rem;font-weight:700;color:#22c55e">${winners}</div>
           <div class="text-dim text-small">Winners</div>
         </div>
       </div>
+      <p class="text-dim text-small mb-12">Rule: 1 session per day for all ${totalDays} days. Cancellations are ignored — only completed sessions count. Same-day rebooking is fine.</p>
       <div class="card" style="padding:0;overflow:hidden">
         <table class="participants-table">
           <thead><tr>
             <th>Member</th>
-            <th>Sessions</th>
+            <th>Days Done / ${totalDays}</th>
             <th>Progress</th>
             <th>Status</th>
           </tr></thead>
           <tbody>`;
 
     for (const m of list) {
-      const exp  = m.sessions_expected;
-      const comp = m.sessions_completed;
-      const canc = m.sessions_cancelled;
-      const pct  = exp > 0 ? Math.round((comp / exp) * 100) : 0;
+      const comp   = m.days_completed;
+      const missed = m.days_missed;
+      const pct    = totalDays > 0 ? Math.round((comp / totalDays) * 100) : 0;
       let badge, barClass;
 
       if (m.is_winner) {
-        badge = `<span class="badge-winner">🏆 Winner</span>`;
+        badge    = `<span class="badge-winner">🏆 Winner</span>`;
         barClass = 'done';
-      } else if (canc > 0) {
-        badge = `<span class="badge-fail">✗ Cancelled</span>`;
-        barClass = 'fail';
       } else if (!started) {
-        badge = `<span class="badge-none">Upcoming</span>`;
+        badge    = `<span class="badge-none">Upcoming</span>`;
         barClass = '';
-      } else if (exp === 0) {
-        badge = `<span class="badge-none">No sessions</span>`;
-        barClass = '';
+      } else if (missed > 0 && ended) {
+        badge    = `<span class="badge-fail">✗ Missed ${missed} day(s)</span>`;
+        barClass = 'fail';
+      } else if (missed > 0) {
+        badge    = `<span class="badge-fail">⚠ Behind — ${missed} missed</span>`;
+        barClass = 'fail';
+      } else if (ended && comp === totalDays) {
+        badge    = `<span class="badge-winner" style="opacity:.7">✓ Completed</span>`;
+        barClass = 'done';
       } else if (ended) {
-        badge = comp === exp ? `<span class="badge-winner" style="opacity:.6">Completed</span>` : `<span class="badge-fail">Incomplete</span>`;
-        barClass = comp === exp ? 'done' : 'fail';
+        badge    = `<span class="badge-fail">Incomplete (${comp}/${totalDays})</span>`;
+        barClass = 'fail';
       } else {
-        badge = `<span class="badge-prog">In progress</span>`;
+        badge    = comp > 0 ? `<span class="badge-prog">${comp}/${totalDays} days</span>` : `<span class="badge-none">No sessions yet</span>`;
         barClass = '';
       }
 
@@ -451,12 +454,12 @@
           <div style="font-weight:600;color:var(--white)">${esc(m.name)}</div>
           <div class="text-dim text-small">${esc(m.email)}</div>
         </td>
-        <td style="white-space:nowrap">${comp}/${exp}${canc > 0 ? ` <span style="color:#ef4444">(${canc} cancelled)</span>` : ''}</td>
+        <td style="font-weight:600;color:var(--white)">${comp} <span class="text-dim">/ ${totalDays}</span></td>
         <td>
           <div class="prog-bar-sm"><div class="prog-bar-sm-fill ${barClass}" style="width:${pct}%"></div></div>
           <div class="text-dim" style="font-size:11px;margin-top:3px">${pct}%</div>
         </td>
-        <td>${badge}${m.reward_notified ? ' <span class="text-dim text-small">Notified</span>' : ''}</td>
+        <td>${badge}${m.reward_notified ? ' <span class="text-dim text-small">✉ Notified</span>' : ''}</td>
       </tr>`;
     }
 

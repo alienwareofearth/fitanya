@@ -640,41 +640,47 @@ router.get('/monthly-games', async (req, res) => {
     const game = gameRes.rows[0] || null;
     if (!game) return res.json({ success: true, game: null, progress: null });
 
-    // Calculate member's progress: bookings whose slot date falls in challenge range
-    const [expectedRes, completedRes, cancelledRes] = await Promise.all([
-      db.execute({
-        sql: `SELECT COUNT(*) as cnt FROM bookings b
-              JOIN schedule_slots s ON b.slot_id = s.id
-              WHERE b.customer_id=? AND b.status='confirmed'
-                AND s.date >= ? AND s.date <= ?`,
-        args: [userId, game.start_date, game.end_date],
-      }),
-      db.execute({
-        sql: `SELECT COUNT(*) as cnt FROM bookings b
-              JOIN schedule_slots s ON b.slot_id = s.id
-              WHERE b.customer_id=? AND b.is_completed=1
-                AND s.date >= ? AND s.date <= ?`,
-        args: [userId, game.start_date, game.end_date],
-      }),
-      db.execute({
-        sql: `SELECT COUNT(*) as cnt FROM bookings b
-              JOIN schedule_slots s ON b.slot_id = s.id
-              WHERE b.customer_id=? AND b.cancelled_at IS NOT NULL
-                AND s.date >= ? AND s.date <= ?`,
-        args: [userId, game.start_date, game.end_date],
-      }),
-    ]);
+    // Rule: 1 session per day for every day of the challenge.
+    // totalDays = number of days in the challenge period (inclusive).
+    const msPerDay = 86400000;
+    const startDt = new Date(game.start_date + 'T00:00:00');
+    const endDt   = new Date(game.end_date   + 'T00:00:00');
+    const totalDays = Math.round((endDt - startDt) / msPerDay) + 1;
 
-    const expected  = expectedRes.rows[0].cnt;
-    const completed = completedRes.rows[0].cnt;
-    const cancelled = cancelledRes.rows[0].cnt;
     const today = new Date().toISOString().split('T')[0];
-    const ended = today > game.end_date;
+    const todayDt = new Date(today + 'T00:00:00');
+
+    // Strictly-past days inside the challenge (yesterday and before, not including today)
+    // Today is excluded because they still have time to complete today's session.
+    let strictPastDays = 0;
+    if (todayDt > startDt) {
+      strictPastDays = Math.min(Math.round((todayDt - startDt) / msPerDay), totalDays);
+    }
+
+    // Distinct days within the challenge where the member completed a session.
+    // Cancellations are completely ignored — only completed sessions count.
+    const completedDatesRes = await db.execute({
+      sql: `SELECT DISTINCT s.date FROM bookings b
+            JOIN schedule_slots s ON b.slot_id = s.id
+            WHERE b.customer_id=? AND b.is_completed=1
+              AND s.date >= ? AND s.date <= ?
+            ORDER BY s.date`,
+      args: [userId, game.start_date, game.end_date],
+    });
+    const completedDates = completedDatesRes.rows.map(r => r.date);
+    const completedDays  = completedDates.length;
+    // Only past days with no completed session are "missed" (today is never missed yet)
+    const missedDays = Math.max(0, strictPastDays - completedDates.filter(d => d < today).length);
+
+    const ended   = today > game.end_date;
     const started = today >= game.start_date;
 
     let status = 'upcoming';
-    if (started && !ended) status = cancelled > 0 ? 'failed' : 'in_progress';
-    else if (ended) status = (cancelled === 0 && expected > 0 && completed === expected) ? 'won' : (cancelled > 0 ? 'failed' : 'ended');
+    if (started && !ended) {
+      status = missedDays > 0 ? 'failed' : 'in_progress';
+    } else if (ended) {
+      status = completedDays === totalDays ? 'won' : (missedDays > 0 ? 'failed' : 'ended');
+    }
 
     // Check if admin has already marked them a winner
     const winnerRow = await db.execute({
@@ -687,10 +693,11 @@ router.get('/monthly-games', async (req, res) => {
       success: true,
       game: game.is_active ? game : null,
       progress: {
-        expected, completed, cancelled, status, officialWinner,
+        totalDays, completedDays, missedDays,
+        daysElapsed: strictPastDays,
+        completedDates, status, officialWinner,
         game_id: game.id, start_date: game.start_date, end_date: game.end_date,
       },
-      // Show completed/recent games even if inactive
       recentGame: game,
     });
   } catch (err) { console.error('[customer] monthly-games:', err.message); res.status(500).json({ error: 'Failed to load.' }); }

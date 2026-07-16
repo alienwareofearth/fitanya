@@ -755,7 +755,23 @@ router.put('/monthly-games/:id/toggle', async (req, res) => {
   } catch (err) { console.error('[admin] monthly-games toggle:', err.message); res.status(500).json({ error: 'Failed to update.' }); }
 });
 
-// GET participants + progress for a game
+// Helper: calculate total challenge days (inclusive)
+function challengeDays(start_date, end_date) {
+  const s = new Date(start_date + 'T00:00:00');
+  const e = new Date(end_date   + 'T00:00:00');
+  return Math.round((e - s) / 86400000) + 1;
+}
+
+// Helper: days elapsed inside the challenge up to today (inclusive, capped at totalDays)
+function daysElapsed(start_date, end_date) {
+  const total = challengeDays(start_date, end_date);
+  const s = new Date(start_date + 'T00:00:00');
+  const t = new Date(new Date().toISOString().split('T')[0] + 'T00:00:00');
+  if (t < s) return 0;
+  return Math.min(Math.round((t - s) / 86400000) + 1, total);
+}
+
+// GET participants + progress for a game (day-based: 1 session per day)
 router.get('/monthly-games/:id/participants', async (req, res) => {
   try {
     const { id } = req.params;
@@ -764,33 +780,36 @@ router.get('/monthly-games/:id/participants', async (req, res) => {
     const game = gameRow.rows[0];
     if (!game) return res.status(404).json({ error: 'Game not found.' });
 
-    // For each active customer, calculate their progress dynamically
+    const totalDays = challengeDays(game.start_date, game.end_date);
+    const elapsed   = daysElapsed(game.start_date, game.end_date);
+
+    // For each member: count distinct days with a completed session in the challenge range
     const members = await db.execute(`
       SELECT u.id, u.name, u.email,
-        (SELECT COUNT(*) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
-         WHERE b.customer_id=u.id AND b.status='confirmed'
-           AND s.date>=? AND s.date<=?) as sessions_expected,
-        (SELECT COUNT(*) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
+        (SELECT COUNT(DISTINCT s.date) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
          WHERE b.customer_id=u.id AND b.is_completed=1
-           AND s.date>=? AND s.date<=?) as sessions_completed,
-        (SELECT COUNT(*) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
-         WHERE b.customer_id=u.id AND b.cancelled_at IS NOT NULL
-           AND s.date>=? AND s.date<=?) as sessions_cancelled,
+           AND s.date>=? AND s.date<=?) as days_completed,
         COALESCE(p.is_winner,0) as is_winner,
         COALESCE(p.reward_notified,0) as reward_notified
       FROM users u
       LEFT JOIN monthly_game_participants p ON p.game_id=? AND p.user_id=u.id
       WHERE u.role='customer' AND u.is_active=1 AND u.deleted_at IS NULL
-      ORDER BY sessions_completed DESC, sessions_expected DESC
-    `, [game.start_date, game.end_date,
-        game.start_date, game.end_date,
-        game.start_date, game.end_date, id]);
+      ORDER BY days_completed DESC
+    `, [game.start_date, game.end_date, id]);
 
-    res.json({ success: true, game, participants: members.rows });
+    // Attach derived fields
+    const participants = members.rows.map(m => ({
+      ...m,
+      total_days: totalDays,
+      days_elapsed: elapsed,
+      days_missed: Math.max(0, elapsed - m.days_completed),
+    }));
+
+    res.json({ success: true, game, participants, totalDays, elapsed });
   } catch (err) { console.error('[admin] participants:', err.message); res.status(500).json({ error: 'Failed.' }); }
 });
 
-// POST process winners (mark + notify)
+// POST process winners — win = completed a session on EVERY day of the challenge
 router.post('/monthly-games/:id/process-winners', async (req, res) => {
   try {
     const { id } = req.params;
@@ -799,45 +818,36 @@ router.post('/monthly-games/:id/process-winners', async (req, res) => {
     const game = gameRow.rows[0];
     if (!game) return res.status(404).json({ error: 'Game not found.' });
 
+    const totalDays = challengeDays(game.start_date, game.end_date);
+
     const members = await db.execute(`
       SELECT u.id, u.name,
-        (SELECT COUNT(*) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
-         WHERE b.customer_id=u.id AND b.status='confirmed'
-           AND s.date>=? AND s.date<=?) as expected,
-        (SELECT COUNT(*) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
+        (SELECT COUNT(DISTINCT s.date) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
          WHERE b.customer_id=u.id AND b.is_completed=1
-           AND s.date>=? AND s.date<=?) as completed,
-        (SELECT COUNT(*) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
-         WHERE b.customer_id=u.id AND b.cancelled_at IS NOT NULL
-           AND s.date>=? AND s.date<=?) as cancelled
+           AND s.date>=? AND s.date<=?) as days_completed
       FROM users u
       WHERE u.role='customer' AND u.is_active=1 AND u.deleted_at IS NULL
-    `, [game.start_date, game.end_date,
-        game.start_date, game.end_date,
-        game.start_date, game.end_date]);
+    `, [game.start_date, game.end_date]);
 
     const { createNotification } = require('../services/notifications');
     let winnersCount = 0;
 
     for (const m of members.rows) {
-      const isWinner = m.expected > 0 && m.cancelled === 0 && m.completed === m.expected;
-      // Upsert participant record
+      const isWinner = m.days_completed === totalDays;
       await db.execute({
         sql: `INSERT INTO monthly_game_participants
               (game_id, user_id, sessions_expected, sessions_completed, sessions_cancelled, is_winner, processed_at)
-              VALUES (?,?,?,?,?,?,datetime('now'))
+              VALUES (?,?,?,?,0,?,datetime('now'))
               ON CONFLICT(game_id, user_id) DO UPDATE SET
                 sessions_expected=excluded.sessions_expected,
                 sessions_completed=excluded.sessions_completed,
-                sessions_cancelled=excluded.sessions_cancelled,
                 is_winner=excluded.is_winner,
                 processed_at=excluded.processed_at`,
-        args: [id, m.id, m.expected, m.completed, m.cancelled, isWinner ? 1 : 0],
+        args: [id, m.id, totalDays, m.days_completed, isWinner ? 1 : 0],
       });
 
       if (isWinner) {
         winnersCount++;
-        // Check if reward notification already sent
         const pRow = await db.execute({
           sql: `SELECT reward_notified FROM monthly_game_participants WHERE game_id=? AND user_id=?`,
           args: [id, m.id],
@@ -847,7 +857,7 @@ router.post('/monthly-games/:id/process-winners', async (req, res) => {
             userId: m.id,
             type: 'games',
             title: '🏆 You Won the Monthly Challenge!',
-            body: `Congratulations ${m.name}! You completed the Fitanya Monthly Games challenge with zero missed sessions.\n\n🎁 Your rewards:\n✅ ${game.reward_percent}% OFF on your next renewal\n✅ ${game.reward_sessions} sessions absolutely FREE\n\nOur team will apply these rewards to your account shortly. Thank you for showing up every day!\n\n— Fitanya`,
+            body: `Congratulations ${m.name}! You showed up every single day of the Fitanya Monthly Games challenge — ${totalDays} days, ${totalDays} sessions, zero misses.\n\n🎁 Your rewards:\n✅ ${game.reward_percent}% OFF on your next renewal\n✅ ${game.reward_sessions} sessions absolutely FREE\n\nOur team will apply these rewards to your account shortly. Thank you for your consistency!\n\n— Fitanya`,
             link: '/dashboard/monthly-games',
           }).catch(() => {});
           await db.execute({
@@ -858,7 +868,7 @@ router.post('/monthly-games/:id/process-winners', async (req, res) => {
       }
     }
 
-    res.json({ success: true, message: `Winners processed. ${winnersCount} member(s) won this challenge.`, winners: winnersCount });
+    res.json({ success: true, message: `Winners processed. ${winnersCount} member(s) completed all ${totalDays} days.`, winners: winnersCount });
   } catch (err) { console.error('[admin] process-winners:', err.message); res.status(500).json({ error: 'Failed.' }); }
 });
 
