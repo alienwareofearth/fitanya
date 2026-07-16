@@ -156,6 +156,33 @@ function _showDeletionBanner(user) {
   else document.body.prepend(bar);
 }
 
+// ── Topbar profile cache (30-min TTL) ────────────────────────────────────
+const _TOPBAR_CACHE_KEY = 'ft_topbar_user';
+const _TOPBAR_CACHE_TTL = 30 * 60 * 1000;
+
+function _getTopbarCache() {
+  try {
+    const raw = localStorage.getItem(_TOPBAR_CACHE_KEY);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    if (Date.now() - ts > _TOPBAR_CACHE_TTL) { localStorage.removeItem(_TOPBAR_CACHE_KEY); return null; }
+    return data;
+  } catch { return null; }
+}
+
+function _setTopbarCache(user) {
+  try {
+    localStorage.setItem(_TOPBAR_CACHE_KEY, JSON.stringify({
+      data: { name: user.name, profile_picture: user.profile_picture, timezone: user.timezone },
+      ts: Date.now(),
+    }));
+  } catch {}
+}
+
+function _clearTopbarCache() {
+  try { localStorage.removeItem(_TOPBAR_CACHE_KEY); } catch {}
+}
+
 // ── Auth Guard ────────────────────────────────────────────────────────────
 async function requireAuth(expectedRole = null) {
   const data = await api.get('/api/customer/profile');
@@ -163,10 +190,10 @@ async function requireAuth(expectedRole = null) {
     window.location.href = '/login';
     return null;
   }
-  // Set timezone globally so all formatSessionTime/formatSessionDate calls
-  // use the member's own timezone from their profile.
   if (data.user?.timezone) window.__userTz = data.user.timezone;
   _renderSidebarProfile(data.user);
+  // Update topbar + cache (re-render in case name/avatar changed since cache)
+  _setTopbarCache(data.user);
   _renderMobileTopbar(data.user);
   _showDeletionBanner(data.user);
   loadNotifCount();
@@ -239,6 +266,7 @@ async function _globalToggleNotif() {
 
 // ── Logout ────────────────────────────────────────────────────────────────
 async function logout() {
+  _clearTopbarCache();
   const data = await api.post('/api/auth/logout');
   window.location.href = data?.redirect || '/login';
 }
@@ -365,6 +393,10 @@ function initSidebarToggle() {
         </a>
       </div>`;
     document.body.prepend(topbar);
+
+    // Pre-render from cache immediately so greeting shows without waiting for API
+    const _cachedUser = _getTopbarCache();
+    if (_cachedUser) _renderMobileTopbar(_cachedUser);
 
     // Notification slide-down panel
     const notifPanel = document.createElement('div');
