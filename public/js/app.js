@@ -176,21 +176,31 @@ async function requireAuth(expectedRole = null) {
 // ── Mobile top bar (global, all member pages) ─────────────────────────────
 function _renderMobileTopbar(user) {
   if (!user) return;
+  const firstName = user.name?.split(' ')[0] || 'there';
 
-  // Greeting text
+  // Greeting line — same style as dashboard: display font, orange name
   const greetEl = document.getElementById('mobile-topbar-greeting');
-  if (greetEl) greetEl.textContent = getGreeting() + ', ' + (user.name?.split(' ')[0] || 'there') + '!';
+  if (greetEl) greetEl.innerHTML = `${getGreeting()}, <span class="tb-name">${firstName}!</span>`;
 
-  // Avatar — replace initial div with photo if available
+  // Quote line below
+  const mid = document.getElementById('mobile-topbar-mid');
+  if (mid && !document.getElementById('mobile-topbar-quote')) {
+    const q = document.createElement('div');
+    q.id = 'mobile-topbar-quote';
+    q.textContent = getDailyQuote();
+    mid.appendChild(q);
+  }
+
+  // Avatar
   const avatarWrap = document.getElementById('mobile-topbar-avatar-wrap');
   if (avatarWrap) {
     if (user.profile_picture) {
       avatarWrap.innerHTML = `<img src="${user.profile_picture}" alt="Profile"
-        style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border);display:block">`;
+        style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--border);display:block">`;
     } else {
       const initial = (user.name || 'U').charAt(0).toUpperCase();
       avatarWrap.innerHTML = `<div class="user-avatar"
-        style="width:36px;height:36px;font-size:15px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center">
+        style="width:38px;height:38px;font-size:15px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center">
         ${initial}</div>`;
     }
   }
@@ -199,24 +209,25 @@ function _renderMobileTopbar(user) {
 async function _globalToggleNotif() {
   const panel = document.getElementById('global-notif-panel');
   if (!panel) return;
-  const open = panel.style.display === 'block';
-  panel.style.display = open ? 'none' : 'block';
-  if (!open) {
-    const list = document.getElementById('global-notif-list');
-    list.innerHTML = '<div class="spinner"></div>';
-    const data = await api.get('/api/customer/notifications');
-    if (!data?.notifications?.length) {
-      list.innerHTML = '<p style="padding:20px;color:#666;text-align:center;font-size:13px">No notifications yet</p>';
-      return;
-    }
-    list.innerHTML = data.notifications.map(n => `
-      <div style="padding:12px 16px;border-bottom:1px solid var(--border);${!n.is_read ? 'background:rgba(255,92,0,.04)' : ''}">
-        <div style="font-size:13px;color:${n.is_read ? 'var(--text-dim)' : 'var(--white)'};line-height:1.4">${n.message}</div>
-        <div style="font-size:11px;color:#555;margin-top:4px">${formatDate(n.created_at)}</div>
-      </div>`).join('');
-    await api.post('/api/customer/notifications/read', {});
-    document.querySelectorAll('.notif-dot').forEach(el => el.classList.add('hidden'));
+  const isOpen = panel.style.display === 'block';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (isOpen) return;
+
+  const list = document.getElementById('global-notif-list');
+  list.innerHTML = '<div class="spinner"></div>';
+  const data = await api.get('/api/customer/notifications');
+  if (!data?.notifications?.length) {
+    list.innerHTML = '<p style="padding:20px;color:#666;text-align:center;font-size:13px">No notifications yet</p>';
+    return;
   }
+  list.innerHTML = data.notifications.map(n => `
+    <div style="padding:13px 16px;border-bottom:1px solid var(--border);${!n.is_read ? 'background:rgba(255,92,0,.04)' : ''}">
+      <div style="font-size:13px;color:${n.is_read ? 'var(--text-dim)' : 'var(--white)'};line-height:1.4">${n.message}</div>
+      <div style="font-size:11px;color:#555;margin-top:4px">${formatDate(n.created_at)}</div>
+    </div>`).join('');
+  // Mark all as read & hide dots
+  api.post('/api/customer/notifications/read', {});
+  document.querySelectorAll('.notif-dot').forEach(el => el.classList.add('hidden'));
 }
 
 // ── Logout ────────────────────────────────────────────────────────────────
@@ -365,7 +376,7 @@ function initSidebarToggle() {
       const panel = document.getElementById('global-notif-panel');
       if (panel && panel.style.display === 'block'
           && !panel.contains(e.target)
-          && !e.target.closest('[onclick*="_globalToggleNotif"]')) {
+          && !e.target.closest('#mobile-topbar-right')) {
         panel.style.display = 'none';
       }
     });

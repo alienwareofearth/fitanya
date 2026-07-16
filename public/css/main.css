@@ -597,7 +597,7 @@ tr:hover td { background: rgba(255,92,0,0.03); }
   position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 200;
-  height: calc(56px + env(safe-area-inset-top));
+  height: calc(76px + env(safe-area-inset-top));
   padding-top: env(safe-area-inset-top);
   padding-left: calc(10px + env(safe-area-inset-left));
   padding-right: calc(10px + env(safe-area-inset-right));
@@ -611,7 +611,23 @@ tr:hover td { background: rgba(255,92,0,0.03); }
   flex: 1; min-width: 0;
 }
 #mobile-topbar-greeting {
-  font-size: 15px; font-weight: 700; color: var(--white);
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  color: var(--white);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.1;
+}
+#mobile-topbar-greeting .tb-name {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+#mobile-topbar-quote {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-top: 3px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 #mobile-topbar-right {
@@ -620,7 +636,7 @@ tr:hover td { background: rgba(255,92,0,0.03); }
 #global-notif-panel {
   display: none;
   position: fixed;
-  top: calc(56px + env(safe-area-inset-top));
+  top: calc(76px + env(safe-area-inset-top));
   left: 0; right: 0;
   z-index: 199;
   background: var(--dark);
@@ -690,8 +706,8 @@ tr:hover td { background: rgba(255,92,0,0.03); }
   .main-content {
     margin-left: 0;
     padding: 16px;
-    /* top: clear the topbar (56px) + safe area */
-    padding-top: calc(56px + env(safe-area-inset-top));
+    /* top: clear the topbar (76px) + safe area */
+    padding-top: calc(76px + env(safe-area-inset-top));
     padding-bottom: calc(20px + env(safe-area-inset-bottom));
     padding-left: calc(16px + env(safe-area-inset-left));
     padding-right: calc(16px + env(safe-area-inset-right));
