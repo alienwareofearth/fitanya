@@ -167,8 +167,56 @@ async function requireAuth(expectedRole = null) {
   // use the member's own timezone from their profile.
   if (data.user?.timezone) window.__userTz = data.user.timezone;
   _renderSidebarProfile(data.user);
+  _renderMobileTopbar(data.user);
   _showDeletionBanner(data.user);
+  loadNotifCount();
   return data;
+}
+
+// ── Mobile top bar (global, all member pages) ─────────────────────────────
+function _renderMobileTopbar(user) {
+  if (!user) return;
+
+  // Greeting text
+  const greetEl = document.getElementById('mobile-topbar-greeting');
+  if (greetEl) greetEl.textContent = getGreeting() + ', ' + (user.name?.split(' ')[0] || 'there') + '!';
+
+  // Avatar — replace initial div with photo if available
+  const avatarWrap = document.getElementById('mobile-topbar-avatar-wrap');
+  if (avatarWrap) {
+    if (user.profile_picture) {
+      avatarWrap.innerHTML = `<img src="${user.profile_picture}" alt="Profile"
+        style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border);display:block">`;
+    } else {
+      const initial = (user.name || 'U').charAt(0).toUpperCase();
+      avatarWrap.innerHTML = `<div class="user-avatar"
+        style="width:36px;height:36px;font-size:15px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center">
+        ${initial}</div>`;
+    }
+  }
+}
+
+async function _globalToggleNotif() {
+  const panel = document.getElementById('global-notif-panel');
+  if (!panel) return;
+  const open = panel.style.display === 'block';
+  panel.style.display = open ? 'none' : 'block';
+  if (!open) {
+    const list = document.getElementById('global-notif-list');
+    list.innerHTML = '<div class="spinner"></div>';
+    const data = await api.get('/api/customer/notifications');
+    if (!data?.notifications?.length) {
+      list.innerHTML = '<p style="padding:20px;color:#666;text-align:center;font-size:13px">No notifications yet</p>';
+      return;
+    }
+    list.innerHTML = data.notifications.map(n => `
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);${!n.is_read ? 'background:rgba(255,92,0,.04)' : ''}">
+        <div style="font-size:13px;color:${n.is_read ? 'var(--text-dim)' : 'var(--white)'};line-height:1.4">${n.message}</div>
+        <div style="font-size:11px;color:#555;margin-top:4px">${formatDate(n.created_at)}</div>
+      </div>`).join('');
+    await api.post('/api/customer/notifications/read', {});
+    document.querySelectorAll('.notif-dot').forEach(el => el.classList.add('hidden'));
+  }
 }
 
 // ── Logout ────────────────────────────────────────────────────────────────
@@ -273,22 +321,57 @@ async function loadNotifCount() {
   } catch {}
 }
 
-// ── Sidebar mobile toggle ─────────────────────────────────────────────────
+// ── Sidebar mobile toggle + global top bar ────────────────────────────────
 function initSidebarToggle() {
   const sidebar = document.querySelector('.sidebar');
   if (!sidebar) return;
 
-  // Inject hamburger button if not already in HTML
-  let toggle = document.getElementById('sidebar-toggle');
-  if (!toggle) {
-    toggle = document.createElement('button');
-    toggle.id = 'sidebar-toggle';
-    toggle.setAttribute('aria-label', 'Open menu');
-    toggle.innerHTML = '<span></span><span></span><span></span>';
-    document.body.appendChild(toggle);
+  // Build the mobile top bar (contains hamburger + greeting + avatar + bell)
+  if (!document.getElementById('mobile-topbar')) {
+    const topbar = document.createElement('div');
+    topbar.id = 'mobile-topbar';
+    topbar.innerHTML = `
+      <button id="sidebar-toggle" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div id="mobile-topbar-mid">
+        <div id="mobile-topbar-greeting">Welcome</div>
+      </div>
+      <div id="mobile-topbar-right">
+        <button class="notif-btn" onclick="_globalToggleNotif()" title="Notifications"
+          style="width:36px;height:36px;font-size:17px;flex-shrink:0">
+          🔔<span class="notif-dot hidden"></span>
+        </button>
+        <a href="/dashboard/profile" id="mobile-topbar-avatar-wrap" style="flex-shrink:0;text-decoration:none">
+          <div class="user-avatar" style="width:36px;height:36px;font-size:15px;border-radius:50%;border:2px solid var(--border)">?</div>
+        </a>
+      </div>`;
+    document.body.prepend(topbar);
+
+    // Notification slide-down panel
+    const notifPanel = document.createElement('div');
+    notifPanel.id = 'global-notif-panel';
+    notifPanel.innerHTML = `
+      <div style="padding:12px 16px 8px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
+        <span style="font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:1px">NOTIFICATIONS</span>
+        <button onclick="document.getElementById('global-notif-panel').style.display='none'"
+          style="background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;line-height:1;padding:0">✕</button>
+      </div>
+      <div id="global-notif-list"></div>`;
+    document.body.appendChild(notifPanel);
+
+    // Close notif panel when tapping outside
+    document.addEventListener('click', e => {
+      const panel = document.getElementById('global-notif-panel');
+      if (panel && panel.style.display === 'block'
+          && !panel.contains(e.target)
+          && !e.target.closest('[onclick*="_globalToggleNotif"]')) {
+        panel.style.display = 'none';
+      }
+    });
   }
 
-  // Inject backdrop overlay
+  // Backdrop overlay
   let backdrop = document.getElementById('sidebar-backdrop');
   if (!backdrop) {
     backdrop = document.createElement('div');
@@ -296,13 +379,13 @@ function initSidebarToggle() {
     document.body.appendChild(backdrop);
   }
 
+  const toggle = document.getElementById('sidebar-toggle');
   const open  = () => { sidebar.classList.add('open'); backdrop.classList.add('visible'); };
   const close = () => { sidebar.classList.remove('open'); backdrop.classList.remove('visible'); };
 
-  toggle.addEventListener('click', e => { e.stopPropagation(); sidebar.classList.contains('open') ? close() : open(); });
+  toggle?.addEventListener('click', e => { e.stopPropagation(); sidebar.classList.contains('open') ? close() : open(); });
   backdrop.addEventListener('click', close);
 
-  // Close sidebar when a nav link is tapped on mobile
   sidebar.querySelectorAll('a, button').forEach(el => {
     el.addEventListener('click', () => { if (window.innerWidth <= 768) close(); });
   });

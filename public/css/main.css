@@ -591,6 +591,45 @@ tr:hover td { background: rgba(255,92,0,0.03); }
 
 /* ── RESPONSIVE ──────────────────────────────────────────────────────────── */
 
+/* ── Global mobile top bar ───────────────────────────────────────────────── */
+#mobile-topbar {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 200;
+  height: calc(56px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+  padding-left: calc(10px + env(safe-area-inset-left));
+  padding-right: calc(10px + env(safe-area-inset-right));
+  background: var(--dark);
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 2px 16px rgba(0,0,0,.35);
+}
+#mobile-topbar-mid {
+  flex: 1; min-width: 0;
+}
+#mobile-topbar-greeting {
+  font-size: 15px; font-weight: 700; color: var(--white);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#mobile-topbar-right {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+#global-notif-panel {
+  display: none;
+  position: fixed;
+  top: calc(56px + env(safe-area-inset-top));
+  left: 0; right: 0;
+  z-index: 199;
+  background: var(--dark);
+  border-bottom: 1px solid var(--border);
+  max-height: 60vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,.55);
+}
+
 /* ── Mobile hamburger button ─────────────────────────────────────────────── */
 #sidebar-toggle {
   display: none;
@@ -633,7 +672,17 @@ tr:hover td { background: rgba(255,92,0,0.03); }
   .navbar { padding: 14px 20px; }
   .nav-links { display: none; }
 
-  #sidebar-toggle { display: flex; }
+  /* Show the global topbar; hamburger lives inside it now */
+  #mobile-topbar { display: flex; }
+
+  /* Reset hamburger: no longer fixed/standalone — it's a flex child of topbar */
+  #sidebar-toggle {
+    display: flex;
+    position: static;
+    top: auto; left: auto;
+    border: none;
+    background: none;
+  }
 
   .sidebar { transform: translateX(-260px); }
   .sidebar.open { transform: translateX(0); }
@@ -641,7 +690,7 @@ tr:hover td { background: rgba(255,92,0,0.03); }
   .main-content {
     margin-left: 0;
     padding: 16px;
-    /* top: clear the hamburger (42px) + its top offset + safe area */
+    /* top: clear the topbar (56px) + safe area */
     padding-top: calc(56px + env(safe-area-inset-top));
     padding-bottom: calc(20px + env(safe-area-inset-bottom));
     padding-left: calc(16px + env(safe-area-inset-left));
