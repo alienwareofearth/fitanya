@@ -220,11 +220,18 @@ async function _globalToggleNotif() {
     list.innerHTML = '<p style="padding:20px;color:#666;text-align:center;font-size:13px">No notifications yet</p>';
     return;
   }
-  list.innerHTML = data.notifications.map(n => `
+  list.innerHTML = data.notifications.map(n => {
+    const dt = n.created_at ? new Date(n.created_at.replace(' ', 'T')) : null;
+    const timeStr = dt && !isNaN(dt)
+      ? dt.toLocaleString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', hour12:true })
+      : '';
+    return `
     <div style="padding:13px 16px;border-bottom:1px solid var(--border);${!n.is_read ? 'background:rgba(255,92,0,.04)' : ''}">
-      <div style="font-size:13px;color:${n.is_read ? 'var(--text-dim)' : 'var(--white)'};line-height:1.4">${n.message}</div>
-      <div style="font-size:11px;color:#555;margin-top:4px">${formatDate(n.created_at)}</div>
-    </div>`).join('');
+      <div style="font-size:13px;font-weight:600;color:${n.is_read ? 'var(--text-dim)' : 'var(--white)'};margin-bottom:3px">${n.title || ''}</div>
+      <div style="font-size:12px;color:var(--text-dim);line-height:1.4">${n.body || ''}</div>
+      ${timeStr ? `<div style="font-size:11px;color:#555;margin-top:5px">${timeStr}</div>` : ''}
+    </div>`;
+  }).join('');
   // Mark all as read & hide dots
   api.post('/api/customer/notifications/read', {});
   document.querySelectorAll('.notif-dot').forEach(el => el.classList.add('hidden'));
