@@ -149,13 +149,12 @@ async function activateMembership(db, {
         args: [intent.discount_code_id],
       });
     }
-    // Expire old membership when switching/upgrading plans
-    if (intent.old_membership_id) {
-      await db.execute({
-        sql: `UPDATE memberships SET status = 'expired' WHERE id = ?`,
-        args: [intent.old_membership_id],
-      });
-    }
+    // Expire all previous active/pending memberships for this user before activating new one
+    await db.execute({
+      sql: `UPDATE memberships SET status = 'expired', updated_at = datetime('now')
+            WHERE user_id = ? AND status IN ('active', 'pending')`,
+      args: [userId],
+    });
     if (userId) await notify.paymentReceived(userId, intent.final_amount).catch(() => {});
   }
 
@@ -322,8 +321,12 @@ router.post('/upi/submit', async (req, res) => {
       ],
     });
 
-    // Create membership in 'pending' state
+    // Create membership in 'pending' state — cancel any existing pending first to prevent duplicates
     if (packageData && userId) {
+      await db.execute({
+        sql: `UPDATE memberships SET status = 'cancelled', updated_at = datetime('now') WHERE user_id = ? AND status = 'pending'`,
+        args: [userId],
+      });
       const startD = new Date().toISOString().split('T')[0];
       const endD   = new Date(Date.now() + packageData.days * 86400000).toISOString().split('T')[0];
       await db.execute({
@@ -550,7 +553,11 @@ router.post('/renewal-submit', async (req, res) => {
       args: [userId, m.price, m.price, txn],
     });
 
-    // Create a pending renewal membership starting from today
+    // Cancel any existing pending memberships before creating new renewal — prevents duplicates on double-click
+    await db.execute({
+      sql: `UPDATE memberships SET status = 'cancelled', updated_at = datetime('now') WHERE user_id = ? AND status = 'pending'`,
+      args: [userId],
+    });
     const startD = new Date().toISOString().split('T')[0];
     const endD   = new Date(Date.now() + m.days * 86400000).toISOString().split('T')[0];
     await db.execute({

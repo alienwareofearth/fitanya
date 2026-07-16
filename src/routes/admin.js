@@ -563,6 +563,21 @@ router.post('/payments/:id/confirm', async (req, res) => {
       args: [id],
     });
 
+    // Expire all currently active memberships for this user
+    await db.execute({
+      sql: `UPDATE memberships SET status = 'expired', updated_at = datetime('now') WHERE user_id = ? AND status = 'active'`,
+      args: [p.user_id],
+    });
+
+    // Cancel all pending memberships except the most recent one
+    await db.execute({
+      sql: `UPDATE memberships SET status = 'cancelled', updated_at = datetime('now')
+            WHERE user_id = ? AND status = 'pending'
+            AND id != (SELECT id FROM memberships WHERE user_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT 1)`,
+      args: [p.user_id, p.user_id],
+    });
+
+    // Activate only the most recent pending membership
     await db.execute({
       sql: `UPDATE memberships SET status = 'active', updated_at = datetime('now')
             WHERE user_id = ? AND status = 'pending'`,
