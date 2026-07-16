@@ -154,6 +154,7 @@
 <script src="/js/app.js"></script>
 <script>
   async function init() {
+    await requireAuth();
     const data = await api.get('/api/customer/monthly-games');
     const wrap = document.getElementById('page-content');
     const game = data?.game || data?.recentGame;

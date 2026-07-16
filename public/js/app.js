@@ -163,6 +163,9 @@ async function requireAuth(expectedRole = null) {
     window.location.href = '/login';
     return null;
   }
+  // Set timezone globally so all formatSessionTime/formatSessionDate calls
+  // use the member's own timezone from their profile.
+  if (data.user?.timezone) window.__userTz = data.user.timezone;
   _renderSidebarProfile(data.user);
   _showDeletionBanner(data.user);
   return data;
@@ -249,14 +252,14 @@ function isMeetExpired(dateStr, startTime) {
 }
 
 function tzLabel() {
-  const tz = window.__userTz;
-  if (tz === 'Asia/Kolkata') return 'IST';
-  if (tz === 'America/New_York') return 'EST';
-  if (tz === 'America/Chicago') return 'CST';
-  if (tz === 'America/Los_Angeles') return 'PST';
-  if (tz === 'Europe/London') return 'GMT';
-  if (tz === 'Asia/Dubai') return 'GST';
-  return tz;
+  const tz = window.__userTz || 'Asia/Kolkata';
+  const map = {
+    'Asia/Kolkata': 'IST', 'America/New_York': 'EST', 'America/Chicago': 'CST',
+    'America/Los_Angeles': 'PST', 'Europe/London': 'GMT', 'Asia/Dubai': 'GST',
+    'Asia/Singapore': 'SGT', 'Australia/Sydney': 'AEST',
+  };
+  // Fallback: derive short label from the IANA tz name
+  return map[tz] || tz.split('/').pop().replace(/_/g, ' ');
 }
 
 // ── Notification badge ────────────────────────────────────────────────────
