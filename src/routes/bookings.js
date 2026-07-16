@@ -227,6 +227,93 @@ router.post('/cancel/:id', requireAuth, async (req, res) => {
   }
 });
 
+// PUT /api/bookings/:id/reschedule
+router.put('/:id/reschedule', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { new_slot_id } = req.body;
+    if (!new_slot_id) return res.status(400).json({ error: 'New slot is required.' });
+
+    const userId = req.session.user.id;
+    const db = getDb();
+
+    // Load existing booking
+    const bookingRes = await db.execute({
+      sql: `SELECT b.*, ss.date, ss.start_time, ss.end_time, ss.coach_id as slot_coach_id
+            FROM bookings b JOIN schedule_slots ss ON ss.id = b.slot_id
+            WHERE b.id = ? AND b.customer_id = ?`,
+      args: [id, userId],
+    });
+    if (!bookingRes.rows.length) return res.status(404).json({ error: 'Booking not found.' });
+
+    const b = bookingRes.rows[0];
+    if (b.is_completed)           return res.status(400).json({ error: 'Cannot reschedule a completed session.' });
+    if (b.status === 'cancelled') return res.status(400).json({ error: 'Cannot reschedule a cancelled booking.' });
+    if (parseInt(new_slot_id) === b.slot_id) return res.status(400).json({ error: 'That is the same slot you already have.' });
+
+    // 24h notice on the OLD slot
+    const oldSessionDt = new Date(`${b.date}T${b.start_time}:00+05:30`);
+    if ((oldSessionDt - Date.now()) / 3600000 < 24) {
+      return res.status(400).json({ error: 'Reschedule requires at least 24 hours notice before your current session.' });
+    }
+
+    // Validate new slot — must be available and in the future
+    const newSlotRes = await db.execute({
+      sql: `SELECT ss.*, u.name as coach_name FROM schedule_slots ss
+            JOIN users u ON u.id = ss.coach_id
+            WHERE ss.id = ? AND ss.is_booked = 0 AND ss.is_active = 1
+              AND (ss.date > date('now','+05:30') OR (ss.date = date('now','+05:30') AND ss.start_time > time('now','+05:30')))`,
+      args: [new_slot_id],
+    });
+    if (!newSlotRes.rows.length) return res.status(400).json({ error: 'Selected slot is no longer available.' });
+
+    const newSlot = newSlotRes.rows[0];
+
+    // Swap slots atomically
+    await db.execute({ sql: `UPDATE schedule_slots SET is_booked = 0 WHERE id = ?`, args: [b.slot_id] });
+    await db.execute({ sql: `UPDATE schedule_slots SET is_booked = 1 WHERE id = ?`, args: [new_slot_id] });
+
+    // Update booking
+    await db.execute({
+      sql: `UPDATE bookings SET slot_id = ?, coach_id = ?, updated_at = datetime('now') WHERE id = ?`,
+      args: [new_slot_id, newSlot.coach_id, id],
+    });
+
+    // Recreate Google Meet for new slot
+    let meetLink = b.meet_link;
+    let newEventId = b.google_event_id;
+    try {
+      if (b.google_event_id) await deleteMeetSession(b.google_event_id);
+      const userRes = await db.execute({ sql: `SELECT name, email, timezone FROM users WHERE id = ?`, args: [userId] });
+      const user = userRes.rows[0];
+      const tz = user?.timezone || 'Asia/Kolkata';
+      const { time, date: dateLabel } = formatForTz(newSlot.date, newSlot.start_time, tz);
+      const meet = await createMeetSession({
+        summary: `Fitanya Session — ${user?.name || 'Member'}`,
+        date: newSlot.date, startTime: newSlot.start_time, endTime: newSlot.end_time,
+        attendeeEmail: user?.email, coachEmail: null,
+        description: `Rescheduled session on ${dateLabel} at ${time}`,
+      });
+      meetLink   = meet?.meetLink   || meetLink;
+      newEventId = meet?.eventId    || newEventId;
+    } catch (_) { /* keep old meet link if calendar fails */ }
+
+    await db.execute({
+      sql: `UPDATE bookings SET meet_link = ?, google_event_id = ? WHERE id = ?`,
+      args: [meetLink, newEventId, id],
+    });
+
+    res.json({
+      success: true,
+      message: `Session rescheduled to ${newSlot.date} at ${newSlot.start_time} with ${newSlot.coach_name}.`,
+      meet_link: meetLink,
+    });
+  } catch (err) {
+    console.error('[bookings] reschedule error:', err);
+    res.status(500).json({ error: 'Reschedule failed. Please try again.' });
+  }
+});
+
 // GET /api/bookings/my
 router.get('/my', requireAuth, async (req, res) => {
   try {
