@@ -629,9 +629,71 @@ router.post('/account/cancel-deletion', async (req, res) => {
 router.get('/monthly-games', async (req, res) => {
   try {
     const db = getDb();
-    const result = await db.execute(`SELECT * FROM monthly_games WHERE is_active=1 ORDER BY created_at DESC LIMIT 1`);
-    res.json({ success: true, game: result.rows[0] || null });
-  } catch (err) { res.status(500).json({ error: 'Failed to load.' }); }
+    const userId = req.session.user.id;
+
+    // Get active game (or most recent one so members can see results)
+    const gameRes = await db.execute(`
+      SELECT * FROM monthly_games
+      WHERE is_active=1 OR end_date >= date('now','-30 days')
+      ORDER BY is_active DESC, created_at DESC LIMIT 1
+    `);
+    const game = gameRes.rows[0] || null;
+    if (!game) return res.json({ success: true, game: null, progress: null });
+
+    // Calculate member's progress: bookings whose slot date falls in challenge range
+    const [expectedRes, completedRes, cancelledRes] = await Promise.all([
+      db.execute({
+        sql: `SELECT COUNT(*) as cnt FROM bookings b
+              JOIN schedule_slots s ON b.slot_id = s.id
+              WHERE b.customer_id=? AND b.status='confirmed'
+                AND s.date >= ? AND s.date <= ?`,
+        args: [userId, game.start_date, game.end_date],
+      }),
+      db.execute({
+        sql: `SELECT COUNT(*) as cnt FROM bookings b
+              JOIN schedule_slots s ON b.slot_id = s.id
+              WHERE b.customer_id=? AND b.is_completed=1
+                AND s.date >= ? AND s.date <= ?`,
+        args: [userId, game.start_date, game.end_date],
+      }),
+      db.execute({
+        sql: `SELECT COUNT(*) as cnt FROM bookings b
+              JOIN schedule_slots s ON b.slot_id = s.id
+              WHERE b.customer_id=? AND b.cancelled_at IS NOT NULL
+                AND s.date >= ? AND s.date <= ?`,
+        args: [userId, game.start_date, game.end_date],
+      }),
+    ]);
+
+    const expected  = expectedRes.rows[0].cnt;
+    const completed = completedRes.rows[0].cnt;
+    const cancelled = cancelledRes.rows[0].cnt;
+    const today = new Date().toISOString().split('T')[0];
+    const ended = today > game.end_date;
+    const started = today >= game.start_date;
+
+    let status = 'upcoming';
+    if (started && !ended) status = cancelled > 0 ? 'failed' : 'in_progress';
+    else if (ended) status = (cancelled === 0 && expected > 0 && completed === expected) ? 'won' : (cancelled > 0 ? 'failed' : 'ended');
+
+    // Check if admin has already marked them a winner
+    const winnerRow = await db.execute({
+      sql: `SELECT is_winner FROM monthly_game_participants WHERE game_id=? AND user_id=?`,
+      args: [game.id, userId],
+    });
+    const officialWinner = winnerRow.rows[0]?.is_winner === 1;
+
+    res.json({
+      success: true,
+      game: game.is_active ? game : null,
+      progress: {
+        expected, completed, cancelled, status, officialWinner,
+        game_id: game.id, start_date: game.start_date, end_date: game.end_date,
+      },
+      // Show completed/recent games even if inactive
+      recentGame: game,
+    });
+  } catch (err) { console.error('[customer] monthly-games:', err.message); res.status(500).json({ error: 'Failed to load.' }); }
 });
 
 module.exports = router;

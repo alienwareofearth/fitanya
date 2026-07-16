@@ -755,6 +755,113 @@ router.put('/monthly-games/:id/toggle', async (req, res) => {
   } catch (err) { console.error('[admin] monthly-games toggle:', err.message); res.status(500).json({ error: 'Failed to update.' }); }
 });
 
+// GET participants + progress for a game
+router.get('/monthly-games/:id/participants', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = getDb();
+    const gameRow = await db.execute({ sql: `SELECT * FROM monthly_games WHERE id=?`, args: [id] });
+    const game = gameRow.rows[0];
+    if (!game) return res.status(404).json({ error: 'Game not found.' });
+
+    // For each active customer, calculate their progress dynamically
+    const members = await db.execute(`
+      SELECT u.id, u.name, u.email,
+        (SELECT COUNT(*) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
+         WHERE b.customer_id=u.id AND b.status='confirmed'
+           AND s.date>=? AND s.date<=?) as sessions_expected,
+        (SELECT COUNT(*) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
+         WHERE b.customer_id=u.id AND b.is_completed=1
+           AND s.date>=? AND s.date<=?) as sessions_completed,
+        (SELECT COUNT(*) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
+         WHERE b.customer_id=u.id AND b.cancelled_at IS NOT NULL
+           AND s.date>=? AND s.date<=?) as sessions_cancelled,
+        COALESCE(p.is_winner,0) as is_winner,
+        COALESCE(p.reward_notified,0) as reward_notified
+      FROM users u
+      LEFT JOIN monthly_game_participants p ON p.game_id=? AND p.user_id=u.id
+      WHERE u.role='customer' AND u.is_active=1 AND u.deleted_at IS NULL
+      ORDER BY sessions_completed DESC, sessions_expected DESC
+    `, [game.start_date, game.end_date,
+        game.start_date, game.end_date,
+        game.start_date, game.end_date, id]);
+
+    res.json({ success: true, game, participants: members.rows });
+  } catch (err) { console.error('[admin] participants:', err.message); res.status(500).json({ error: 'Failed.' }); }
+});
+
+// POST process winners (mark + notify)
+router.post('/monthly-games/:id/process-winners', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = getDb();
+    const gameRow = await db.execute({ sql: `SELECT * FROM monthly_games WHERE id=?`, args: [id] });
+    const game = gameRow.rows[0];
+    if (!game) return res.status(404).json({ error: 'Game not found.' });
+
+    const members = await db.execute(`
+      SELECT u.id, u.name,
+        (SELECT COUNT(*) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
+         WHERE b.customer_id=u.id AND b.status='confirmed'
+           AND s.date>=? AND s.date<=?) as expected,
+        (SELECT COUNT(*) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
+         WHERE b.customer_id=u.id AND b.is_completed=1
+           AND s.date>=? AND s.date<=?) as completed,
+        (SELECT COUNT(*) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
+         WHERE b.customer_id=u.id AND b.cancelled_at IS NOT NULL
+           AND s.date>=? AND s.date<=?) as cancelled
+      FROM users u
+      WHERE u.role='customer' AND u.is_active=1 AND u.deleted_at IS NULL
+    `, [game.start_date, game.end_date,
+        game.start_date, game.end_date,
+        game.start_date, game.end_date]);
+
+    const { createNotification } = require('../services/notifications');
+    let winnersCount = 0;
+
+    for (const m of members.rows) {
+      const isWinner = m.expected > 0 && m.cancelled === 0 && m.completed === m.expected;
+      // Upsert participant record
+      await db.execute({
+        sql: `INSERT INTO monthly_game_participants
+              (game_id, user_id, sessions_expected, sessions_completed, sessions_cancelled, is_winner, processed_at)
+              VALUES (?,?,?,?,?,?,datetime('now'))
+              ON CONFLICT(game_id, user_id) DO UPDATE SET
+                sessions_expected=excluded.sessions_expected,
+                sessions_completed=excluded.sessions_completed,
+                sessions_cancelled=excluded.sessions_cancelled,
+                is_winner=excluded.is_winner,
+                processed_at=excluded.processed_at`,
+        args: [id, m.id, m.expected, m.completed, m.cancelled, isWinner ? 1 : 0],
+      });
+
+      if (isWinner) {
+        winnersCount++;
+        // Check if reward notification already sent
+        const pRow = await db.execute({
+          sql: `SELECT reward_notified FROM monthly_game_participants WHERE game_id=? AND user_id=?`,
+          args: [id, m.id],
+        });
+        if (!pRow.rows[0]?.reward_notified) {
+          await createNotification({
+            userId: m.id,
+            type: 'games',
+            title: '🏆 You Won the Monthly Challenge!',
+            body: `Congratulations ${m.name}! You completed the Fitanya Monthly Games challenge with zero missed sessions.\n\n🎁 Your rewards:\n✅ ${game.reward_percent}% OFF on your next renewal\n✅ ${game.reward_sessions} sessions absolutely FREE\n\nOur team will apply these rewards to your account shortly. Thank you for showing up every day!\n\n— Fitanya`,
+            link: '/dashboard/monthly-games',
+          }).catch(() => {});
+          await db.execute({
+            sql: `UPDATE monthly_game_participants SET reward_notified=1 WHERE game_id=? AND user_id=?`,
+            args: [id, m.id],
+          });
+        }
+      }
+    }
+
+    res.json({ success: true, message: `Winners processed. ${winnersCount} member(s) won this challenge.`, winners: winnersCount });
+  } catch (err) { console.error('[admin] process-winners:', err.message); res.status(500).json({ error: 'Failed.' }); }
+});
+
 router.post('/monthly-games/:id/notify', async (req, res) => {
   try {
     const { id } = req.params;

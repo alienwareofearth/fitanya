@@ -397,6 +397,21 @@ async function initDb() {
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`);
 
+  // Monthly game participants & winners
+  await client.execute(`CREATE TABLE IF NOT EXISTS monthly_game_participants (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id INTEGER NOT NULL REFERENCES monthly_games(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    sessions_expected INTEGER NOT NULL DEFAULT 0,
+    sessions_completed INTEGER NOT NULL DEFAULT 0,
+    sessions_cancelled INTEGER NOT NULL DEFAULT 0,
+    is_winner INTEGER NOT NULL DEFAULT 0,
+    reward_notified INTEGER NOT NULL DEFAULT 0,
+    processed_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(game_id, user_id)
+  )`);
+
   // Sessions table for express-session
   await client.execute(`CREATE TABLE IF NOT EXISTS sessions (
     sid TEXT PRIMARY KEY,

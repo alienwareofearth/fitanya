@@ -74,6 +74,18 @@
     .preview-reward-lbl { font-size:10px; color:var(--text-dim); letter-spacing:1px; margin-top:4px; font-weight:600; }
     .notify-btn { background: linear-gradient(135deg,#7c3aed,#4f46e5); border-color:#7c3aed; }
     .notify-btn:hover { background: linear-gradient(135deg,#6d28d9,#4338ca); }
+    .participants-table { width:100%; border-collapse:collapse; }
+    .participants-table th { font-size:11px; color:var(--text-dim); font-weight:600; letter-spacing:.5px; text-transform:uppercase; padding:8px 12px; text-align:left; border-bottom:1px solid var(--border); }
+    .participants-table td { padding:10px 12px; font-size:13px; border-bottom:1px solid rgba(255,255,255,.04); vertical-align:middle; }
+    .participants-table tr:last-child td { border-bottom:none; }
+    .prog-bar-sm { height:4px; background:var(--muted); border-radius:2px; overflow:hidden; min-width:60px; }
+    .prog-bar-sm-fill { height:100%; border-radius:2px; background:var(--orange); }
+    .prog-bar-sm-fill.done { background:#22c55e; }
+    .prog-bar-sm-fill.fail { background:#ef4444; }
+    .badge-winner  { background:rgba(34,197,94,.12); color:#22c55e; border:1px solid rgba(34,197,94,.25); padding:2px 10px; border-radius:12px; font-size:11px; font-weight:700; }
+    .badge-fail    { background:rgba(239,68,68,.1); color:#ef4444; border:1px solid rgba(239,68,68,.2); padding:2px 10px; border-radius:12px; font-size:11px; }
+    .badge-prog    { background:rgba(255,92,0,.08); color:var(--orange); border:1px solid rgba(255,92,0,.2); padding:2px 10px; border-radius:12px; font-size:11px; }
+    .badge-none    { background:var(--dark); color:var(--text-dim); border:1px solid var(--border); padding:2px 10px; border-radius:12px; font-size:11px; }
   </style>
 </head>
 <body>
@@ -113,6 +125,18 @@
         <div class="admin-topbar-title">Monthly Games</div>
         <div class="breadcrumb">Fitanya Admin <span class="bc-sep">›</span> <span class="bc-current">Content › Monthly Games</span></div>
       </div>
+    </div>
+
+    <!-- Winners / Participants panel (shown after game is saved) -->
+    <div id="participants-section" class="hidden mb-20">
+      <div class="flex-between mb-12">
+        <div class="section-title">Participant Tracker</div>
+        <div class="flex gap-8">
+          <button class="btn btn-dark" onclick="loadParticipants()" style="font-size:13px">🔄 Refresh</button>
+          <button class="btn btn-primary" id="process-btn" onclick="processWinners()" style="font-size:13px">🏆 Process Winners</button>
+        </div>
+      </div>
+      <div id="participants-wrap"><div class="spinner"></div></div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start">
@@ -243,6 +267,7 @@
       _game = data.game;
       populateForm(_game);
       updatePreview();
+      loadParticipants();
     }
   }
 
@@ -293,6 +318,7 @@
         if (data.id) document.getElementById('game-id').value = data.id;
         _game = { ..._game, ...payload, id: data.id || payload.id };
         updatePreview();
+        loadParticipants();
       } else toast(data?.error || 'Failed', 'error');
     } finally { btn.disabled = false; btn.textContent = 'Save Game'; }
   }
@@ -347,6 +373,112 @@
     document.getElementById('pv-percent').textContent = pct + '% OFF';
     document.getElementById('pv-sessions').textContent = sess + ' SESSIONS';
   }
+
+  async function loadParticipants() {
+    const id = document.getElementById('game-id').value;
+    if (!id) return;
+    document.getElementById('participants-section').classList.remove('hidden');
+    const wrap = document.getElementById('participants-wrap');
+    wrap.innerHTML = '<div class="spinner"></div>';
+    const data = await api.get('/api/admin/monthly-games/' + id + '/participants');
+    if (!data?.success) { wrap.innerHTML = '<p class="text-dim">Failed to load.</p>'; return; }
+
+    const list = data.participants;
+    const today = new Date().toISOString().split('T')[0];
+    const game  = data.game;
+    const ended = today > game.end_date;
+    const started = today >= game.start_date;
+
+    if (!list.length) { wrap.innerHTML = '<p class="text-dim">No active members found.</p>'; return; }
+
+    const winners = list.filter(m => m.is_winner).length;
+    const active  = list.filter(m => m.sessions_expected > 0).length;
+
+    let html = `
+      <div class="flex gap-16 mb-16 flex-wrap">
+        <div class="card" style="flex:1;min-width:100px;padding:14px 16px;text-align:center">
+          <div style="font-size:1.4rem;font-weight:700;color:var(--white)">${list.length}</div>
+          <div class="text-dim text-small">Total Members</div>
+        </div>
+        <div class="card" style="flex:1;min-width:100px;padding:14px 16px;text-align:center">
+          <div style="font-size:1.4rem;font-weight:700;color:var(--orange)">${active}</div>
+          <div class="text-dim text-small">Have Sessions</div>
+        </div>
+        <div class="card" style="flex:1;min-width:100px;padding:14px 16px;text-align:center">
+          <div style="font-size:1.4rem;font-weight:700;color:#22c55e">${winners}</div>
+          <div class="text-dim text-small">Winners</div>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="participants-table">
+          <thead><tr>
+            <th>Member</th>
+            <th>Sessions</th>
+            <th>Progress</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody>`;
+
+    for (const m of list) {
+      const exp  = m.sessions_expected;
+      const comp = m.sessions_completed;
+      const canc = m.sessions_cancelled;
+      const pct  = exp > 0 ? Math.round((comp / exp) * 100) : 0;
+      let badge, barClass;
+
+      if (m.is_winner) {
+        badge = `<span class="badge-winner">🏆 Winner</span>`;
+        barClass = 'done';
+      } else if (canc > 0) {
+        badge = `<span class="badge-fail">✗ Cancelled</span>`;
+        barClass = 'fail';
+      } else if (!started) {
+        badge = `<span class="badge-none">Upcoming</span>`;
+        barClass = '';
+      } else if (exp === 0) {
+        badge = `<span class="badge-none">No sessions</span>`;
+        barClass = '';
+      } else if (ended) {
+        badge = comp === exp ? `<span class="badge-winner" style="opacity:.6">Completed</span>` : `<span class="badge-fail">Incomplete</span>`;
+        barClass = comp === exp ? 'done' : 'fail';
+      } else {
+        badge = `<span class="badge-prog">In progress</span>`;
+        barClass = '';
+      }
+
+      html += `<tr>
+        <td>
+          <div style="font-weight:600;color:var(--white)">${esc(m.name)}</div>
+          <div class="text-dim text-small">${esc(m.email)}</div>
+        </td>
+        <td style="white-space:nowrap">${comp}/${exp}${canc > 0 ? ` <span style="color:#ef4444">(${canc} cancelled)</span>` : ''}</td>
+        <td>
+          <div class="prog-bar-sm"><div class="prog-bar-sm-fill ${barClass}" style="width:${pct}%"></div></div>
+          <div class="text-dim" style="font-size:11px;margin-top:3px">${pct}%</div>
+        </td>
+        <td>${badge}${m.reward_notified ? ' <span class="text-dim text-small">Notified</span>' : ''}</td>
+      </tr>`;
+    }
+
+    html += `</tbody></table></div>`;
+    wrap.innerHTML = html;
+  }
+
+  async function processWinners() {
+    const id = document.getElementById('game-id').value;
+    if (!id) return toast('Save the game first.', 'error');
+    const btn = document.getElementById('process-btn');
+    btn.disabled = true; btn.textContent = '⏳ Processing…';
+    try {
+      const data = await api.post('/api/admin/monthly-games/' + id + '/process-winners', {});
+      if (data?.success) {
+        toast(data.message, 'success');
+        loadParticipants();
+      } else toast(data?.error || 'Failed', 'error');
+    } finally { btn.disabled = false; btn.textContent = '🏆 Process Winners'; }
+  }
+
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
   // Live preview on input
   ['f-title','f-edition','f-tagline','f-challenge-title','f-challenge-desc','f-start','f-end','f-percent','f-sessions']

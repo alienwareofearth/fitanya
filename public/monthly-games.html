@@ -11,147 +11,95 @@
   <title>Monthly Games — Fitanya</title>
   <link rel="stylesheet" href="/css/main.css">
   <style>
-    /* ── Monthly Games Page ──────────────────────────────────────────────── */
-    .mg-wrap {
-      max-width: 540px;
-      margin: 0 auto;
-      padding: 0 0 40px;
-    }
+    .mg-wrap { max-width: 540px; margin: 0 auto; padding: 0 0 40px; }
 
-    /* Top banner */
     .mg-banner {
-      background: var(--orange);
-      padding: 10px 24px;
-      text-align: center;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 3px;
-      color: #fff;
+      background: var(--orange); padding: 10px 24px;
+      text-align: center; font-size: 11px; font-weight: 800;
+      letter-spacing: 3px; color: #fff;
       border-radius: var(--radius) var(--radius) 0 0;
     }
-
-    /* Main card */
     .mg-card {
       background: linear-gradient(160deg, #1c1c1c 0%, #111 100%);
-      border: 2px solid var(--orange);
-      border-top: none;
-      border-radius: 0 0 20px 20px;
-      padding: 32px 24px;
+      border: 2px solid var(--orange); border-top: none;
+      border-radius: 0 0 20px 20px; padding: 32px 24px;
     }
-
-    /* Logo */
     .mg-logo-wrap { text-align: center; margin-bottom: 20px; }
     .mg-logo-circle {
       width: 88px; height: 88px; border-radius: 50%;
-      border: 3px solid var(--orange);
-      background: #fff;
+      border: 3px solid var(--orange); background: #fff;
       display: inline-flex; align-items: center; justify-content: center;
       font-size: 38px; box-shadow: 0 0 30px rgba(255,92,0,.25);
     }
+    .mg-title { font-family: var(--font-display); font-size: 2.4rem; color: var(--white); text-align: center; line-height: 1.1; margin-bottom: 6px; }
+    .mg-edition { color: var(--orange); font-size: 11px; font-weight: 800; letter-spacing: 2px; text-align: center; margin-bottom: 4px; }
+    .mg-tagline { color: var(--text-dim); font-size: 13px; font-style: italic; text-align: center; margin-bottom: 28px; }
 
-    /* Title */
-    .mg-title {
-      font-family: var(--font-display);
-      font-size: 2.4rem;
-      color: var(--white);
-      text-align: center;
-      line-height: 1.1;
-      margin-bottom: 6px;
+    /* ── Progress tracker ─────────────────────────────────────────── */
+    .mg-progress {
+      border-radius: 14px; padding: 20px; margin-bottom: 20px;
+      border: 2px solid;
     }
-    .mg-edition {
-      color: var(--orange);
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 2px;
-      text-align: center;
-      margin-bottom: 4px;
-    }
-    .mg-tagline {
-      color: var(--text-dim);
-      font-size: 13px;
-      font-style: italic;
-      text-align: center;
-      margin-bottom: 28px;
-    }
+    .mg-progress.upcoming  { border-color: var(--border); background: rgba(255,255,255,.02); }
+    .mg-progress.in_progress { border-color: var(--orange); background: rgba(255,92,0,.04); }
+    .mg-progress.won       { border-color: #22c55e; background: rgba(34,197,94,.05); }
+    .mg-progress.failed    { border-color: #ef4444; background: rgba(239,68,68,.04); }
+    .mg-progress.ended     { border-color: var(--border); background: rgba(255,255,255,.02); }
 
-    /* Challenge box */
-    .mg-challenge {
-      border: 1px solid var(--orange);
-      border-radius: 14px;
-      padding: 24px 20px 20px;
-      margin-bottom: 20px;
-      background: rgba(255,92,0,.03);
+    .mg-progress-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .mg-progress-label { font-size: 10px; font-weight: 800; letter-spacing: 2px; }
+    .mg-progress.upcoming   .mg-progress-label { color: var(--text-dim); }
+    .mg-progress.in_progress .mg-progress-label { color: var(--orange); }
+    .mg-progress.won         .mg-progress-label { color: #22c55e; }
+    .mg-progress.failed      .mg-progress-label { color: #ef4444; }
+    .mg-progress.ended       .mg-progress-label { color: var(--text-dim); }
+
+    .mg-progress-icon { font-size: 22px; }
+
+    .mg-session-dots { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .mg-dot {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; border: 2px solid;
     }
-    .mg-challenge-label {
-      text-align: center;
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 2.5px;
-      color: var(--orange);
-      margin-bottom: 14px;
-    }
-    .mg-challenge-title {
-      font-family: var(--font-display);
-      font-size: 1.35rem;
-      color: var(--white);
-      text-align: center;
-      margin-bottom: 8px;
-    }
-    .mg-dates {
-      font-family: var(--font-display);
-      font-size: 1.5rem;
-      color: var(--white);
-      text-align: center;
-      margin-bottom: 8px;
-    }
+    .mg-dot.done    { background: rgba(34,197,94,.15); border-color: #22c55e; }
+    .mg-dot.pending { background: rgba(255,92,0,.08);  border-color: rgba(255,92,0,.3); }
+    .mg-dot.missed  { background: rgba(239,68,68,.12); border-color: #ef4444; }
+
+    .mg-progress-bar-wrap { height: 6px; background: var(--muted); border-radius: 3px; margin-bottom: 12px; overflow: hidden; }
+    .mg-progress-bar { height: 100%; border-radius: 3px; transition: width .5s; }
+    .mg-progress.in_progress .mg-progress-bar { background: var(--orange); }
+    .mg-progress.won         .mg-progress-bar { background: #22c55e; }
+    .mg-progress.failed      .mg-progress-bar { background: #ef4444; }
+
+    .mg-progress-stats { display: flex; gap: 20px; font-size: 13px; }
+    .mg-stat { display: flex; flex-direction: column; gap: 2px; }
+    .mg-stat-val { font-weight: 700; color: var(--white); font-size: 15px; }
+    .mg-stat-lbl { color: var(--text-dim); font-size: 11px; }
+
+    .mg-progress-msg { font-size: 13px; margin-top: 12px; line-height: 1.5; }
+    .mg-progress.in_progress .mg-progress-msg { color: var(--orange); }
+    .mg-progress.won         .mg-progress-msg { color: #22c55e; }
+    .mg-progress.failed      .mg-progress-msg { color: #ef4444; }
+    .mg-progress.upcoming    .mg-progress-msg { color: var(--text-dim); }
+    .mg-progress.ended       .mg-progress-msg { color: var(--text-dim); }
+
+    /* ── Challenge box ─────────────────────────────────────────────── */
+    .mg-challenge { border: 1px solid var(--orange); border-radius: 14px; padding: 24px 20px 20px; margin-bottom: 20px; background: rgba(255,92,0,.03); }
+    .mg-challenge-label { text-align: center; font-size: 10px; font-weight: 800; letter-spacing: 2.5px; color: var(--orange); margin-bottom: 14px; }
+    .mg-challenge-title { font-family: var(--font-display); font-size: 1.35rem; color: var(--white); text-align: center; margin-bottom: 8px; }
+    .mg-dates { font-family: var(--font-display); font-size: 1.5rem; color: var(--white); text-align: center; margin-bottom: 8px; }
     .mg-dates-sep { color: var(--orange); }
-    .mg-challenge-desc {
-      color: var(--text-dim);
-      font-size: 13px;
-      text-align: center;
-      margin-bottom: 20px;
-      line-height: 1.5;
-    }
+    .mg-challenge-desc { color: var(--text-dim); font-size: 13px; text-align: center; margin-bottom: 20px; line-height: 1.5; }
 
-    /* Rewards */
     .mg-rewards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .mg-reward {
-      background: rgba(255,92,0,.06);
-      border: 1px solid rgba(255,92,0,.2);
-      border-radius: 10px;
-      padding: 16px 12px;
-      text-align: center;
-    }
-    .mg-reward-val {
-      font-family: var(--font-display);
-      font-size: 1.8rem;
-      color: var(--orange);
-      line-height: 1;
-      margin-bottom: 4px;
-    }
-    .mg-reward-lbl {
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      color: var(--text-dim);
-    }
-    .mg-reward-note {
-      font-size: 10px;
-      color: var(--text-dim);
-      text-align: center;
-      margin-top: 12px;
-      font-style: italic;
-    }
+    .mg-reward { background: rgba(255,92,0,.06); border: 1px solid rgba(255,92,0,.2); border-radius: 10px; padding: 16px 12px; text-align: center; }
+    .mg-reward-val { font-family: var(--font-display); font-size: 1.8rem; color: var(--orange); line-height: 1; margin-bottom: 4px; }
+    .mg-reward-lbl { font-size: 9px; font-weight: 700; letter-spacing: 1px; color: var(--text-dim); }
+    .mg-reward-note { font-size: 10px; color: var(--text-dim); text-align: center; margin-top: 12px; font-style: italic; }
 
-    /* How it works */
     .mg-how { margin-top: 24px; }
-    .mg-how-title {
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: 2px;
-      color: var(--text-dim);
-      margin-bottom: 16px;
-    }
+    .mg-how-title { font-size: 12px; font-weight: 800; letter-spacing: 2px; color: var(--text-dim); margin-bottom: 16px; }
     .mg-step { display: flex; gap: 16px; margin-bottom: 16px; align-items: flex-start; }
     .mg-step-num {
       width: 28px; height: 28px; border-radius: 50%;
@@ -163,35 +111,19 @@
     .mg-step-text { font-size: 14px; color: var(--text-dim); line-height: 1.5; }
     .mg-step-text strong { color: var(--white); }
 
-    /* Footer */
-    .mg-footer {
-      margin-top: 28px;
-      background: rgba(255,92,0,.06);
-      border: 1px solid rgba(255,92,0,.15);
-      border-radius: 10px;
-      padding: 16px 20px;
-      text-align: center;
-    }
+    .mg-footer { margin-top: 28px; background: rgba(255,92,0,.06); border: 1px solid rgba(255,92,0,.15); border-radius: 10px; padding: 16px 20px; text-align: center; }
     .mg-footer-title { font-weight: 700; color: var(--white); font-size: 13px; margin-bottom: 4px; }
     .mg-footer-desc { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
 
-    /* Inactive / loading */
-    .mg-inactive {
-      text-align: center; padding: 60px 24px;
-      border: 2px dashed var(--border); border-radius: 16px;
-    }
+    .mg-inactive { text-align: center; padding: 60px 24px; border: 2px dashed var(--border); border-radius: 16px; }
     .mg-inactive-icon { font-size: 48px; margin-bottom: 16px; }
     .mg-inactive-title { font-family: var(--font-display); font-size: 1.4rem; color: var(--white); margin-bottom: 8px; }
 
-    /* ── Responsive: wider screens get more room ── */
-    @media (min-width: 900px) {
-      .mg-wrap { padding: 0 24px 40px; }
-    }
+    @media (min-width: 900px) { .mg-wrap { padding: 0 24px 40px; } }
   </style>
 </head>
 <body>
 <div class="app-layout">
-  <!-- SIDEBAR -->
   <aside class="sidebar">
     <a href="/dashboard" class="sidebar-logo">FIT<span>ANYA</span></a>
     <div id="sidebar-profile"></div>
@@ -212,7 +144,6 @@
     </div>
   </aside>
 
-  <!-- MAIN -->
   <main class="main-content">
     <div class="mg-wrap">
       <div id="page-content"><div class="spinner"></div></div>
@@ -225,8 +156,9 @@
   async function init() {
     const data = await api.get('/api/customer/monthly-games');
     const wrap = document.getElementById('page-content');
+    const game = data?.game || data?.recentGame;
 
-    if (!data?.game) {
+    if (!game) {
       wrap.innerHTML = `
         <div class="mg-inactive">
           <div class="mg-inactive-icon">🏆</div>
@@ -237,29 +169,27 @@
       return;
     }
 
-    const g = data.game;
-    const pct = g.reward_percent;
-    const sess = g.reward_sessions;
-    const startFmt = fmtDate(g.start_date);
-    const endFmt   = fmtDate(g.end_date);
+    const p = data.progress;
+    const pct  = game.reward_percent;
+    const sess = game.reward_sessions;
+    const startFmt = fmtDate(game.start_date);
+    const endFmt   = fmtDate(game.end_date);
 
     wrap.innerHTML = `
       <div class="mg-banner">FITANYA PRESENTS</div>
       <div class="mg-card">
-
-        <div class="mg-logo-wrap">
-          <div class="mg-logo-circle">🏆</div>
-        </div>
-
-        <div class="mg-title">${esc(g.title || 'MONTHLY GAMES')}</div>
-        <div class="mg-edition">${esc(g.edition || '').toUpperCase()} &bull; ${esc(g.tagline || '').toUpperCase()}</div>
+        <div class="mg-logo-wrap"><div class="mg-logo-circle">🏆</div></div>
+        <div class="mg-title">${esc(game.title || 'MONTHLY GAMES')}</div>
+        <div class="mg-edition">${esc(game.edition||'').toUpperCase()} &bull; ${esc(game.tagline||'').toUpperCase()}</div>
         <div class="mg-tagline">Train. Transform. Transcend.</div>
+
+        ${p ? renderProgress(p, pct, sess) : ''}
 
         <div class="mg-challenge">
           <div class="mg-challenge-label">THIS MONTH'S CHALLENGE</div>
-          <div class="mg-challenge-title">${esc(g.challenge_title)}</div>
+          <div class="mg-challenge-title">${esc(game.challenge_title)}</div>
           <div class="mg-dates">${startFmt} <span class="mg-dates-sep">—</span> ${endFmt}</div>
-          ${g.challenge_desc ? `<div class="mg-challenge-desc">${esc(g.challenge_desc)}</div>` : ''}
+          ${game.challenge_desc ? `<div class="mg-challenge-desc">${esc(game.challenge_desc)}</div>` : ''}
           <div class="mg-rewards">
             <div class="mg-reward">
               <div class="mg-reward-val">${pct}% OFF</div>
@@ -277,15 +207,15 @@
           <div class="mg-how-title">HOW IT WORKS</div>
           <div class="mg-step">
             <div class="mg-step-num">01</div>
-            <div class="mg-step-text">Attend all your scheduled Fitanya sessions between <strong>${startFmt} – ${endFmt}</strong>.</div>
+            <div class="mg-step-text">Book and attend <strong>all your sessions</strong> between <strong>${startFmt} – ${endFmt}</strong>.</div>
           </div>
           <div class="mg-step">
             <div class="mg-step-num">02</div>
-            <div class="mg-step-text">Zero missed sessions during the challenge week — <strong>consistency is the game.</strong></div>
+            <div class="mg-step-text">Zero cancellations during the challenge period — <strong>consistency is the game.</strong></div>
           </div>
           <div class="mg-step">
             <div class="mg-step-num">03</div>
-            <div class="mg-step-text">Unlock a <strong>${pct}% discount</strong> on your next renewal + <strong>${sess} free sessions</strong>, credited automatically.</div>
+            <div class="mg-step-text">Complete all sessions → unlock <strong>${pct}% off</strong> your next renewal + <strong>${sess} free sessions</strong>, credited automatically.</div>
           </div>
         </div>
 
@@ -296,15 +226,58 @@
       </div>`;
   }
 
+  function renderProgress(p, pct, sess) {
+    const { expected, completed, cancelled, status, officialWinner } = p;
+
+    const labels = {
+      upcoming:    { icon: '📅', text: 'CHALLENGE UPCOMING', msg: 'The challenge hasn\'t started yet. Book your sessions now so you\'re ready!' },
+      in_progress: { icon: '🔥', text: 'YOUR PROGRESS', msg: `Keep going! Attend every session and don't cancel — you're in the running.` },
+      won:         { icon: '🏆', text: 'CHALLENGE COMPLETE!', msg: officialWinner ? `🎉 Congratulations! You've officially won! Your rewards (${pct}% off + ${sess} free sessions) will be applied to your account.` : `🎉 You completed every session this week! Our team is reviewing results and your rewards will be applied shortly.` },
+      failed:      { icon: '❌', text: 'CHALLENGE MISSED', msg: `You had ${cancelled} cancelled session(s) this period. Don't worry — a fresh challenge drops next month!` },
+      ended:       { icon: '🏁', text: 'CHALLENGE ENDED', msg: expected === 0 ? 'You had no sessions scheduled during this challenge period.' : 'Results are being reviewed. Check back soon!' },
+    };
+    const l = labels[status] || labels.ended;
+
+    // Build session dots: completed = ✓, cancelled = ✗, pending = circle
+    let dotsHtml = '';
+    if (expected > 0 || cancelled > 0) {
+      const total = Math.max(expected + cancelled, 1);
+      for (let i = 0; i < completed; i++)  dotsHtml += `<div class="mg-dot done">✓</div>`;
+      for (let i = 0; i < cancelled; i++)  dotsHtml += `<div class="mg-dot missed">✗</div>`;
+      const pending = Math.max(0, expected - completed);
+      for (let i = 0; i < pending; i++)    dotsHtml += `<div class="mg-dot pending">○</div>`;
+    }
+
+    const barPct = expected > 0 ? Math.round((completed / expected) * 100) : 0;
+
+    return `
+      <div class="mg-progress ${status}">
+        <div class="mg-progress-header">
+          <span class="mg-progress-label">${l.text}</span>
+          <span class="mg-progress-icon">${l.icon}</span>
+        </div>
+        ${dotsHtml ? `<div class="mg-session-dots">${dotsHtml}</div>` : ''}
+        ${expected > 0 ? `
+          <div class="mg-progress-bar-wrap">
+            <div class="mg-progress-bar" style="width:${barPct}%"></div>
+          </div>
+          <div class="mg-progress-stats">
+            <div class="mg-stat"><span class="mg-stat-val">${completed}</span><span class="mg-stat-lbl">Completed</span></div>
+            <div class="mg-stat"><span class="mg-stat-val">${expected}</span><span class="mg-stat-lbl">Scheduled</span></div>
+            ${cancelled > 0 ? `<div class="mg-stat"><span class="mg-stat-val" style="color:#ef4444">${cancelled}</span><span class="mg-stat-lbl">Cancelled</span></div>` : ''}
+          </div>
+        ` : ''}
+        <div class="mg-progress-msg">${l.msg}</div>
+      </div>`;
+  }
+
   function fmtDate(d) {
     if (!d) return '—';
-    const dt = new Date(d + 'T00:00:00');
-    return dt.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }).toUpperCase();
+    return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }).toUpperCase();
   }
 
   function esc(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
   init();
