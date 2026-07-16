@@ -47,6 +47,7 @@
       /* exactly 1/5 of the strip width so 5 pills show at once */
       width: 20%;
       flex: 0 0 20%;
+      min-width: 0;
       height: 76px;
       border-radius: 0;
       border: none;
@@ -209,9 +210,29 @@
     .rs-date-label { font-size: 11px; font-weight: 700; color: var(--text-dim); letter-spacing: .5px; margin: 14px 0 6px; }
     .rs-slots-wrap { max-height: 320px; overflow-y: auto; padding-right: 4px; }
 
-    @media (max-width: 600px) {
+    /* ── Mobile overrides (≤768px = iPhone/small screens) ───────────────── */
+    @media (max-width: 768px) {
+      /* Mobile padding is 16px, so negative margins must match */
+      .date-strip-section { margin: 0 -16px; }
+      .sched-tab-bar      { margin: 0 -16px; }
+      .sched-page-hdr     { margin: 0 -16px; padding: 16px 16px 12px; }
+
+      /* Sticky tab bar must clear the hamburger (56px) + safe-area-top */
+      .sched-tab-bar {
+        position: sticky;
+        top: calc(56px + env(safe-area-inset-top));
+      }
+
       .bk-actions { gap: 6px; }
       .slot-tile  { min-width: 88px; }
+
+      /* Confirm bar: respect left safe-area on iPhone landscape */
+      .confirm-bar {
+        left: env(safe-area-inset-left);
+        right: env(safe-area-inset-right);
+        padding-left:  calc(16px + env(safe-area-inset-left));
+        padding-right: calc(16px + env(safe-area-inset-right));
+      }
     }
 
     /* On desktop, contain confirm bar inside main area */
@@ -245,7 +266,7 @@
   <main class="main-content" style="padding-bottom:0">
 
     <!-- Page header -->
-    <div class="flex-between" style="padding:20px 20px 12px;margin:0 -20px">
+    <div class="flex-between sched-page-hdr" style="padding:20px 20px 12px;margin:0 -20px">
       <div>
         <h2 style="margin:0;font-size:1.4rem">My Schedule</h2>
         <p style="margin:2px 0 0;color:var(--text-dim);font-size:13px">Book, view and manage your sessions</p>
