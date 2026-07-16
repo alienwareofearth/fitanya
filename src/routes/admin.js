@@ -306,6 +306,79 @@ router.post('/members/:id/add-sessions', async (req, res) => {
   } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
+// POST /api/admin/members/:id/deduct-session  (Option A — quick counter deduct)
+router.post('/members/:id/deduct-session', async (req, res) => {
+  try {
+    const db = getDb();
+    const userId = parseInt(req.params.id);
+    const mem = await db.execute({
+      sql: `SELECT id, sessions_used, sessions_total FROM memberships WHERE user_id = ? AND status = 'active' LIMIT 1`,
+      args: [userId],
+    });
+    if (!mem.rows.length) return res.status(400).json({ error: 'No active membership found' });
+    const m = mem.rows[0];
+    if (m.sessions_used >= m.sessions_total) return res.status(400).json({ error: 'All sessions already used — nothing to deduct' });
+    await db.execute({
+      sql: `UPDATE memberships SET sessions_used = sessions_used + 1, updated_at = datetime('now') WHERE id = ?`,
+      args: [m.id],
+    });
+    res.json({ success: true, sessions_used: m.sessions_used + 1, sessions_total: m.sessions_total });
+  } catch (err) { console.error('[admin] deduct-session:', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+});
+
+// POST /api/admin/members/:id/offline-session  (Option B — full booking record)
+router.post('/members/:id/offline-session', async (req, res) => {
+  try {
+    const { date, start_time, end_time, coach_id, notes = '', workout_done = '' } = req.body;
+    if (!date || !start_time || !end_time || !coach_id) {
+      return res.status(400).json({ error: 'Date, start time, end time and coach are required' });
+    }
+    const db = getDb();
+    const userId = parseInt(req.params.id);
+    const coachId = parseInt(coach_id);
+
+    const mem = await db.execute({
+      sql: `SELECT id, sessions_used, sessions_total FROM memberships WHERE user_id = ? AND status = 'active' LIMIT 1`,
+      args: [userId],
+    });
+    if (!mem.rows.length) return res.status(400).json({ error: 'No active membership found' });
+    const m = mem.rows[0];
+    if (m.sessions_used >= m.sessions_total) return res.status(400).json({ error: 'All sessions already used' });
+
+    // Create a virtual slot (inactive — won't appear in booking flow)
+    const slotRes = await db.execute({
+      sql: `INSERT INTO schedule_slots (coach_id, date, start_time, end_time, is_booked, is_active, is_offline)
+            VALUES (?, ?, ?, ?, 1, 0, 1) RETURNING id`,
+      args: [coachId, date, start_time, end_time],
+    });
+    const slotId = slotRes.rows[0].id;
+
+    // Create a completed booking against that slot
+    const bookingRes = await db.execute({
+      sql: `INSERT INTO bookings (membership_id, customer_id, coach_id, slot_id, status, is_completed, is_offline)
+            VALUES (?, ?, ?, ?, 'confirmed', 1, 1) RETURNING id`,
+      args: [m.id, userId, coachId, slotId],
+    });
+    const bookingId = bookingRes.rows[0].id;
+
+    // Attach notes if provided
+    if (notes || workout_done) {
+      await db.execute({
+        sql: `INSERT INTO session_notes (booking_id, coach_id, customer_id, notes, workout_done) VALUES (?, ?, ?, ?, ?)`,
+        args: [bookingId, coachId, userId, notes, workout_done],
+      });
+    }
+
+    // Deduct from membership
+    await db.execute({
+      sql: `UPDATE memberships SET sessions_used = sessions_used + 1, updated_at = datetime('now') WHERE id = ?`,
+      args: [m.id],
+    });
+
+    res.json({ success: true });
+  } catch (err) { console.error('[admin] offline-session:', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+});
+
 // Admin: regenerate Meet links for bookings that have broken/placeholder links
 router.post('/fix-meet-links', async (_req, res) => {
   try {

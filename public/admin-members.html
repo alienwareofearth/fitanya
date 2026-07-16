@@ -129,6 +129,63 @@
   </div>
 </div>
 
+<!-- Deduct Session Modal (Option A) -->
+<div class="modal-overlay hidden" id="deduct-modal">
+  <div class="modal" style="position:relative;max-width:420px">
+    <button class="modal-close" onclick="document.getElementById('deduct-modal').classList.add('hidden')">×</button>
+    <h3 class="modal-title">− Deduct Session (Offline)</h3>
+    <p class="text-dim mt-4 mb-4">Member: <strong class="text-white" id="deduct-member-name"></strong></p>
+    <p class="text-dim mb-24">Sessions: <strong class="text-white" id="deduct-sessions-display"></strong></p>
+    <input type="hidden" id="deduct-member-id" />
+    <div class="card mb-16" style="background:rgba(251,191,36,0.06);border-color:rgba(251,191,36,0.25)">
+      <p class="text-small" style="color:#fbbf24">⚠️ This marks 1 session as used without creating a booking record. Use <strong>📝 Offline</strong> instead if you want the session to appear in the member's history.</p>
+    </div>
+    <div class="form-group">
+      <label>Reason <span class="text-dim">(for your records)</span></label>
+      <input class="form-control" id="deduct-reason" placeholder="e.g. Offline session on 12 Jul" />
+    </div>
+    <button class="btn btn-primary btn-full" style="background:#b91c1c;border-color:#b91c1c" onclick="doDeduct()">Confirm Deduct</button>
+  </div>
+</div>
+
+<!-- Log Offline Session Modal (Option B) -->
+<div class="modal-overlay hidden" id="offline-modal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="document.getElementById('offline-modal').classList.add('hidden')">×</button>
+    <h3 class="modal-title">📝 Log Offline Session</h3>
+    <p class="text-dim mt-4 mb-24">Member: <strong class="text-white" id="offline-member-name"></strong></p>
+    <input type="hidden" id="offline-member-id" />
+    <div class="grid-2 gap-12">
+      <div class="form-group">
+        <label>Date *</label>
+        <input class="form-control" type="date" id="offline-date" />
+      </div>
+      <div class="form-group">
+        <label>Coach *</label>
+        <select class="form-control" id="offline-coach"></select>
+      </div>
+      <div class="form-group">
+        <label>Start Time *</label>
+        <input class="form-control" type="time" id="offline-start" />
+      </div>
+      <div class="form-group">
+        <label>End Time *</label>
+        <input class="form-control" type="time" id="offline-end" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Workout Done <span class="text-dim">(optional)</span></label>
+      <input class="form-control" id="offline-workout" placeholder="e.g. Full body strength + cardio" />
+    </div>
+    <div class="form-group">
+      <label>Session Notes <span class="text-dim">(optional)</span></label>
+      <textarea class="form-control" id="offline-notes" rows="3" placeholder="Coach feedback, next steps…"></textarea>
+    </div>
+    <p class="text-dim text-small mb-16">This creates a completed session record in the member's history and deducts 1 session from their membership.</p>
+    <button class="btn btn-primary btn-full" onclick="doOffline()">Log Session →</button>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
@@ -163,7 +220,9 @@
           <td><span class="badge ${m.membership_status === 'active' ? 'badge-green' : 'badge-yellow'}">${m.membership_status || 'no plan'}</span></td>
           <td><div class="flex gap-8" style="flex-wrap:wrap">
             ${m.membership_status === 'active'
-              ? `<button class="btn btn-dark btn-sm" onclick="openAddSessions(${m.id},'${m.name.replace(/'/g,"\\'")}',${m.sessions_used||0},${m.sessions_total||0})">+ Sessions</button>`
+              ? `<button class="btn btn-dark btn-sm" onclick="openAddSessions(${m.id},'${m.name.replace(/'/g,"\\'")}',${m.sessions_used||0},${m.sessions_total||0})">+ Sessions</button>
+                 <button class="btn btn-dark btn-sm" style="color:#f87171" onclick="openDeduct(${m.id},'${m.name.replace(/'/g,"\\'")}',${m.sessions_used||0},${m.sessions_total||0})">− Session</button>
+                 <button class="btn btn-dark btn-sm" style="color:#fbbf24" onclick="openOffline(${m.id},'${m.name.replace(/'/g,"\\'")}')">📝 Offline</button>`
               : `<button class="btn btn-dark btn-sm" onclick="assignTrial(${m.id}, this)">Give Trial</button>`}
             <button class="btn btn-dark btn-sm" style="color:var(--orange)" onclick="openAssignPackage(${m.id},'${m.name.replace(/'/g,"\\'")}')">Add Package</button>
             <button class="btn btn-dark btn-sm" onclick="openReassign(${m.id},'${m.name.replace(/'/g,"\\'")}','${m.coach_id||''}')">Assign Coach</button>
@@ -269,6 +328,70 @@
     } finally {
       btn.disabled = false; btn.textContent = 'Assign Package';
     }
+  }
+
+  // ── Option A: Quick session deduct ────────────────────────────────────────
+  function openDeduct(memberId, memberName, used, total) {
+    document.getElementById('deduct-member-id').value = memberId;
+    document.getElementById('deduct-member-name').textContent = memberName;
+    document.getElementById('deduct-sessions-display').textContent = used + ' used / ' + total + ' total (' + (total - used) + ' remaining)';
+    document.getElementById('deduct-reason').value = '';
+    document.getElementById('deduct-modal').classList.remove('hidden');
+  }
+
+  async function doDeduct() {
+    const memberId = document.getElementById('deduct-member-id').value;
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = 'Deducting…';
+    try {
+      const data = await api.post('/api/admin/members/' + memberId + '/deduct-session', {
+        reason: document.getElementById('deduct-reason').value,
+      });
+      if (data?.success) {
+        toast('Session deducted (' + data.sessions_used + '/' + data.sessions_total + ' used)', 'success');
+        document.getElementById('deduct-modal').classList.add('hidden');
+        init();
+      } else toast(data?.error || 'Failed', 'error');
+    } finally { btn.disabled = false; btn.textContent = 'Confirm Deduct'; }
+  }
+
+  // ── Option B: Log full offline session ───────────────────────────────────
+  function openOffline(memberId, memberName) {
+    document.getElementById('offline-member-id').value = memberId;
+    document.getElementById('offline-member-name').textContent = memberName;
+    document.getElementById('offline-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('offline-start').value = '07:00';
+    document.getElementById('offline-end').value = '08:00';
+    document.getElementById('offline-workout').value = '';
+    document.getElementById('offline-notes').value = '';
+    const sel = document.getElementById('offline-coach');
+    sel.innerHTML = allCoaches.filter(c => c.is_active).map(c =>
+      `<option value="${c.id}">${c.name}</option>`
+    ).join('');
+    document.getElementById('offline-modal').classList.remove('hidden');
+  }
+
+  async function doOffline() {
+    const memberId = document.getElementById('offline-member-id').value;
+    const date       = document.getElementById('offline-date').value;
+    const start_time = document.getElementById('offline-start').value;
+    const end_time   = document.getElementById('offline-end').value;
+    const coach_id   = document.getElementById('offline-coach').value;
+    const notes      = document.getElementById('offline-notes').value;
+    const workout_done = document.getElementById('offline-workout').value;
+    if (!date || !start_time || !end_time || !coach_id) return toast('Date, times and coach are required', 'error');
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = 'Logging…';
+    try {
+      const data = await api.post('/api/admin/members/' + memberId + '/offline-session', {
+        date, start_time, end_time, coach_id, notes, workout_done,
+      });
+      if (data?.success) {
+        toast('Offline session logged and session deducted!', 'success');
+        document.getElementById('offline-modal').classList.add('hidden');
+        init();
+      } else toast(data?.error || 'Failed', 'error');
+    } finally { btn.disabled = false; btn.textContent = 'Log Session →'; }
   }
 
   function openSetTimezone(memberId, memberName, currentTz) {
