@@ -17,7 +17,8 @@
       margin: 0 -20px;
       background: var(--card);
       border-bottom: 1px solid var(--border);
-      padding-bottom: 4px;
+      padding-bottom: 0;
+      overflow: hidden;
     }
     .month-label {
       text-align: center;
@@ -29,10 +30,10 @@
     }
     .date-strip {
       display: flex;
-      gap: 8px;
+      gap: 0;
       overflow-x: auto;
       scroll-snap-type: x mandatory;
-      padding: 4px 20px 12px;
+      padding: 4px 0 12px;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
     }
@@ -43,27 +44,41 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-width: 54px;
-      height: 72px;
-      border-radius: 30px;
-      border: 1.5px solid var(--border);
-      background: var(--muted);
+      /* exactly 1/5 of the strip width so 5 pills show at once */
+      width: 20%;
+      flex: 0 0 20%;
+      height: 76px;
+      border-radius: 0;
+      border: none;
+      border-right: 1px solid var(--border);
+      background: var(--card);
       cursor: pointer;
-      transition: all 0.18s;
-      scroll-snap-align: center;
+      transition: background 0.15s, color 0.15s;
+      scroll-snap-align: start;
       flex-shrink: 0;
       user-select: none;
+      position: relative;
     }
-    .date-pill:hover         { border-color: var(--orange); background: rgba(255,92,0,.08); }
-    .date-pill.today         { background: var(--orange); border-color: var(--orange); }
-    .date-pill.selected      { border-color: var(--orange); background: rgba(255,92,0,.16); }
-    .date-pill.past          { opacity: 0.38; pointer-events: none; }
-    .date-pill.has-slots     { box-shadow: 0 0 0 1px rgba(255,92,0,.25); }
+    .date-pill:last-child { border-right: none; }
+    .date-pill:hover    { background: rgba(255,92,0,.07); }
+    .date-pill.today    { background: var(--orange); }
+    .date-pill.selected { background: rgba(255,92,0,.15); }
+    .date-pill.past     { opacity: 0.4; pointer-events: none; }
+    /* orange dot at bottom for days with slots */
+    .date-pill.has-slots::after {
+      content: '';
+      position: absolute;
+      bottom: 6px;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--orange);
+    }
+    .date-pill.today.has-slots::after { background: rgba(255,255,255,.8); }
 
-    .dp-num { font-family: var(--font-display); font-size: 1.4rem; line-height: 1; color: var(--white); }
+    .dp-num { font-family: var(--font-display); font-size: 1.35rem; line-height: 1; color: var(--white); }
     .date-pill.today    .dp-num { color: #fff; }
     .date-pill.selected .dp-num { color: var(--orange); }
-    .dp-day { font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: var(--text-dim); margin-top: 3px; text-transform: uppercase; }
+    .dp-day { font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: var(--text-dim); margin-top: 4px; text-transform: uppercase; }
     .date-pill.today    .dp-day { color: rgba(255,255,255,.85); }
     .date-pill.selected .dp-day { color: var(--orange); }
 
@@ -330,7 +345,7 @@
     const todayStr = new Date().toISOString().split('T')[0];
     let html = '';
 
-    for (let i = -7; i <= 14; i++) {
+    for (let i = -3; i <= 14; i++) {
       const d  = new Date();
       d.setDate(d.getDate() + i);
       const ds  = d.toISOString().split('T')[0];
@@ -353,9 +368,14 @@
     strip.innerHTML = html;
     updateMonthLabel(_selectedDate);
 
-    // Scroll today into view after paint
+    // Scroll so today lands at 3rd position (index 2 from left = 2 past days visible before it)
     requestAnimationFrame(() => {
-      document.getElementById('dp-' + todayStr)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      const strip    = document.getElementById('date-strip');
+      const todayEl  = document.getElementById('dp-' + todayStr);
+      if (!todayEl || !strip) return;
+      const pillW    = strip.offsetWidth / 5;        // each pill = 20% of strip
+      const todayIdx = 3;                            // today is 4th pill (index 3, 0-based)
+      strip.scrollLeft = pillW * (todayIdx - 2);     // shift left so today is at position 3 (2 past days visible)
     });
   }
 
