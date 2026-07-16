@@ -12,54 +12,178 @@
   <title>Schedule — Fitanya</title>
   <link rel="stylesheet" href="/css/main.css">
   <style>
-    /* Accordion date groups */
-    .date-group { border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; overflow: hidden; }
-    .date-group-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 18px; cursor: pointer; background: var(--card);
-      transition: background 0.15s; user-select: none;
+    /* ── Date Strip ─────────────────────────────────────────────────── */
+    .date-strip-section {
+      margin: 0 -20px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 4px;
     }
-    .date-group-header:hover { background: rgba(255,92,0,0.06); }
-    .date-group-header.open { background: rgba(255,92,0,0.08); border-bottom: 1px solid var(--border); }
-    .date-group-label { font-weight: 600; color: var(--white); font-size: 15px; }
-    .date-group-meta { display: flex; align-items: center; gap: 10px; }
-    .date-slot-count { font-size: 12px; background: rgba(255,92,0,0.15); color: var(--orange); padding: 2px 8px; border-radius: 20px; font-weight: 600; }
-    .date-chevron { color: var(--text-dim); font-size: 13px; transition: transform 0.2s; }
-    .date-chevron.open { transform: rotate(180deg); }
-    .date-group-body { display: none; padding: 14px 18px; }
-    .date-group-body.open { display: block; }
-    /* Compact slot chips */
-    .slot-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-    .slot-chip {
-      padding: 8px 14px; border-radius: 8px; border: 1.5px solid var(--border);
-      background: var(--muted); cursor: pointer; transition: all 0.15s;
-      font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap;
+    .month-label {
+      text-align: center;
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      color: var(--orange);
+      letter-spacing: 1px;
+      padding: 14px 0 8px;
     }
-    .slot-chip:hover { border-color: var(--orange); color: var(--white); background: rgba(255,92,0,0.08); }
-    .slot-chip.selected { border-color: var(--orange); background: rgba(255,92,0,0.15); color: var(--white); }
-    .slot-coach-tag { font-size: 11px; color: var(--text-dim); font-weight: 400; }
-    /* Booking rows */
-    .booking-row {
-      display: flex; align-items: center; gap: 16px;
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+    .date-strip {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      padding: 4px 20px 12px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
     }
-    .booking-date-box {
-      background: var(--grad); border-radius: var(--radius-sm);
-      padding: 8px 12px; text-align: center; min-width: 50px; flex-shrink: 0;
-    }
-    .booking-day { font-family: var(--font-display); font-size: 1.4rem; color: #fff; line-height: 1; }
-    .booking-mon { font-size: 10px; color: rgba(255,255,255,0.8); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-    /* Confirm bar */
-    .confirm-bar {
-      position: sticky; bottom: 0; background: var(--dark);
-      border-top: 1px solid var(--border); padding: 14px 20px;
-      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-      margin: 0 -20px; z-index: 10;
-    }
-    @media (max-width: 600px) { .booking-row { flex-wrap: wrap; } }
+    .date-strip::-webkit-scrollbar { display: none; }
 
-    /* Reschedule modal slot picker */
+    .date-pill {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 54px;
+      height: 72px;
+      border-radius: 30px;
+      border: 1.5px solid var(--border);
+      background: var(--muted);
+      cursor: pointer;
+      transition: all 0.18s;
+      scroll-snap-align: center;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .date-pill:hover         { border-color: var(--orange); background: rgba(255,92,0,.08); }
+    .date-pill.today         { background: var(--orange); border-color: var(--orange); }
+    .date-pill.selected      { border-color: var(--orange); background: rgba(255,92,0,.16); }
+    .date-pill.past          { opacity: 0.38; pointer-events: none; }
+    .date-pill.has-slots     { box-shadow: 0 0 0 1px rgba(255,92,0,.25); }
+
+    .dp-num { font-family: var(--font-display); font-size: 1.4rem; line-height: 1; color: var(--white); }
+    .date-pill.today    .dp-num { color: #fff; }
+    .date-pill.selected .dp-num { color: var(--orange); }
+    .dp-day { font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: var(--text-dim); margin-top: 3px; text-transform: uppercase; }
+    .date-pill.today    .dp-day { color: rgba(255,255,255,.85); }
+    .date-pill.selected .dp-day { color: var(--orange); }
+
+    /* ── Tab Bar ────────────────────────────────────────────────────── */
+    .sched-tab-bar {
+      display: flex;
+      margin: 0 -20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--dark);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .sched-tab {
+      flex: 1; padding: 15px 8px;
+      font-size: 14px; font-weight: 600;
+      color: var(--text-dim);
+      background: none; border: none;
+      border-bottom: 2.5px solid transparent;
+      cursor: pointer; transition: all 0.15s;
+      text-align: center; letter-spacing: 0.2px;
+    }
+    .sched-tab.active { color: var(--orange); border-bottom-color: var(--orange); }
+    .sched-tab:hover:not(.active) { color: var(--white); }
+
+    /* ── Tab content ─────────────────────────────────────────────────── */
+    .tab-panel { padding-top: 20px; }
+    .tab-panel.hidden { display: none; }
+
+    /* ── Booking cards (Booked PT tab) ───────────────────────────────── */
+    .booking-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 10px;
+      transition: border-color 0.15s;
+    }
+    .booking-card:hover { border-color: rgba(255,92,0,.25); }
+    .booking-card-top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .bk-date-box {
+      background: var(--grad);
+      border-radius: 10px;
+      padding: 8px 10px;
+      text-align: center;
+      min-width: 52px;
+      flex-shrink: 0;
+    }
+    .bk-day { font-family: var(--font-display); font-size: 1.5rem; color: #fff; line-height: 1; }
+    .bk-mon { font-size: 9px; color: rgba(255,255,255,.8); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+    .bk-info { flex: 1; min-width: 0; }
+    .bk-coach { font-weight: 700; color: var(--white); font-size: 15px; margin-bottom: 3px; }
+    .bk-time  { font-size: 13px; color: var(--text-dim); }
+    .bk-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .bk-actions .btn { font-size: 12px; padding: 7px 12px; }
+
+    /* Past / cancelled bookings slightly faded */
+    .booking-card.past-session { opacity: 0.65; }
+
+    /* ── Slot chips (Schedule tab) ───────────────────────────────────── */
+    .slot-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .slot-tile {
+      padding: 12px 16px; border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: var(--muted); cursor: pointer;
+      transition: all 0.15s; min-width: 100px;
+      text-align: center;
+    }
+    .slot-tile:hover    { border-color: var(--orange); background: rgba(255,92,0,.07); }
+    .slot-tile.selected { border-color: var(--orange); background: rgba(255,92,0,.18); }
+    .slot-tile.pref     { border-color: rgba(255,200,0,.5); }
+    .slot-tile.selected.pref { border-color: var(--orange); }
+    .st-time  { font-size: 15px; font-weight: 700; color: var(--white); line-height: 1.2; }
+    .st-coach { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+    .st-star  { font-size: 10px; color: #fbbf24; margin-top: 2px; }
+
+    /* ── Preferred panel (inside Schedule tab) ────────────────────────── */
+    .pref-strip {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px;
+      background: rgba(255,200,0,.05);
+      border: 1px solid rgba(255,200,0,.2);
+      border-radius: 10px;
+      margin-bottom: 16px;
+    }
+    .pref-strip-label { font-size: 13px; font-weight: 600; color: var(--white); flex: 1; }
+    .pref-strip-sub   { font-size: 11px; color: var(--text-dim); }
+
+    /* ── Empty states ─────────────────────────────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 36px 16px;
+      color: var(--text-dim);
+    }
+    .empty-state-icon { font-size: 36px; margin-bottom: 10px; }
+    .empty-state-title { font-size: 15px; font-weight: 600; color: var(--white); margin-bottom: 6px; }
+
+    /* ── Sticky confirm bar ───────────────────────────────────────────── */
+    .confirm-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--dark); border-top: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex; align-items: center; gap: 12px;
+      z-index: 50;
+      box-shadow: 0 -8px 24px rgba(0,0,0,.4);
+    }
+    .confirm-bar-info { flex: 1; min-width: 0; }
+    .confirm-bar-title { font-size: 13px; font-weight: 700; color: var(--white); margin-bottom: 2px; }
+    .confirm-bar-sub   { font-size: 11px; color: var(--text-dim); }
+    body.has-confirm-bar .tab-panel { padding-bottom: 80px; }
+
+    /* ── Reschedule modal slot picker ─────────────────────────────────── */
     .rs-slot-chip {
       padding: 9px 14px; border-radius: 8px; border: 1.5px solid var(--border);
       background: var(--muted); cursor: pointer; transition: all 0.15s;
@@ -69,6 +193,16 @@
     .rs-slot-chip.chosen { border-color: var(--orange); background: rgba(255,92,0,.18); color: var(--white); }
     .rs-date-label { font-size: 11px; font-weight: 700; color: var(--text-dim); letter-spacing: .5px; margin: 14px 0 6px; }
     .rs-slots-wrap { max-height: 320px; overflow-y: auto; padding-right: 4px; }
+
+    @media (max-width: 600px) {
+      .bk-actions { gap: 6px; }
+      .slot-tile  { min-width: 88px; }
+    }
+
+    /* On desktop, contain confirm bar inside main area */
+    @media (min-width: 900px) {
+      .confirm-bar { left: 260px; }
+    }
   </style>
 </head>
 <body>
@@ -77,54 +211,71 @@
     <a href="/dashboard" class="sidebar-logo">FIT<span>ANYA</span></a>
     <div id="sidebar-profile"></div>
     <nav class="sidebar-nav">
-      <a href="/dashboard" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
-      <a href="/dashboard/schedule" class="nav-item active"><span class="icon">📅</span>Schedule</a>
-      <a href="/dashboard/membership" class="nav-item"><span class="icon">🎫</span>Membership</a>
-      <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
-      <a href="/dashboard/progress" class="nav-item"><span class="icon">📊</span>Progress</a>
-      <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
+      <a href="/dashboard"           class="nav-item"><span class="icon">🏠</span>Dashboard</a>
+      <a href="/dashboard/schedule"  class="nav-item active"><span class="icon">📅</span>Schedule</a>
+      <a href="/dashboard/membership"class="nav-item"><span class="icon">🎫</span>Membership</a>
+      <a href="/dashboard/payment"   class="nav-item"><span class="icon">💳</span>Pay Now</a>
+      <a href="/dashboard/progress"  class="nav-item"><span class="icon">📊</span>Progress</a>
+      <a href="/dashboard/diet"      class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
       <a href="/dashboard/monthly-games" class="nav-item"><span class="icon">🏆</span>Monthly Games</a>
-        <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
-      <a href="/dashboard/referral" class="nav-item"><span class="icon">🎁</span>Refer & Earn</a>
-      <a href="/dashboard/profile" class="nav-item"><span class="icon">👤</span>Profile</a>
+      <a href="/dashboard/stories"   class="nav-item"><span class="icon">📸</span>My Stories</a>
+      <a href="/dashboard/referral"  class="nav-item"><span class="icon">🎁</span>Refer & Earn</a>
+      <a href="/dashboard/profile"   class="nav-item"><span class="icon">👤</span>Profile</a>
     </nav>
     <div class="sidebar-footer">
-      <button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button>
+      <button class="nav-item" onclick="logout()" style="width:100%"><span class="icon">🚪</span>Logout</button>
     </div>
   </aside>
-  <main class="main-content">
-    <div class="page-header flex-between mb-32">
-      <div><h2>My Schedule</h2><p>Book, view and manage your training sessions</p></div>
+
+  <main class="main-content" style="padding-bottom:0">
+
+    <!-- Page header -->
+    <div class="flex-between" style="padding:20px 20px 12px;margin:0 -20px">
+      <div>
+        <h2 style="margin:0;font-size:1.4rem">My Schedule</h2>
+        <p style="margin:2px 0 0;color:var(--text-dim);font-size:13px">Book, view and manage your sessions</p>
+      </div>
       <div id="sessions-badge" class="badge badge-orange"></div>
     </div>
 
-    <!-- Preferred slot panel (rendered by JS) -->
-    <div id="preferred-panel" class="mb-16"></div>
-
-    <!-- Book a session -->
-    <div class="card mb-24">
-      <div class="flex-between mb-16" style="flex-wrap:wrap;gap:10px">
-        <div class="section-title" style="margin:0">Book a New Session</div>
-        <button class="btn btn-dark btn-sm" onclick="toggleExpandAll()" id="expand-toggle-btn">Expand All ▼</button>
-      </div>
-      <div id="slots-wrap"><div class="spinner"></div></div>
+    <!-- Date strip -->
+    <div class="date-strip-section">
+      <div class="month-label" id="month-label">July</div>
+      <div class="date-strip" id="date-strip"></div>
     </div>
 
-    <!-- Sticky confirm bar (shown when slot selected) -->
-    <div id="book-confirm" class="confirm-bar hidden">
-      <div style="flex:1;min-width:0">
-        <div id="selected-slot-preview" style="font-size:14px;color:var(--white)"></div>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="confirmBook()">Confirm Booking →</button>
-      <button class="btn btn-dark btn-sm" onclick="clearSelection()">✕ Cancel</button>
+    <!-- Tab bar -->
+    <div class="sched-tab-bar">
+      <button class="sched-tab" id="tab-btn-booked" onclick="switchTab('booked')">📋&nbsp; Booked PT</button>
+      <button class="sched-tab active" id="tab-btn-slots"  onclick="switchTab('slots')">📅&nbsp; Schedule</button>
     </div>
 
-    <!-- Upcoming bookings -->
-    <div class="section-title">My Bookings</div>
-    <div id="my-bookings"><div class="spinner"></div></div>
+    <!-- ── Tab 1: Booked PT ── -->
+    <div class="tab-panel hidden" id="tab-booked">
+      <div id="booked-content"><div class="spinner"></div></div>
+    </div>
+
+    <!-- ── Tab 2: Schedule (slots for selected date) ── -->
+    <div class="tab-panel" id="tab-slots">
+      <div id="pref-panel-inline"></div>
+      <div id="slots-content"><div class="spinner"></div></div>
+    </div>
+
   </main>
 </div>
+
+<!-- Sticky confirm bar (shown when slot selected) -->
+<div id="book-confirm" class="confirm-bar hidden">
+  <div class="confirm-bar-info">
+    <div class="confirm-bar-title" id="confirm-title">Select a slot</div>
+    <div class="confirm-bar-sub"  id="confirm-sub"></div>
+  </div>
+  <button class="btn btn-primary" onclick="confirmBook()" style="white-space:nowrap">Confirm →</button>
+  <button class="btn btn-dark"    onclick="clearSelection()" style="padding:8px 10px;font-size:18px;line-height:1">✕</button>
+</div>
+
 <div id="toast-container"></div>
+
 <!-- Reschedule Modal -->
 <div class="modal-overlay hidden" id="reschedule-modal" onclick="if(event.target===this)closeRescheduleModal()">
   <div class="modal" style="max-width:500px">
@@ -135,23 +286,26 @@
       </div>
       <button onclick="closeRescheduleModal()" style="background:var(--dark);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:18px;cursor:pointer;line-height:1" title="Close">✕</button>
     </div>
-    <div style="font-size:13px;color:var(--text-dim);margin-bottom:12px">Pick a new slot — your current session will be freed up. Cancellations within 24 hrs of your current session are not allowed.</div>
+    <div style="font-size:13px;color:var(--text-dim);margin-bottom:12px">Pick a new slot — your current session will be freed up. Requires 24 hrs notice on your current session.</div>
     <div id="rs-slots-loading"><div class="spinner"></div></div>
     <div class="rs-slots-wrap hidden" id="rs-slots-wrap"></div>
     <div style="display:flex;gap:10px;padding-top:20px;margin-top:8px;border-top:1px solid var(--border)">
-      <button class="btn btn-dark" style="flex:1" onclick="closeRescheduleModal()">Cancel</button>
-      <button class="btn btn-primary" id="rs-confirm-btn" style="flex:1.5" onclick="confirmReschedule()" disabled>Choose a slot above</button>
+      <button class="btn btn-dark"    style="flex:1"   onclick="closeRescheduleModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1.5" id="rs-confirm-btn" onclick="confirmReschedule()" disabled>Choose a slot above</button>
     </div>
   </div>
 </div>
 
 <script src="/js/app.js"></script>
 <script>
-  let membership    = null;
-  let selectedSlot  = null;
-  let allExpanded   = false;
-  let _preferredTime = null;  // "HH:MM" or null
-  let _allSlots      = [];    // last loaded slots
+  // ── State ─────────────────────────────────────────────────────────────────
+  let membership     = null;
+  let selectedSlot   = null;
+  let _preferredTime = null;
+  let _allSlots      = [];
+  let _rsBookingId   = null;
+  let _rsChosenSlot  = null;
+  let _selectedDate  = new Date().toISOString().split('T')[0];
 
   // ── Init ──────────────────────────────────────────────────────────────────
   async function init() {
@@ -162,143 +316,182 @@
     _preferredTime = data.profile?.preferred_time || null;
 
     const rem = membership ? membership.sessions_total - membership.sessions_used : 0;
-    document.getElementById('sessions-badge').textContent = rem + ' Sessions Remaining';
+    document.getElementById('sessions-badge').textContent = rem > 0 ? rem + ' Sessions Left' : 'No Sessions';
 
-    renderPreferredPanel();
-    loadSlots();
-    loadMyBookings();
+    buildDateStrip();
+    await Promise.all([loadSlots(), loadMyBookings()]);
   }
 
-  // ── Preferred slot panel ──────────────────────────────────────────────────
-  function renderPreferredPanel() {
-    const el = document.getElementById('preferred-panel');
-    if (!_preferredTime) { el.innerHTML = ''; return; }
+  // ── Date strip ────────────────────────────────────────────────────────────
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-    el.innerHTML = `
-      <div class="card" style="background:linear-gradient(135deg,rgba(255,92,0,0.08),rgba(255,92,0,0.03));border-color:rgba(255,92,0,0.3);margin-bottom:0">
-        <div class="flex-between mb-12" style="flex-wrap:wrap;gap:8px">
-          <div>
-            <div style="font-weight:700;color:var(--white);font-size:15px">⭐ Your Usual Slot — ${formatTime(_preferredTime)}</div>
-            <div class="text-dim text-small">Next available sessions at your preferred time</div>
-          </div>
-          <button class="btn btn-dark btn-sm" onclick="clearPreferredTime()">✕ Clear</button>
-        </div>
-        <div id="pref-slots-wrap" class="slot-chips">
-          <div class="spinner" style="width:20px;height:20px"></div>
-        </div>
-      </div>
-    `;
-  }
+  function buildDateStrip() {
+    const strip    = document.getElementById('date-strip');
+    const todayStr = new Date().toISOString().split('T')[0];
+    let html = '';
 
-  function renderPreferredSlots(slots) {
-    if (!_preferredTime) return;
-    const el = document.getElementById('pref-slots-wrap');
-    if (!el) return;
+    for (let i = -7; i <= 14; i++) {
+      const d  = new Date();
+      d.setDate(d.getDate() + i);
+      const ds  = d.toISOString().split('T')[0];
+      const num = d.getDate();
+      const isToday    = i === 0;
+      const isPast     = ds < todayStr;
+      const isSelected = ds === _selectedDate && !isToday;
+      const dayLabel   = isToday ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' });
 
-    const matched = slots.filter(s => s.start_time === _preferredTime);
+      let cls = 'date-pill';
+      if (isToday)    cls += ' today';
+      if (isSelected) cls += ' selected';
+      if (isPast)     cls += ' past';
 
-    if (!matched.length) {
-      el.innerHTML = '<p class="text-dim text-small" style="padding:4px 0">No upcoming slots at your preferred time. See all times below.</p>';
-      return;
-    }
-
-    el.innerHTML = matched.map(s => {
-      const localDate = new Date(`${s.date}T${s.start_time}:00+05:30`)
-        .toLocaleDateString('en-US', { timeZone: window.__userTz, weekday: 'short', month: 'short', day: 'numeric' });
-      const enc = JSON.stringify(s).replace(/"/g, '&quot;');
-      return `<div class="slot-chip" id="pchip-${s.id}" onclick="selectSlot(${enc})" style="text-align:center">
-        <div style="font-size:11px;color:var(--text-dim);margin-bottom:1px">${localDate}</div>
-        <div>${formatSessionTime(s.start_time, s.date)}</div>
-        <div class="slot-coach-tag">${s.coach_name}</div>
+      html += `<div class="${cls}" id="dp-${ds}" onclick="selectDate('${ds}')">
+        <div class="dp-num">${num}</div>
+        <div class="dp-day">${dayLabel}</div>
       </div>`;
-    }).join('');
+    }
+    strip.innerHTML = html;
+    updateMonthLabel(_selectedDate);
+
+    // Scroll today into view after paint
+    requestAnimationFrame(() => {
+      document.getElementById('dp-' + todayStr)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    });
   }
 
-  // ── Load all slots ────────────────────────────────────────────────────────
-  async function loadSlots() {
-    document.getElementById('slots-wrap').innerHTML = '<div class="spinner"></div>';
-    clearSelection();
+  function updateMonthLabel(dateStr) {
+    const d = new Date(dateStr + 'T12:00:00');
+    document.getElementById('month-label').textContent = MONTHS[d.getMonth()];
+  }
 
+  function selectDate(dateStr) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    // Update pill styles
+    document.querySelectorAll('.date-pill').forEach(p => {
+      const pid     = p.id.replace('dp-', '');
+      const isToday = pid === todayStr;
+      if (isToday) return; // today pill keeps its own style
+      p.classList.toggle('selected', pid === dateStr);
+    });
+    _selectedDate = dateStr;
+    updateMonthLabel(dateStr);
+    clearSelection();
+    // Auto-switch to schedule tab and show slots
+    switchTab('slots');
+    renderSlotsForDate(dateStr);
+  }
+
+  // Mark date pills that have available slots
+  function markDatesWithSlots() {
+    const slotDates = new Set(_allSlots.map(s => {
+      return new Date(`${s.date}T${s.start_time}:00+05:30`)
+        .toLocaleDateString('en-CA', { timeZone: window.__userTz });
+    }));
+    slotDates.forEach(d => document.getElementById('dp-' + d)?.classList.add('has-slots'));
+  }
+
+  // ── Tab switching ─────────────────────────────────────────────────────────
+  function switchTab(tab) {
+    document.getElementById('tab-btn-booked').classList.toggle('active', tab === 'booked');
+    document.getElementById('tab-btn-slots').classList.toggle('active',  tab === 'slots');
+    document.getElementById('tab-booked').classList.toggle('hidden', tab !== 'booked');
+    document.getElementById('tab-slots').classList.toggle('hidden',  tab !== 'slots');
+  }
+
+  // ── Load all available slots ──────────────────────────────────────────────
+  async function loadSlots() {
+    document.getElementById('slots-content').innerHTML = '<div class="spinner"></div>';
     const data = await api.get('/api/bookings/slots');
     _allSlots = data?.slots || [];
+    markDatesWithSlots();
+    renderPrefPanelInline();
+    renderSlotsForDate(_selectedDate);
+  }
 
-    if (!_allSlots.length) {
-      document.getElementById('slots-wrap').innerHTML = '<p class="text-dim" style="padding:8px 0">No upcoming slots available yet. Check back soon.</p>';
-      renderPreferredSlots([]);
+  // ── Render slots for the selected date ───────────────────────────────────
+  function renderSlotsForDate(dateStr) {
+    const el = document.getElementById('slots-content');
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    if (dateStr < todayStr) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📅</div><div class="empty-state-title">Past date</div><p>No sessions available for past dates.</p></div>`;
       return;
     }
 
-    renderPreferredSlots(_allSlots);
-
-    // Group by member's local date
-    const grouped = {};
-    _allSlots.forEach(s => {
+    // Filter slots that fall on this local date (timezone-aware)
+    const slotsForDate = _allSlots.filter(s => {
       const localDate = new Date(`${s.date}T${s.start_time}:00+05:30`)
         .toLocaleDateString('en-CA', { timeZone: window.__userTz });
-      (grouped[localDate] = grouped[localDate] || []).push(s);
+      return localDate === dateStr;
     });
 
-    const entries = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
-    document.getElementById('slots-wrap').innerHTML = entries.map(([d, slots], idx) => {
-      const isOpen = idx === 0;
-      const dateLabel = new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short' });
-      const chips = slots.map(s => {
-        const enc = JSON.stringify(s).replace(/"/g, '&quot;');
-        return `<div class="slot-chip" id="chip-${s.id}" onclick="selectSlot(${enc})">
-          ${formatSessionTime(s.start_time, s.date)}
-          <div class="slot-coach-tag">${s.coach_name}</div>
+    const d         = new Date(dateStr + 'T12:00:00');
+    const dateLabel = d.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    if (!slotsForDate.length) {
+      el.innerHTML = `
+        <div style="font-size:12px;font-weight:700;color:var(--text-dim);letter-spacing:.8px;margin-bottom:16px">
+          ${dateLabel.toUpperCase()}
+        </div>
+        <div class="empty-state">
+          <div class="empty-state-icon">📭</div>
+          <div class="empty-state-title">No slots on this day</div>
+          <p>Try a different date or check back later.</p>
         </div>`;
-      }).join('');
-      return `<div class="date-group" id="dg-${d}">
-        <div class="date-group-header${isOpen ? ' open' : ''}" onclick="toggleGroup('${d}')">
-          <span class="date-group-label">${dateLabel}</span>
-          <div class="date-group-meta">
-            <span class="date-slot-count">${slots.length} slot${slots.length !== 1 ? 's' : ''}</span>
-            <span class="date-chevron${isOpen ? ' open' : ''}">▼</span>
-          </div>
-        </div>
-        <div class="date-group-body${isOpen ? ' open' : ''}">
-          <div class="slot-chips">${chips}</div>
-        </div>
+      return;
+    }
+
+    const tiles = slotsForDate.map(s => {
+      const enc  = JSON.stringify(s).replace(/"/g, '&quot;');
+      const isPref = s.start_time === _preferredTime;
+      return `<div class="slot-tile${isPref ? ' pref' : ''}" id="chip-${s.id}" onclick="selectSlot(${enc})">
+        <div class="st-time">${formatSessionTime(s.start_time, s.date)}</div>
+        <div class="st-coach">${s.coach_name}</div>
+        ${isPref ? `<div class="st-star">⭐ Usual</div>` : ''}
       </div>`;
     }).join('');
+
+    el.innerHTML = `
+      <div style="font-size:12px;font-weight:700;color:var(--text-dim);letter-spacing:.8px;margin-bottom:16px">
+        ${dateLabel.toUpperCase()} &nbsp;·&nbsp; <span style="color:var(--orange)">${slotsForDate.length} slot${slotsForDate.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="slot-grid">${tiles}</div>`;
   }
 
-  function toggleGroup(d) {
-    const header = document.querySelector(`#dg-${d} .date-group-header`);
-    const body   = document.querySelector(`#dg-${d} .date-group-body`);
-    const chev   = document.querySelector(`#dg-${d} .date-chevron`);
-    const opening = !body.classList.contains('open');
-    header.classList.toggle('open', opening);
-    body.classList.toggle('open', opening);
-    chev.classList.toggle('open', opening);
-  }
-
-  function toggleExpandAll() {
-    allExpanded = !allExpanded;
-    document.querySelectorAll('.date-group-header').forEach(h => h.classList.toggle('open', allExpanded));
-    document.querySelectorAll('.date-group-body').forEach(b => b.classList.toggle('open', allExpanded));
-    document.querySelectorAll('.date-chevron').forEach(c => c.classList.toggle('open', allExpanded));
-    document.getElementById('expand-toggle-btn').textContent = allExpanded ? 'Collapse All ▲' : 'Expand All ▼';
+  // ── Preferred slot panel (inside Schedule tab) ────────────────────────────
+  function renderPrefPanelInline() {
+    const el = document.getElementById('pref-panel-inline');
+    if (!_preferredTime) { el.innerHTML = ''; return; }
+    el.innerHTML = `
+      <div class="pref-strip">
+        <div>
+          <div class="pref-strip-label">⭐ Your usual slot — ${formatTime(_preferredTime)}</div>
+          <div class="pref-strip-sub">Slots at your preferred time are marked ⭐ below</div>
+        </div>
+        <button class="btn btn-dark btn-sm" onclick="clearPreferredTime()" style="white-space:nowrap;font-size:12px">✕ Clear</button>
+      </div>`;
   }
 
   // ── Slot selection ────────────────────────────────────────────────────────
   function selectSlot(slot) {
     selectedSlot = slot;
-    document.querySelectorAll('.slot-chip').forEach(el => el.classList.remove('selected'));
-    document.getElementById('chip-'  + slot.id)?.classList.add('selected');
-    document.getElementById('pchip-' + slot.id)?.classList.add('selected');
-    document.getElementById('selected-slot-preview').innerHTML =
-      `<strong>${formatSessionDate(slot.date, slot.start_time)}</strong> &nbsp;·&nbsp; ` +
-      `${formatSessionTime(slot.start_time, slot.date)} – ${formatSessionTime(slot.end_time, slot.date)} &nbsp;·&nbsp; ` +
-      `Coach: ${slot.coach_name} &nbsp;<span class="badge badge-orange" style="vertical-align:middle">1 hr</span>`;
+    document.querySelectorAll('.slot-tile').forEach(el => el.classList.remove('selected'));
+    document.getElementById('chip-' + slot.id)?.classList.add('selected');
+
+    document.getElementById('confirm-title').textContent =
+      formatSessionDate(slot.date, slot.start_time) + '  ·  ' +
+      formatSessionTime(slot.start_time, slot.date) + ' – ' +
+      formatSessionTime(slot.end_time,   slot.date) + '  ' + tzLabel();
+    document.getElementById('confirm-sub').textContent = 'Coach: ' + slot.coach_name + '  ·  1 hour session';
     document.getElementById('book-confirm').classList.remove('hidden');
+    document.body.classList.add('has-confirm-bar');
   }
 
   function clearSelection() {
     selectedSlot = null;
     document.getElementById('book-confirm').classList.add('hidden');
-    document.querySelectorAll('.slot-chip').forEach(el => el.classList.remove('selected'));
+    document.body.classList.remove('has-confirm-bar');
+    document.querySelectorAll('.slot-tile').forEach(el => el.classList.remove('selected'));
   }
 
   // ── Book ──────────────────────────────────────────────────────────────────
@@ -306,112 +499,148 @@
     if (!selectedSlot) return;
     if (!membership?.id) return toast('No active membership. Please renew.', 'error');
 
+    const btn = document.querySelector('#book-confirm .btn-primary');
+    btn.disabled = true; btn.textContent = 'Booking…';
+
     const bookedTime = selectedSlot.start_time;
     const data = await api.post('/api/bookings/book', { slot_id: selectedSlot.id, membership_id: membership.id });
+
     if (data?.success) {
-      toast('Session booked! 🎉 Check your email for Meet link.', 'success');
-      // Nudge: track booking frequency per time in localStorage
+      toast('Session booked! 🎉', 'success');
       if (!_preferredTime) {
-        const key = 'ftbook_' + bookedTime;
+        const key   = 'ftbook_' + bookedTime;
         const count = parseInt(localStorage.getItem(key) || '0') + 1;
         localStorage.setItem(key, count);
         if (count >= 2) setTimeout(() => showPreferenceNudge(bookedTime), 1200);
       }
+      clearSelection();
       loadSlots();
       loadMyBookings();
     } else {
       toast(data?.error || 'Booking failed', 'error');
     }
+    btn.disabled = false; btn.textContent = 'Confirm →';
   }
 
-  // ── Preference nudge (appears after 2nd booking at same time) ─────────────
+  // ── My Bookings (Booked PT tab) ───────────────────────────────────────────
+  async function loadMyBookings() {
+    document.getElementById('booked-content').innerHTML = '<div class="spinner"></div>';
+    const data = await api.get('/api/bookings/my');
+    const el   = document.getElementById('booked-content');
+
+    if (!data?.bookings?.length) {
+      el.innerHTML = `<div class="empty-state">
+        <div class="empty-state-icon">📋</div>
+        <div class="empty-state-title">No bookings yet</div>
+        <p>Switch to <strong>Schedule</strong> tab to book your first session.</p>
+      </div>`;
+      return;
+    }
+
+    // Separate upcoming vs past
+    const now = Date.now();
+    const upcoming = data.bookings.filter(b => !b.is_completed && b.status !== 'cancelled');
+    const past     = data.bookings.filter(b =>  b.is_completed || b.status === 'cancelled');
+
+    let html = '';
+
+    if (upcoming.length) {
+      html += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:.8px;margin-bottom:12px">UPCOMING SESSIONS</div>`;
+      html += upcoming.map(b => renderBookingCard(b, false)).join('');
+    }
+
+    if (past.length) {
+      html += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:.8px;margin:24px 0 12px">PAST & CANCELLED</div>`;
+      html += past.map(b => renderBookingCard(b, true)).join('');
+    }
+
+    el.innerHTML = html;
+  }
+
+  function renderBookingCard(b, isPast) {
+    const localDt  = new Date(`${b.date}T${b.start_time}:00+05:30`);
+    const day      = localDt.toLocaleString('en-US', { timeZone: window.__userTz, day: 'numeric' });
+    const mon      = localDt.toLocaleString('en-US', { timeZone: window.__userTz, month: 'short' }).toUpperCase();
+    const statusCls = b.is_completed ? 'badge-green' : b.status === 'cancelled' ? 'badge-red' : 'badge-orange';
+    const statusTxt = b.is_completed ? 'Completed'   : b.status === 'cancelled' ? 'Cancelled'  : 'Confirmed';
+    const coachSafe = (b.coach_name || '').replace(/'/g, "\\'");
+
+    let actions = '';
+    if (!b.is_completed && b.status !== 'cancelled') {
+      if (!isMeetExpired(b.date, b.start_time) && b.meet_link) {
+        actions += `<a href="${meetUrl(b.meet_link, b.id)}" target="_blank" class="btn btn-primary">Join Meet</a>`;
+      }
+      actions += `<button class="btn" style="background:rgba(255,92,0,.1);border-color:rgba(255,92,0,.3);color:var(--orange)" onclick="openReschedule(${b.id},'${b.date}','${b.start_time}','${coachSafe}')">🔄 Reschedule</button>`;
+      actions += `<button class="btn btn-dark" onclick="cancelBooking(${b.id})">Cancel</button>`;
+    }
+
+    return `
+      <div class="booking-card${isPast ? ' past-session' : ''}">
+        <div class="booking-card-top">
+          <div class="bk-date-box">
+            <div class="bk-day">${day}</div>
+            <div class="bk-mon">${mon}</div>
+          </div>
+          <div class="bk-info">
+            <div class="bk-coach">Session with ${b.coach_name}</div>
+            <div class="bk-time">${formatSessionDate(b.date, b.start_time)}&nbsp;&nbsp;${formatSessionTime(b.start_time, b.date)} – ${formatSessionTime(b.end_time, b.date)} <span style="color:var(--text-dim)">${tzLabel()}</span></div>
+          </div>
+          <span class="badge ${statusCls}" style="flex-shrink:0">${statusTxt}</span>
+        </div>
+        ${actions ? `<div class="bk-actions">${actions}</div>` : ''}
+      </div>`;
+  }
+
+  async function cancelBooking(id) {
+    if (!confirm('Cancel this session? (24 hr notice required)')) return;
+    const data = await api.post('/api/bookings/cancel/' + id, { reason: 'Customer requested' });
+    if (data?.success) { toast('Session cancelled', 'info'); loadMyBookings(); loadSlots(); }
+    else toast(data?.error || 'Cancellation failed', 'error');
+  }
+
+  // ── Preference nudge ──────────────────────────────────────────────────────
   function showPreferenceNudge(time) {
     if (document.getElementById('pref-nudge')) return;
     const nudge = document.createElement('div');
     nudge.id = 'pref-nudge';
-    nudge.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:200;max-width:420px;width:calc(100% - 32px)';
+    nudge.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:200;max-width:420px;width:calc(100% - 32px)';
     nudge.innerHTML = `
-      <div class="card" style="background:var(--card);border-color:rgba(255,92,0,0.45);box-shadow:0 8px 32px rgba(0,0,0,0.5)">
+      <div class="card" style="background:var(--card);border-color:rgba(255,92,0,.45);box-shadow:0 8px 32px rgba(0,0,0,.5)">
         <div style="font-weight:700;color:var(--white);margin-bottom:4px">💡 Save your preferred time?</div>
-        <div class="text-dim text-small mb-16">You often book <strong style="color:var(--white)">${formatTime(time)}</strong>. Save it to see available slots faster every time.</div>
+        <div class="text-dim text-small mb-16">You often book <strong style="color:var(--white)">${formatTime(time)}</strong>. Save it to see your usual slot highlighted.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-primary btn-sm" onclick="savePreferredTime('${time}')">⭐ Yes, save it</button>
-          <button class="btn btn-dark btn-sm" onclick="dismissNudge()">Not now</button>
+          <button class="btn btn-dark btn-sm"    onclick="dismissNudge()">Not now</button>
         </div>
-      </div>
-    `;
+      </div>`;
     document.body.appendChild(nudge);
     setTimeout(() => nudge.remove(), 15000);
   }
 
   function dismissNudge() { document.getElementById('pref-nudge')?.remove(); }
 
-  // ── Save / clear preferred time ───────────────────────────────────────────
   async function savePreferredTime(time) {
     const data = await api.put('/api/customer/preferred-slot', { preferred_time: time });
     if (data?.success) {
       _preferredTime = time;
       dismissNudge();
       toast('Preferred time saved! ⭐', 'success');
-      renderPreferredPanel();
-      renderPreferredSlots(_allSlots);
-    } else {
-      toast('Failed to save preference', 'error');
-    }
+      renderPrefPanelInline();
+      renderSlotsForDate(_selectedDate);
+    } else toast('Failed to save preference', 'error');
   }
 
   async function clearPreferredTime() {
     const data = await api.put('/api/customer/preferred-slot', { preferred_time: null });
     if (data?.success) {
       _preferredTime = null;
-      renderPreferredPanel();
+      renderPrefPanelInline();
+      renderSlotsForDate(_selectedDate);
       toast('Preferred time cleared', 'info');
     }
   }
 
-  // ── My bookings ───────────────────────────────────────────────────────────
-  async function loadMyBookings() {
-    const data = await api.get('/api/bookings/my');
-    const el = document.getElementById('my-bookings');
-    if (!data?.bookings?.length) {
-      el.innerHTML = '<div class="card"><p class="text-dim">No bookings yet.</p></div>'; return;
-    }
-    el.innerHTML = data.bookings.map(b => {
-      const localDt  = new Date(`${b.date}T${b.start_time}:00+05:30`);
-      const localDay = localDt.toLocaleString('en-US', { timeZone: window.__userTz, day: 'numeric' });
-      const localMon = localDt.toLocaleString('en-US', { timeZone: window.__userTz, month: 'short' }).toUpperCase();
-      const status   = b.is_completed ? 'badge-green' : b.status === 'cancelled' ? 'badge-red' : 'badge-orange';
-      const label    = b.is_completed ? 'Completed' : b.status === 'cancelled' ? 'Cancelled' : 'Confirmed';
-      return `
-        <div class="booking-row">
-          <div class="booking-date-box">
-            <div class="booking-day">${localDay}</div>
-            <div class="booking-mon">${localMon}</div>
-          </div>
-          <div style="flex:1">
-            <div style="color:var(--white);font-weight:600">Session with ${b.coach_name}</div>
-            <div class="text-dim text-small">${formatSessionDate(b.date, b.start_time)} · ${formatSessionTime(b.start_time, b.date)} – ${formatSessionTime(b.end_time, b.date)} ${tzLabel()}</div>
-          </div>
-          <span class="badge ${status}">${label}</span>
-          ${!b.is_completed && b.status !== 'cancelled' && !isMeetExpired(b.date, b.start_time) ? `<a href="${meetUrl(b.meet_link, b.id)}" target="_blank" class="btn btn-primary btn-sm">Join Meet</a>` : ''}
-          ${!b.is_completed && b.status !== 'cancelled' ? `<button class="btn btn-sm" style="background:rgba(255,92,0,.12);border-color:rgba(255,92,0,.3);color:var(--orange)" onclick="openReschedule(${b.id}, '${b.date}', '${b.start_time}', '${(b.coach_name||'').replace(/'/g,"\\'")}')">🔄 Reschedule</button>` : ''}
-          ${!b.is_completed && b.status !== 'cancelled' ? `<button class="btn btn-dark btn-sm" onclick="cancelBooking(${b.id})">Cancel</button>` : ''}
-        </div>
-      `;
-    }).join('');
-  }
-
-  async function cancelBooking(id) {
-    if (!confirm('Cancel this session? (24hr notice required)')) return;
-    const data = await api.post('/api/bookings/cancel/' + id, { reason: 'Customer requested' });
-    if (data?.success) { toast('Session cancelled', 'info'); loadMyBookings(); }
-    else toast(data?.error || 'Cancellation failed', 'error');
-  }
-
-  // ── Reschedule ───────────────────────────────────────────────────────────
-  let _rsBookingId   = null;
-  let _rsChosenSlot  = null;
-
+  // ── Reschedule ────────────────────────────────────────────────────────────
   async function openReschedule(bookingId, date, startTime, coachName) {
     _rsBookingId  = bookingId;
     _rsChosenSlot = null;
@@ -423,17 +652,15 @@
     document.getElementById('rs-slots-wrap').classList.add('hidden');
     document.getElementById('reschedule-modal').classList.remove('hidden');
 
-    // Load available slots (all coaches, all upcoming)
     const data = await api.get('/api/bookings/slots');
     document.getElementById('rs-slots-loading').classList.add('hidden');
 
     if (!data?.slots?.length) {
-      document.getElementById('rs-slots-wrap').innerHTML = '<p class="text-dim" style="padding:8px 0">No available slots right now. Check back soon.</p>';
+      document.getElementById('rs-slots-wrap').innerHTML = '<p class="text-dim" style="padding:8px 0">No available slots right now.</p>';
       document.getElementById('rs-slots-wrap').classList.remove('hidden');
       return;
     }
 
-    // Group by date
     const byDate = {};
     for (const s of data.slots) {
       if (!byDate[s.date]) byDate[s.date] = [];
@@ -445,9 +672,10 @@
       const label = new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'short' });
       html += `<div class="rs-date-label">${label.toUpperCase()}</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px">`;
       for (const s of slots) {
-        const timeLabel = formatSessionTime(s.start_time, s.date);
-        const enc = JSON.stringify(s).replace(/'/g, "\\'");
-        html += `<div class="rs-slot-chip" id="rschip-${s.id}" onclick="selectRsSlot(${s.id}, '${s.date}', '${s.start_time}', '${(s.coach_name||'').replace(/'/g,"\\'")}', this)">${timeLabel}<br><span style="font-size:10px;color:var(--text-dim);font-weight:400">${s.coach_name||''}</span></div>`;
+        html += `<div class="rs-slot-chip" id="rschip-${s.id}" onclick="selectRsSlot(${s.id},'${s.date}','${s.start_time}','${(s.coach_name||'').replace(/'/g,"\\'")}',this)">
+          ${formatSessionTime(s.start_time, s.date)}<br>
+          <span style="font-size:10px;color:var(--text-dim);font-weight:400">${s.coach_name||''}</span>
+        </div>`;
       }
       html += '</div>';
     }
@@ -477,8 +705,7 @@
       loadSlots();
     } else {
       toast(data?.error || 'Reschedule failed', 'error');
-      btn.disabled = false;
-      btn.textContent = 'Confirm Reschedule';
+      btn.disabled = false; btn.textContent = 'Confirm Reschedule';
     }
   }
 
@@ -487,9 +714,7 @@
     _rsBookingId = null; _rsChosenSlot = null;
   }
 
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeRescheduleModal();
-  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRescheduleModal(); });
 
   init();
 </script>
