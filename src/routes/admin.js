@@ -797,6 +797,7 @@ router.get('/monthly-games/:id/participants', async (req, res) => {
       FROM users u
       LEFT JOIN monthly_game_participants p ON p.game_id=? AND p.user_id=u.id
       WHERE u.role='customer' AND u.is_active=1 AND u.deleted_at IS NULL
+        AND u.email NOT LIKE '%@fitanya.local'
       ORDER BY days_completed DESC
     `, [game.start_date, game.end_date, id]);
 
@@ -830,6 +831,7 @@ router.post('/monthly-games/:id/process-winners', async (req, res) => {
            AND s.date>=? AND s.date<=?) as days_completed
       FROM users u
       WHERE u.role='customer' AND u.is_active=1 AND u.deleted_at IS NULL
+        AND u.email NOT LIKE '%@fitanya.local'
     `, [game.start_date, game.end_date]);
 
     const { createNotification } = require('../services/notifications');
