@@ -500,13 +500,19 @@
   }
 
   // ── Preferred slot panel (inside Schedule tab) ────────────────────────────
+  // Format a stored IST time string in the member's own timezone (use today as reference date)
+  function fmtPrefTime(timeStr) {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: window.__userTz || 'Asia/Kolkata' }).format(new Date());
+    return formatSessionTime(timeStr, today);
+  }
+
   function renderPrefPanelInline() {
     const el = document.getElementById('pref-panel-inline');
     if (!_preferredTime) { el.innerHTML = ''; return; }
     el.innerHTML = `
       <div class="pref-strip">
         <div>
-          <div class="pref-strip-label">⭐ Your usual slot — ${formatTime(_preferredTime)}</div>
+          <div class="pref-strip-label">⭐ Your usual slot — ${fmtPrefTime(_preferredTime)}</div>
           <div class="pref-strip-sub">Slots at your preferred time are marked ⭐ below</div>
         </div>
         <button class="btn btn-dark btn-sm" onclick="clearPreferredTime()" style="white-space:nowrap;font-size:12px">✕ Clear</button>
@@ -661,7 +667,7 @@
     nudge.innerHTML = `
       <div class="card" style="background:var(--card);border-color:rgba(255,92,0,.45);box-shadow:0 8px 32px rgba(0,0,0,.5)">
         <div style="font-weight:700;color:var(--white);margin-bottom:4px">💡 Save your preferred time?</div>
-        <div class="text-dim text-small mb-16">You often book <strong style="color:var(--white)">${formatTime(time)}</strong>. Save it to see your usual slot highlighted.</div>
+        <div class="text-dim text-small mb-16">You often book <strong style="color:var(--white)">${fmtPrefTime(time)}</strong>. Save it to see your usual slot highlighted.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-primary btn-sm" onclick="savePreferredTime('${time}')">⭐ Yes, save it</button>
           <button class="btn btn-dark btn-sm"    onclick="dismissNudge()">Not now</button>
