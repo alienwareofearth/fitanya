@@ -569,7 +569,34 @@
     const data = await api.get('/api/bookings/my');
     const el   = document.getElementById('booked-content');
 
-    if (!data?.bookings?.length) {
+    // Compute today & tomorrow in the member's timezone
+    const tz       = window.__userTz || 'Asia/Kolkata';
+    const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+    const tomorrowDt = new Date(); tomorrowDt.setDate(tomorrowDt.getDate() + 1);
+    const tomorrowStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(tomorrowDt);
+
+    const active = data.bookings.filter(b => !b.is_completed && b.status !== 'cancelled');
+    const past   = data.bookings.filter(b =>  b.is_completed || b.status === 'cancelled');
+
+    const todaySessions    = active.filter(b => b.date === todayStr);
+    const tomorrowSessions = active.filter(b => b.date === tomorrowStr);
+    const futureSessions   = active.filter(b => b.date > tomorrowStr);
+
+    const sectionLabel = (txt, mt = '0') =>
+      `<div style="font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:.8px;margin:${mt} 0 12px">${txt}</div>`;
+
+    let html = '';
+
+    if (todaySessions.length)
+      html += sectionLabel('TODAY') + todaySessions.map(b => renderBookingCard(b, false)).join('');
+
+    if (tomorrowSessions.length)
+      html += sectionLabel('TOMORROW', todaySessions.length ? '24px' : '0') + tomorrowSessions.map(b => renderBookingCard(b, false)).join('');
+
+    if (futureSessions.length)
+      html += sectionLabel('UPCOMING', (todaySessions.length || tomorrowSessions.length) ? '24px' : '0') + futureSessions.map(b => renderBookingCard(b, false)).join('');
+
+    if (!active.length && !past.length) {
       el.innerHTML = `<div class="empty-state">
         <div class="empty-state-icon">📋</div>
         <div class="empty-state-title">No bookings yet</div>
@@ -578,22 +605,8 @@
       return;
     }
 
-    // Separate upcoming vs past
-    const now = Date.now();
-    const upcoming = data.bookings.filter(b => !b.is_completed && b.status !== 'cancelled');
-    const past     = data.bookings.filter(b =>  b.is_completed || b.status === 'cancelled');
-
-    let html = '';
-
-    if (upcoming.length) {
-      html += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:.8px;margin-bottom:12px">UPCOMING SESSIONS</div>`;
-      html += upcoming.map(b => renderBookingCard(b, false)).join('');
-    }
-
-    if (past.length) {
-      html += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:.8px;margin:24px 0 12px">PAST & CANCELLED</div>`;
-      html += past.map(b => renderBookingCard(b, true)).join('');
-    }
+    if (past.length)
+      html += sectionLabel('PAST & CANCELLED', active.length ? '24px' : '0') + past.map(b => renderBookingCard(b, true)).join('');
 
     el.innerHTML = html;
   }
