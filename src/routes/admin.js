@@ -716,12 +716,13 @@ router.post('/monthly-games', async (req, res) => {
       });
       return res.json({ success: true, message: 'Game updated.' });
     }
+    const createdBy = req.session.user.id || null; // master admin has id=0, use NULL for FK
     const ins = await db.execute({
       sql: `INSERT INTO monthly_games (title, edition, tagline, challenge_title, challenge_desc,
             start_date, end_date, reward_percent, reward_sessions, created_by)
             VALUES (?,?,?,?,?,?,?,?,?,?)`,
       args: [title||'Monthly Games', edition||'', tagline||'', challenge_title||'', challenge_desc||null,
-             start_date, end_date, reward_percent||5, reward_sessions||3, req.session.user.id],
+             start_date, end_date, reward_percent||5, reward_sessions||3, createdBy],
     });
     res.json({ success: true, message: 'Game created.', id: Number(ins.lastInsertRowid) });
   } catch (err) { console.error('[admin] monthly-games post:', err.message); res.status(500).json({ error: 'Failed to save.' }); }
