@@ -214,7 +214,7 @@
           </div>
 
           <div class="flex gap-12 mt-8">
-            <button class="btn btn-primary" style="flex:1" onclick="saveGame()">Save Game</button>
+            <button class="btn btn-primary" style="flex:1" onclick="saveGame(this)">Save Game</button>
             <button class="btn notify-btn" id="notify-btn" onclick="sendNotification()" title="Send push notification to all active members">
               📣 Notify All Members
             </button>
@@ -296,8 +296,14 @@
     b.className = 'status-badge ' + (active ? 'active' : 'inactive');
   }
 
-  async function saveGame() {
-    const btn = event.target;
+  async function saveGame(btn) {
+    const startDate = document.getElementById('f-start').value;
+    const endDate   = document.getElementById('f-end').value;
+    if (!startDate || !endDate) {
+      toast('Please set both Start Date and End Date before saving.', 'error');
+      return;
+    }
+
     btn.disabled = true; btn.textContent = 'Saving…';
     const payload = {
       id: document.getElementById('game-id').value || null,
@@ -306,8 +312,8 @@
       tagline: document.getElementById('f-tagline').value,
       challenge_title: document.getElementById('f-challenge-title').value,
       challenge_desc: document.getElementById('f-challenge-desc').value,
-      start_date: document.getElementById('f-start').value,
-      end_date: document.getElementById('f-end').value,
+      start_date: startDate,
+      end_date: endDate,
       reward_percent: parseInt(document.getElementById('f-percent').value) || 5,
       reward_sessions: parseInt(document.getElementById('f-sessions').value) || 3,
     };
@@ -319,8 +325,15 @@
         _game = { ..._game, ...payload, id: data.id || payload.id };
         updatePreview();
         loadParticipants();
-      } else toast(data?.error || 'Failed', 'error');
-    } finally { btn.disabled = false; btn.textContent = 'Save Game'; }
+      } else {
+        toast(data?.error || 'Save failed — please try again.', 'error');
+      }
+    } catch (err) {
+      toast('Network error — check your connection and try again.', 'error');
+      console.error('[saveGame]', err);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save Game';
+    }
   }
 
   async function toggleActive(el) {
