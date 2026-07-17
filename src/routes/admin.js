@@ -758,8 +758,10 @@ router.put('/monthly-games/:id/toggle', async (req, res) => {
 
 // Helper: calculate total challenge days (inclusive)
 function challengeDays(start_date, end_date) {
+  if (!start_date || !end_date) return 0;
   const s = new Date(start_date + 'T00:00:00');
   const e = new Date(end_date   + 'T00:00:00');
+  if (isNaN(s) || isNaN(e)) return 0;
   return Math.round((e - s) / 86400000) + 1;
 }
 
