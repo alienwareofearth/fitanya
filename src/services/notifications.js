@@ -26,10 +26,14 @@ async function getUnreadCount(userId) {
 }
 
 /**
- * Get all notifications for a user (paginated)
+ * Get all notifications for a user (paginated), pruning entries older than 7 days first
  */
 async function getUserNotifications(userId, limit = 20, offset = 0) {
   const db = getDb();
+  await db.execute({
+    sql: `DELETE FROM notifications WHERE user_id = ? AND created_at < datetime('now', '-7 days')`,
+    args: [userId],
+  });
   const result = await db.execute({
     sql: `SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
     args: [userId, limit, offset],
