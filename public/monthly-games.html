@@ -173,8 +173,8 @@
     const p = data.progress;
     const pct  = game.reward_percent;
     const sess = game.reward_sessions;
-    const startFmt = fmtDate(game.start_date);
-    const endFmt   = fmtDate(game.end_date);
+    const startFmt = fmtDate(game.start_date, p.userTz);
+    const endFmt   = fmtDate(game.end_date,   p.userTz);
 
     wrap.innerHTML = `
       <div class="mg-banner">FITANYA PRESENTS</div>
@@ -249,14 +249,15 @@
     // ✓ = completed a session that day (regardless of any cancellations)
     // ✗ = strictly past day (yesterday or earlier) with no completed session
     // ○ = today (still time to complete) or a future day
+    // "today" and all day boundaries come from the server in the member's own timezone.
     const startDt = new Date(p.start_date + 'T00:00:00');
     const completedSet = new Set(completedDates || []);
-    const today = new Date().toISOString().split('T')[0];
+    const today = p.today; // server-computed date in member's timezone
     let dotsHtml = '';
     for (let i = 0; i < totalDays; i++) {
       const dayDt = new Date(startDt.getTime() + i * 86400000);
       const dayStr = dayDt.toISOString().split('T')[0];
-      const isStrictlyPast = dayStr < today; // yesterday or earlier
+      const isStrictlyPast = dayStr < today; // strictly before today in member's TZ
       if (completedSet.has(dayStr)) {
         dotsHtml += `<div class="mg-dot done" title="${dayStr}">✓</div>`;
       } else if (isStrictlyPast) {
@@ -288,9 +289,12 @@
       </div>`;
   }
 
-  function fmtDate(d) {
+  function fmtDate(d, tz) {
     if (!d) return '—';
-    return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }).toUpperCase();
+    return new Date(d + 'T12:00:00').toLocaleDateString('en-IN', {
+      timeZone: tz || window.__userTz || 'Asia/Kolkata',
+      day: '2-digit', month: 'short', year: 'numeric',
+    }).toUpperCase();
   }
 
   function esc(str) {

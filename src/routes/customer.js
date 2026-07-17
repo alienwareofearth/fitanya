@@ -641,17 +641,24 @@ router.get('/monthly-games', async (req, res) => {
     if (!game) return res.json({ success: true, game: null, progress: null });
 
     // Rule: 1 session per day for every day of the challenge.
-    // totalDays = number of days in the challenge period (inclusive).
+    // All date comparisons use the member's own timezone so their local calendar is respected.
+    const profileRes = await db.execute({
+      sql: `SELECT timezone FROM customer_profiles WHERE user_id = ?`,
+      args: [userId],
+    });
+    const userTz = profileRes.rows[0]?.timezone || 'Asia/Kolkata';
+
+    // "today" in the member's local timezone (YYYY-MM-DD)
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: userTz }).format(new Date());
+
     const msPerDay = 86400000;
-    const startDt = new Date(game.start_date + 'T00:00:00');
-    const endDt   = new Date(game.end_date   + 'T00:00:00');
+    const startDt  = new Date(game.start_date + 'T00:00:00');
+    const endDt    = new Date(game.end_date   + 'T00:00:00');
+    const todayDt  = new Date(today           + 'T00:00:00');
     const totalDays = Math.round((endDt - startDt) / msPerDay) + 1;
 
-    const today = new Date().toISOString().split('T')[0];
-    const todayDt = new Date(today + 'T00:00:00');
-
-    // Strictly-past days inside the challenge (yesterday and before, not including today)
-    // Today is excluded because they still have time to complete today's session.
+    // Strictly-past days inside the challenge (yesterday and before in the member's TZ).
+    // Today is excluded — they still have time to complete today's session.
     let strictPastDays = 0;
     if (todayDt > startDt) {
       strictPastDays = Math.min(Math.round((todayDt - startDt) / msPerDay), totalDays);
@@ -669,7 +676,7 @@ router.get('/monthly-games', async (req, res) => {
     });
     const completedDates = completedDatesRes.rows.map(r => r.date);
     const completedDays  = completedDates.length;
-    // Only past days with no completed session are "missed" (today is never missed yet)
+    // Only past days (before today in the member's TZ) with no completed session are "missed"
     const missedDays = Math.max(0, strictPastDays - completedDates.filter(d => d < today).length);
 
     const ended   = today > game.end_date;
@@ -697,6 +704,7 @@ router.get('/monthly-games', async (req, res) => {
         daysElapsed: strictPastDays,
         completedDates, status, officialWinner,
         game_id: game.id, start_date: game.start_date, end_date: game.end_date,
+        today, userTz,
       },
       recentGame: game,
     });
