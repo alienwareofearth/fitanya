@@ -544,27 +544,34 @@
 
   // ── Log form save ───────────────────────────────────────────────────────
   async function saveProgress() {
-    const payload = {
-      weight: document.getElementById('log-weight').value,
-      steps:  document.getElementById('log-steps').value,
-      waist:  document.getElementById('log-waist').value,
-      thigh:  document.getElementById('log-thigh').value,
-      arm:    document.getElementById('log-arm').value,
-      chest:  document.getElementById('log-chest').value,
-      notes:  document.getElementById('log-notes').value,
-    };
-    const data = await api.post('/api/customer/progress', payload);
-    if (data?.success) {
-      toast('Progress saved! 💪', 'success');
-      // Bust cache + in-memory state, reload if section is open
-      pageCache.bust(CACHE_KEYS.progress);
-      _progressData = null;
-      _loaded.progress = false;
-      if (document.getElementById('body-progress').classList.contains('open')) {
-        await loadSection('progress');
+    const btn = document.querySelector('[onclick="saveProgress()"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    try {
+      const payload = {
+        weight: document.getElementById('log-weight').value,
+        steps:  document.getElementById('log-steps').value,
+        waist:  document.getElementById('log-waist').value,
+        thigh:  document.getElementById('log-thigh').value,
+        arm:    document.getElementById('log-arm').value,
+        chest:  document.getElementById('log-chest').value,
+        notes:  document.getElementById('log-notes').value,
+      };
+      const data = await api.post('/api/customer/progress', payload);
+      if (data?.success) {
+        toast('Progress saved! 💪', 'success');
+        pageCache.bust(CACHE_KEYS.progress);
+        _progressData = null;
+        _loaded.progress = false;
+        if (document.getElementById('body-progress').classList.contains('open')) {
+          await loadSection('progress');
+        }
+      } else {
+        toast(data?.error || 'Failed to save — please try again', 'error');
       }
-    } else {
-      toast(data?.error || 'Failed to save', 'error');
+    } catch (e) {
+      toast('Network error — please try again', 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Save Progress 💪'; }
     }
   }
 

@@ -395,16 +395,23 @@ router.post('/progress', async (req, res) => {
     const weekNumber = getWeekNumber(now);
     const year = now.getFullYear();
 
+    // Convert empty strings to null so numeric columns never receive ''
+    const n = v => (v === '' || v === undefined) ? null : v;
+
     await db.execute({
       sql: `INSERT INTO progress_logs (user_id, week_number, year, log_date, weight, steps, waist, thigh, arm, chest, notes)
             VALUES (?, ?, ?, date('now'), ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(user_id, week_number, year) DO UPDATE SET
             weight=excluded.weight, steps=excluded.steps, waist=excluded.waist,
-            thigh=excluded.thigh, arm=excluded.arm, chest=excluded.chest, notes=excluded.notes`,
-      args: [req.session.user.id, weekNumber, year, weight, steps, waist, thigh, arm, chest, notes],
+            thigh=excluded.thigh, arm=excluded.arm, chest=excluded.chest, notes=excluded.notes,
+            log_date=date('now')`,
+      args: [req.session.user.id, weekNumber, year, n(weight), n(steps), n(waist), n(thigh), n(arm), n(chest), n(notes)],
     });
     res.json({ success: true });
-  } catch (err) { console.error('[customer]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+  } catch (err) {
+    console.error('[customer] POST /progress error:', err.message, err.stack);
+    res.status(500).json({ error: 'Failed to save progress. Please try again.' });
+  }
 });
 
 // Check if weight was logged in the last 7 days
