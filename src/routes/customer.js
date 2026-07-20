@@ -650,7 +650,7 @@ router.get('/monthly-games', async (req, res) => {
     // Rule: 1 session per day for every day of the challenge.
     // All date comparisons use the member's own timezone so their local calendar is respected.
     const profileRes = await db.execute({
-      sql: `SELECT timezone FROM customer_profiles WHERE user_id = ?`,
+      sql: `SELECT timezone FROM users WHERE id = ?`,
       args: [userId],
     });
     const userTz = profileRes.rows[0]?.timezone || 'Asia/Kolkata';
