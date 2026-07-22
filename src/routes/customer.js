@@ -648,15 +648,18 @@ router.get('/monthly-games', async (req, res) => {
     if (!game) return res.json({ success: true, game: null, progress: null });
 
     // Rule: 1 session per day for every day of the challenge.
-    // All date comparisons use the member's own timezone so their local calendar is respected.
+    // Game dates and session slot dates are all stored in IST (gym/coach timezone).
+    // All day-boundary calculations (elapsed, missed, SQL bounds) must use IST so they
+    // stay consistent with slot dates regardless of the member's own timezone.
+    // Member's timezone (userTz) is sent to the frontend for display formatting only.
     const profileRes = await db.execute({
       sql: `SELECT timezone FROM users WHERE id = ?`,
       args: [userId],
     });
     const userTz = profileRes.rows[0]?.timezone || 'Asia/Kolkata';
 
-    // "today" in the member's local timezone (YYYY-MM-DD)
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: userTz }).format(new Date());
+    // "today" in IST — the game's reference timezone
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
 
     const msPerDay = 86400000;
     const startDt  = new Date(game.start_date + 'T00:00:00');
@@ -664,8 +667,8 @@ router.get('/monthly-games', async (req, res) => {
     const todayDt  = new Date(today           + 'T00:00:00');
     const totalDays = Math.round((endDt - startDt) / msPerDay) + 1;
 
-    // Strictly-past days inside the challenge (yesterday and before in the member's TZ).
-    // Today is excluded — they still have time to complete today's session.
+    // Strictly-past days inside the challenge (yesterday and before in IST).
+    // Today (IST) is excluded — the member still has time to complete today's session.
     let strictPastDays = 0;
     if (todayDt > startDt) {
       strictPastDays = Math.min(Math.round((todayDt - startDt) / msPerDay), totalDays);
