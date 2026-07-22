@@ -671,15 +671,17 @@ router.get('/monthly-games', async (req, res) => {
       strictPastDays = Math.min(Math.round((todayDt - startDt) / msPerDay), totalDays);
     }
 
-    // Distinct days within the challenge where the member completed a session.
-    // Cancellations are completely ignored — only completed sessions count.
+    // Distinct days within the challenge where the member had a non-cancelled session.
+    // We count any attended/booked (non-cancelled) session whose date has passed —
+    // not just is_completed=1 (which only gets set when coach saves notes).
+    const upperBound = today <= game.end_date ? today : game.end_date;
     const completedDatesRes = await db.execute({
       sql: `SELECT DISTINCT s.date FROM bookings b
             JOIN schedule_slots s ON b.slot_id = s.id
-            WHERE b.customer_id=? AND b.is_completed=1
+            WHERE b.customer_id=? AND b.status != 'cancelled'
               AND s.date >= ? AND s.date <= ?
             ORDER BY s.date`,
-      args: [userId, game.start_date, game.end_date],
+      args: [userId, game.start_date, upperBound],
     });
     const completedDates = completedDatesRes.rows.map(r => r.date);
     const completedDays  = completedDates.length;

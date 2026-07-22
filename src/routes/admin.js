@@ -787,11 +787,14 @@ router.get('/monthly-games/:id/participants', async (req, res) => {
     const totalDays = challengeDays(game.start_date, game.end_date);
     const elapsed   = daysElapsed(game.start_date, game.end_date);
 
-    // For each member: count distinct days with a completed session in the challenge range
-    const members = await db.execute(`
-      SELECT u.id, u.name, u.email,
+    // For each member: count distinct days with a non-cancelled session in the challenge range.
+    // Cap upper date at today (IST) so future-booked sessions don't pre-count.
+    const todayIst = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+    const upperBound = todayIst <= game.end_date ? todayIst : game.end_date;
+    const members = await db.execute({
+      sql: `SELECT u.id, u.name, u.email,
         (SELECT COUNT(DISTINCT s.date) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
-         WHERE b.customer_id=u.id AND b.is_completed=1
+         WHERE b.customer_id=u.id AND b.status != 'cancelled'
            AND s.date>=? AND s.date<=?) as days_completed,
         COALESCE(p.is_winner,0) as is_winner,
         COALESCE(p.reward_notified,0) as reward_notified
@@ -799,8 +802,9 @@ router.get('/monthly-games/:id/participants', async (req, res) => {
       LEFT JOIN monthly_game_participants p ON p.game_id=? AND p.user_id=u.id
       WHERE u.role='customer' AND u.is_active=1 AND u.deleted_at IS NULL
         AND u.email NOT LIKE '%@fitanya.local'
-      ORDER BY days_completed DESC
-    `, [game.start_date, game.end_date, id]);
+      ORDER BY days_completed DESC`,
+      args: [game.start_date, upperBound, id],
+    });
 
     // Attach derived fields
     const participants = members.rows.map(m => ({
@@ -825,15 +829,16 @@ router.post('/monthly-games/:id/process-winners', async (req, res) => {
 
     const totalDays = challengeDays(game.start_date, game.end_date);
 
-    const members = await db.execute(`
-      SELECT u.id, u.name,
+    const members = await db.execute({
+      sql: `SELECT u.id, u.name,
         (SELECT COUNT(DISTINCT s.date) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
-         WHERE b.customer_id=u.id AND b.is_completed=1
+         WHERE b.customer_id=u.id AND b.status != 'cancelled'
            AND s.date>=? AND s.date<=?) as days_completed
       FROM users u
       WHERE u.role='customer' AND u.is_active=1 AND u.deleted_at IS NULL
-        AND u.email NOT LIKE '%@fitanya.local'
-    `, [game.start_date, game.end_date]);
+        AND u.email NOT LIKE '%@fitanya.local'`,
+      args: [game.start_date, game.end_date],
+    });
 
     const { createNotification } = require('../services/notifications');
     let winnersCount = 0;
