@@ -647,48 +647,63 @@ router.get('/monthly-games', async (req, res) => {
     const game = gameRes.rows[0] || null;
     if (!game) return res.json({ success: true, game: null, progress: null });
 
-    // Rule: 1 session per day for every day of the challenge.
-    // Game dates and session slot dates are all stored in IST (gym/coach timezone).
-    // All day-boundary calculations (elapsed, missed, SQL bounds) must use IST so they
-    // stay consistent with slot dates regardless of the member's own timezone.
-    // Member's timezone (userTz) is sent to the frontend for display formatting only.
     const profileRes = await db.execute({
       sql: `SELECT timezone FROM users WHERE id = ?`,
       args: [userId],
     });
     const userTz = profileRes.rows[0]?.timezone || 'Asia/Kolkata';
 
-    // "today" in IST — the game's reference timezone
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+    // Use member's own timezone so game days align with their local calendar.
+    // EST members doing 7:30 PM sessions have those slots stored as the NEXT IST calendar
+    // day (7:30 PM EST = 6:00 AM IST next day). Converting slot datetimes back to the
+    // member's local date maps each session to the correct game day for their timezone.
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: userTz }).format(new Date());
 
     const msPerDay = 86400000;
-    const startDt  = new Date(game.start_date + 'T00:00:00');
-    const endDt    = new Date(game.end_date   + 'T00:00:00');
-    const todayDt  = new Date(today           + 'T00:00:00');
+    const startDt  = new Date(game.start_date + 'T12:00:00Z');
+    const endDt    = new Date(game.end_date   + 'T12:00:00Z');
+    const todayDt  = new Date(today           + 'T12:00:00Z');
     const totalDays = Math.round((endDt - startDt) / msPerDay) + 1;
 
-    // Strictly-past days inside the challenge (yesterday and before in IST).
-    // Today (IST) is excluded — the member still has time to complete today's session.
+    // Days strictly in the past in the member's timezone (today excluded — still time to attend).
     let strictPastDays = 0;
     if (todayDt > startDt) {
       strictPastDays = Math.min(Math.round((todayDt - startDt) / msPerDay), totalDays);
     }
 
-    // Distinct days within the challenge where the member had a non-cancelled session.
-    // We count any attended/booked (non-cancelled) session whose date has passed —
-    // not just is_completed=1 (which only gets set when coach saves notes).
-    const upperBound = today <= game.end_date ? today : game.end_date;
-    const completedDatesRes = await db.execute({
-      sql: `SELECT DISTINCT s.date FROM bookings b
+    // Fetch slots in an extended IST window (±1 day) so sessions crossing midnight are captured.
+    // Example: EST member's 7:30 PM session = 6:00 AM IST next day — needs +1 day buffer.
+    const addDays = (dateStr, n) => {
+      const d = new Date(dateStr + 'T12:00:00Z');
+      d.setUTCDate(d.getUTCDate() + n);
+      return d.toISOString().split('T')[0];
+    };
+    const todayIST   = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+    const upperIST   = todayIST <= game.end_date ? todayIST : game.end_date;
+    const fetchStart = addDays(game.start_date, -1);
+    const fetchEnd   = addDays(upperIST, +1);
+
+    const sessionsRes = await db.execute({
+      sql: `SELECT s.date, s.start_time FROM bookings b
             JOIN schedule_slots s ON b.slot_id = s.id
             WHERE b.customer_id=? AND b.status != 'cancelled'
-              AND s.date >= ? AND s.date <= ?
-            ORDER BY s.date`,
-      args: [userId, game.start_date, upperBound],
+              AND s.date >= ? AND s.date <= ?`,
+      args: [userId, fetchStart, fetchEnd],
     });
-    const completedDates = completedDatesRes.rows.map(r => r.date);
+
+    // Convert each IST slot datetime → member's local date, skip sessions not yet started.
+    const now = new Date();
+    const completedDatesSet = new Set();
+    for (const { date, start_time } of sessionsRes.rows) {
+      const sessionDt = new Date(`${date}T${start_time}:00+05:30`);
+      if (sessionDt > now) continue; // pre-booked future slot — not done yet
+      const memberDate = new Intl.DateTimeFormat('en-CA', { timeZone: userTz }).format(sessionDt);
+      if (memberDate >= game.start_date && memberDate <= today) {
+        completedDatesSet.add(memberDate);
+      }
+    }
+    const completedDates = Array.from(completedDatesSet).sort();
     const completedDays  = completedDates.length;
-    // Only past days (before today in the member's TZ) with no completed session are "missed"
     const missedDays = Math.max(0, strictPastDays - completedDates.filter(d => d < today).length);
 
     const ended   = today > game.end_date;

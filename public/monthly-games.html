@@ -251,15 +251,16 @@
     // ○ = today (still time to complete) or a future day
     // "today" and all day boundaries come from the server in the member's own timezone.
     // Use UTC noon as the base so date arithmetic is DST-safe and browser-timezone-independent.
-    // Game dates and slot dates are IST calendar dates; p.today is also IST (from server).
+    // completedDates are member-local dates; today is also member-local (both from server).
+    // dayStr iterates calendar dates from game start — same strings the server puts in completedDates.
     const completedSet = new Set(completedDates || []);
-    const today = p.today; // IST date from server — matches slot dates and game dates
+    const today = p.today; // member's local date from server
     let dotsHtml = '';
     for (let i = 0; i < totalDays; i++) {
       const dayDt = new Date(p.start_date + 'T12:00:00Z');
       dayDt.setUTCDate(dayDt.getUTCDate() + i);
-      const dayStr = dayDt.toISOString().split('T')[0]; // YYYY-MM-DD — matches DB slot dates
-      const isStrictlyPast = dayStr < today; // strictly before today in IST
+      const dayStr = dayDt.toISOString().split('T')[0];
+      const isStrictlyPast = dayStr < today; // before today in member's timezone
       if (completedSet.has(dayStr)) {
         dotsHtml += `<div class="mg-dot done" title="${dayStr}">✓</div>`;
       } else if (isStrictlyPast) {
