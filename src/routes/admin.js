@@ -384,7 +384,7 @@ router.post('/fix-meet-links', async (_req, res) => {
   try {
     const { createMeetSession } = require('../services/googleMeet');
     const db = getDb();
-    // Find bookings with placeholder or jitsi links that are not yet completed/cancelled
+    // Find bookings with missing, placeholder, or Jitsi links not yet completed/cancelled
     const broken = await db.execute(`
       SELECT b.id, b.customer_id, b.coach_id, ss.date, ss.start_time, ss.end_time,
              cu.name as customer_name, cu.email as customer_email,
@@ -394,7 +394,9 @@ router.post('/fix-meet-links', async (_req, res) => {
       JOIN users cu ON cu.id = b.customer_id
       JOIN users co ON co.id = b.coach_id
       WHERE b.is_completed = 0 AND b.status != 'cancelled'
-        AND (b.meet_link IS NULL OR b.meet_link LIKE '%placeholder%' OR b.meet_link = '')
+        AND (b.meet_link IS NULL OR b.meet_link = ''
+             OR b.meet_link LIKE '%placeholder%'
+             OR b.meet_link LIKE '%jit.si%')
     `);
     let fixed = 0;
     for (const b of broken.rows) {

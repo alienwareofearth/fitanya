@@ -12,19 +12,10 @@ function getAuthClient() {
   return oauth2Client;
 }
 
-// Fallback: Jitsi Meet — no API, no host required, always works
-function jitsiFallback() {
-  const seg = () => Math.random().toString(36).slice(2, 6);
-  const roomId = `fitanya-${seg()}-${seg()}-${seg()}`;
-  const config = '#config.lobby.enabled=false&config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false';
-  return { meetLink: `https://meet.jit.si/${roomId}${config}`, eventId: `jitsi-${roomId}` };
-}
-
 async function createMeetSession({ summary, description, date, startTime, endTime, attendeeEmails }) {
-  // Check if Google credentials are configured
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_REFRESH_TOKEN) {
-    console.warn('[google-meet] Google credentials not set — using Jitsi fallback');
-    return jitsiFallback();
+    console.warn('[google-meet] Google credentials not set — meet link will be generated later');
+    return { meetLink: null, eventId: null };
   }
 
   try {
@@ -55,19 +46,19 @@ async function createMeetSession({ summary, description, date, startTime, endTim
 
     const meetLink = response.data.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri;
     if (!meetLink) {
-      console.warn('[google-meet] Calendar API returned no Meet link — using Jitsi fallback');
-      return jitsiFallback();
+      console.warn('[google-meet] Calendar API returned no Meet link');
+      return { meetLink: null, eventId: response.data.id };
     }
 
     return { meetLink, eventId: response.data.id };
   } catch (err) {
-    console.error('[google-meet] Calendar API error — using Jitsi fallback:', err.message);
-    return jitsiFallback();
+    console.error('[google-meet] Calendar API error:', err.message);
+    return { meetLink: null, eventId: null };
   }
 }
 
 async function deleteMeetSession(eventId) {
-  if (!eventId || eventId.startsWith('jitsi-')) return; // nothing to delete for Jitsi rooms
+  if (!eventId) return;
   try {
     const auth = getAuthClient();
     const calendar = google.calendar({ version: 'v3', auth });

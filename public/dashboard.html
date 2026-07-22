@@ -564,7 +564,7 @@
               <h4>Session with ${b.coach_name}</h4>
               <p>${formatSessionTime(b.start_time, b.date)} – ${formatSessionTime(b.end_time, b.date)}</p>
             </div>
-            ${!b.is_completed && b.status !== 'cancelled' && !isMeetExpired(b.date, b.start_time) ? `<a href="${meetUrl(b.meet_link, b.id)}" target="_blank" class="btn btn-primary btn-sm">Join Meet</a>` : ''}
+            ${!b.is_completed && b.status !== 'cancelled' && !isMeetExpired(b.date, b.start_time) ? (b.meet_link ? `<a href="${meetUrl(b.meet_link)}" target="_blank" class="btn btn-primary btn-sm">Join Meet</a>` : `<span class="btn btn-primary btn-sm" style="opacity:.5;cursor:default">Link Pending</span>`) : ''}
           </div>
         `;
       }).join('');

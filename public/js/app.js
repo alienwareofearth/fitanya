@@ -330,12 +330,8 @@ function formatSessionDate(dateStr, timeStr) {
   } catch { return formatDate(dateStr); }
 }
 
-// Ensure Jitsi links always skip lobby and pre-join screen
-function meetUrl(link, bookingId) {
-  const url = link || `https://meet.jit.si/fitanya-${bookingId}`;
-  if (!url.includes('meet.jit.si')) return url; // Google Meet — no changes needed
-  const base = url.split('#')[0];
-  return base + '#config.lobby.enabled=false&config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false';
+function meetUrl(link) {
+  return link || null;
 }
 
 // Returns true if the session started more than 1 hour ago (times stored in IST)

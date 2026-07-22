@@ -627,8 +627,10 @@
 
     let actions = '';
     if (!b.is_completed && b.status !== 'cancelled') {
-      if (!isMeetExpired(b.date, b.start_time) && b.meet_link) {
-        actions += `<a href="${meetUrl(b.meet_link, b.id)}" target="_blank" class="btn btn-primary">Join Meet</a>`;
+      if (!isMeetExpired(b.date, b.start_time)) {
+        actions += b.meet_link
+          ? `<a href="${meetUrl(b.meet_link)}" target="_blank" class="btn btn-primary">Join Meet</a>`
+          : `<span class="btn btn-primary" style="opacity:.5;cursor:default">Link Pending</span>`;
       }
       actions += `<button class="btn" style="background:rgba(255,92,0,.1);border-color:rgba(255,92,0,.3);color:var(--orange)" onclick="openReschedule(${b.id},'${b.date}','${b.start_time}','${coachSafe}')">🔄 Reschedule</button>`;
       actions += `<button class="btn btn-dark" onclick="cancelBooking(${b.id})">Cancel</button>`;
