@@ -793,6 +793,66 @@ function daysElapsed(start_date, end_date) {
   return Math.min(Math.round((t - s) / 86400000) + 1, total);
 }
 
+// Shared helper: add/subtract n days from a YYYY-MM-DD string
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().split('T')[0];
+}
+
+// Compute per-member timezone-aware completed dates for a game.
+// Fetches all non-cancelled sessions in an extended IST window (±1 day) and converts
+// each IST slot datetime to the member's local date so evening sessions in western
+// timezones (e.g. 7:30 PM EST = 6:00 AM IST next day) map to the correct game day.
+async function getMemberGameStats(db, game, membersRows, now) {
+  const totalDays = challengeDays(game.start_date, game.end_date);
+  const todayIST  = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
+  const upperIST  = todayIST <= game.end_date ? todayIST : game.end_date;
+  const fetchStart = addDays(game.start_date, -1);
+  const fetchEnd   = addDays(upperIST, +1);
+
+  const sessionsRes = await db.execute({
+    sql: `SELECT b.customer_id, s.date, s.start_time
+          FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
+          WHERE b.status != 'cancelled' AND s.date >= ? AND s.date <= ?`,
+    args: [fetchStart, fetchEnd],
+  });
+
+  // Group sessions by member id
+  const byMember = {};
+  for (const row of sessionsRes.rows) {
+    (byMember[row.customer_id] = byMember[row.customer_id] || []).push(row);
+  }
+
+  return membersRows.map(m => {
+    const userTz  = m.timezone || 'Asia/Kolkata';
+    const today   = new Intl.DateTimeFormat('en-CA', { timeZone: userTz }).format(now);
+    const startDt = new Date(game.start_date + 'T12:00:00Z');
+    const todayDt = new Date(today + 'T12:00:00Z');
+
+    // Days strictly in the past in the member's timezone (today excluded)
+    let elapsed = 0;
+    if (todayDt > startDt) {
+      elapsed = Math.min(Math.round((todayDt - startDt) / 86400000), totalDays);
+    }
+
+    // Convert each IST slot datetime → member's local date; skip future sessions
+    const completedSet = new Set();
+    for (const { date, start_time } of (byMember[m.id] || [])) {
+      const sessionDt = new Date(`${date}T${start_time}:00+05:30`);
+      if (sessionDt > now) continue;
+      const memberDate = new Intl.DateTimeFormat('en-CA', { timeZone: userTz }).format(sessionDt);
+      if (memberDate >= game.start_date && memberDate <= today) {
+        completedSet.add(memberDate);
+      }
+    }
+    const days_completed = completedSet.size;
+    const days_missed    = Math.max(0, elapsed - days_completed);
+
+    return { ...m, days_completed, days_missed, total_days: totalDays, days_elapsed: elapsed };
+  });
+}
+
 // GET participants + progress for a game (day-based: 1 session per day)
 router.get('/monthly-games/:id/participants', async (req, res) => {
   try {
@@ -805,32 +865,19 @@ router.get('/monthly-games/:id/participants', async (req, res) => {
     const totalDays = challengeDays(game.start_date, game.end_date);
     const elapsed   = daysElapsed(game.start_date, game.end_date);
 
-    // For each member: count distinct days with a non-cancelled session in the challenge range.
-    // Cap upper date at today (IST) so future-booked sessions don't pre-count.
-    const todayIst = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
-    const upperBound = todayIst <= game.end_date ? todayIst : game.end_date;
-    const members = await db.execute({
-      sql: `SELECT u.id, u.name, u.email,
-        (SELECT COUNT(DISTINCT s.date) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
-         WHERE b.customer_id=u.id AND b.status != 'cancelled'
-           AND s.date>=? AND s.date<=?) as days_completed,
-        COALESCE(p.is_winner,0) as is_winner,
-        COALESCE(p.reward_notified,0) as reward_notified
-      FROM users u
-      LEFT JOIN monthly_game_participants p ON p.game_id=? AND p.user_id=u.id
-      WHERE u.role='customer' AND u.is_active=1 AND u.deleted_at IS NULL
-        AND u.email NOT LIKE '%@fitanya.local'
-      ORDER BY days_completed DESC`,
-      args: [game.start_date, upperBound, id],
+    const membersRes = await db.execute({
+      sql: `SELECT u.id, u.name, u.email, COALESCE(u.timezone,'Asia/Kolkata') as timezone,
+              COALESCE(p.is_winner,0) as is_winner,
+              COALESCE(p.reward_notified,0) as reward_notified
+            FROM users u
+            LEFT JOIN monthly_game_participants p ON p.game_id=? AND p.user_id=u.id
+            WHERE u.role='customer' AND u.is_active=1 AND u.deleted_at IS NULL
+              AND u.email NOT LIKE '%@fitanya.local'`,
+      args: [id],
     });
 
-    // Attach derived fields
-    const participants = members.rows.map(m => ({
-      ...m,
-      total_days: totalDays,
-      days_elapsed: elapsed,
-      days_missed: Math.max(0, elapsed - m.days_completed),
-    }));
+    const participants = await getMemberGameStats(db, game, membersRes.rows, new Date());
+    participants.sort((a, b) => b.days_completed - a.days_completed);
 
     res.json({ success: true, game, participants, totalDays, elapsed });
   } catch (err) { console.error('[admin] participants:', err.message); res.status(500).json({ error: 'Failed.' }); }
@@ -847,21 +894,23 @@ router.post('/monthly-games/:id/process-winners', async (req, res) => {
 
     const totalDays = challengeDays(game.start_date, game.end_date);
 
-    const members = await db.execute({
-      sql: `SELECT u.id, u.name,
-        (SELECT COUNT(DISTINCT s.date) FROM bookings b JOIN schedule_slots s ON b.slot_id=s.id
-         WHERE b.customer_id=u.id AND b.status != 'cancelled'
-           AND s.date>=? AND s.date<=?) as days_completed
-      FROM users u
-      WHERE u.role='customer' AND u.is_active=1 AND u.deleted_at IS NULL
-        AND u.email NOT LIKE '%@fitanya.local'`,
-      args: [game.start_date, game.end_date],
+    const membersRes = await db.execute({
+      sql: `SELECT u.id, u.name, COALESCE(u.timezone,'Asia/Kolkata') as timezone
+            FROM users u
+            WHERE u.role='customer' AND u.is_active=1 AND u.deleted_at IS NULL
+              AND u.email NOT LIKE '%@fitanya.local'`,
+      args: [],
     });
+
+    // Use game end_date as "now" so winner processing uses full game range
+    const gameEnd = new Date(game.end_date + 'T23:59:59+05:30');
+    const statsNow = gameEnd < new Date() ? gameEnd : new Date();
+    const memberStats = await getMemberGameStats(db, game, membersRes.rows, statsNow);
 
     const { createNotification } = require('../services/notifications');
     let winnersCount = 0;
 
-    for (const m of members.rows) {
+    for (const m of memberStats) {
       const isWinner = m.days_completed === totalDays;
       await db.execute({
         sql: `INSERT INTO monthly_game_participants
