@@ -769,7 +769,8 @@ function challengeDays(start_date, end_date) {
 function daysElapsed(start_date, end_date) {
   const total = challengeDays(start_date, end_date);
   const s = new Date(start_date + 'T00:00:00');
-  const t = new Date(new Date().toISOString().split('T')[0] + 'T00:00:00');
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+  const t = new Date(todayStr + 'T00:00:00');
   if (t < s) return 0;
   return Math.min(Math.round((t - s) / 86400000) + 1, total);
 }

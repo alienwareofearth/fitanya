@@ -256,7 +256,9 @@
     let dotsHtml = '';
     for (let i = 0; i < totalDays; i++) {
       const dayDt = new Date(startDt.getTime() + i * 86400000);
-      const dayStr = dayDt.toISOString().split('T')[0];
+      const dayStr = dayDt.getFullYear() + '-' +
+        String(dayDt.getMonth() + 1).padStart(2, '0') + '-' +
+        String(dayDt.getDate()).padStart(2, '0');
       const isStrictlyPast = dayStr < today; // strictly before today in member's TZ
       if (completedSet.has(dayStr)) {
         dotsHtml += `<div class="mg-dot done" title="${dayStr}">✓</div>`;
