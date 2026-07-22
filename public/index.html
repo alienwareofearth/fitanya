@@ -266,12 +266,7 @@
       flex-wrap: wrap;
       gap: 24px;
     }
-    .footer-logo {
-      font-family: var(--font-display);
-      font-size: 28px;
-      letter-spacing: 3px;
-    }
-    .footer-logo span { color: var(--orange); }
+    .footer-logo img { height: 48px; width: auto; }
     footer p { font-size: 13px; color: var(--text-dim); }
 
     @media (max-width: 768px) {
@@ -304,7 +299,7 @@
 <body>
   <!-- NAVBAR -->
   <nav class="navbar">
-    <a href="/" class="nav-logo">FIT<span>ANYA</span></a>
+    <a href="/" class="nav-logo"><img src="/icons/logo.png" alt="Fitanya"></a>
     <div class="nav-links">
       <a href="#goals">Goals</a>
       <a href="#packages">Packages</a>
@@ -406,7 +401,7 @@
   <!-- FOOTER -->
   <footer>
     <div>
-      <div class="footer-logo">FIT<span>ANYA</span></div>
+      <div class="footer-logo"><img src="/icons/logo.png" alt="Fitanya"></div>
       <p class="mt-8">India's premier online personal training platform</p>
     </div>
     <p>© 2025 Fitanya. All rights reserved.</p>
