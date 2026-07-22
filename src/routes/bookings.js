@@ -198,10 +198,10 @@ router.post('/cancel/:id', requireAuth, async (req, res) => {
     const b = booking.rows[0];
     if (b.is_completed) return res.status(400).json({ error: 'Cannot cancel a completed session' });
 
-    // Check 24h cancellation policy
+    // Check 4h cancellation policy
     const sessionDate = new Date(`${b.date}T${b.start_time}:00+05:30`);
     const hoursUntil = (sessionDate - Date.now()) / 3600000;
-    if (hoursUntil < 24) return res.status(400).json({ error: 'Cancellation requires 24 hours notice' });
+    if (hoursUntil < 4) return res.status(400).json({ error: 'Cancellation requires at least 4 hours notice before your session' });
 
     await db.execute({
       sql: `UPDATE bookings SET status = 'cancelled', cancelled_at = datetime('now'), cancel_reason = ? WHERE id = ?`,
@@ -251,10 +251,10 @@ router.put('/:id/reschedule', requireAuth, async (req, res) => {
     if (b.status === 'cancelled') return res.status(400).json({ error: 'Cannot reschedule a cancelled booking.' });
     if (parseInt(new_slot_id) === b.slot_id) return res.status(400).json({ error: 'That is the same slot you already have.' });
 
-    // 24h notice on the OLD slot
+    // 4h notice on the OLD slot
     const oldSessionDt = new Date(`${b.date}T${b.start_time}:00+05:30`);
-    if ((oldSessionDt - Date.now()) / 3600000 < 24) {
-      return res.status(400).json({ error: 'Reschedule requires at least 24 hours notice before your current session.' });
+    if ((oldSessionDt - Date.now()) / 3600000 < 4) {
+      return res.status(400).json({ error: 'Reschedule requires at least 4 hours notice before your current session.' });
     }
 
     // Validate new slot — must be available and in the future
