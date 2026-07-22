@@ -379,6 +379,22 @@ router.post('/members/:id/offline-session', async (req, res) => {
   } catch (err) { console.error('[admin] offline-session:', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
+// Admin: get Google OAuth2 authorization URL to refresh the Calendar token
+router.get('/google-auth-url', (_req, res) => {
+  const { google } = require('googleapis');
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI
+  );
+  const url = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    prompt: 'consent',
+    scope: ['https://www.googleapis.com/auth/calendar.events'],
+  });
+  res.json({ success: true, url });
+});
+
 // Admin: regenerate Meet links for bookings that have broken/placeholder links
 router.post('/fix-meet-links', async (_req, res) => {
   try {

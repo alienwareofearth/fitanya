@@ -185,6 +185,36 @@ app.get('/admin/settings',      (req, res) => res.sendFile(path.join(pages, 'adm
 app.get('/admin/schedule',      (req, res) => res.sendFile(path.join(pages, 'admin-schedule.html')));
 app.get('/admin/monthly-games', (req, res) => res.sendFile(path.join(pages, 'admin-monthly-games.html')));
 
+// ── Google OAuth2 callback (re-auth for Meet token refresh) ──────────────────
+app.get('/auth/google/callback', async (req, res) => {
+  const { code } = req.query;
+  if (!code) return res.status(400).send('Missing code parameter.');
+  try {
+    const { google } = require('googleapis');
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+    const { tokens } = await oauth2Client.getToken(code);
+    const refreshToken = tokens.refresh_token;
+    res.send(`
+      <html><body style="font-family:sans-serif;max-width:600px;margin:60px auto;padding:20px">
+        <h2>✅ Google Authorization Successful</h2>
+        ${refreshToken
+          ? `<p>Copy this new <strong>GOOGLE_REFRESH_TOKEN</strong> and paste it into your Render environment variables:</p>
+             <textarea rows="4" style="width:100%;font-family:monospace;font-size:13px;padding:10px" onclick="this.select()">${refreshToken}</textarea>
+             <p style="color:#666;font-size:13px">After updating the env var in Render, redeploy the service. Then go to Admin → Settings → Fix Meet Links.</p>`
+          : `<p style="color:orange">⚠️ No refresh token returned — Google may have omitted it because this account already authorized the app. Try revoking access at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a> and re-authorizing.</p>`
+        }
+      </body></html>
+    `);
+  } catch (err) {
+    console.error('[google-oauth] callback error:', err.message);
+    res.status(500).send(`<html><body style="font-family:sans-serif;padding:40px"><h2>❌ Error</h2><pre>${err.message}</pre></body></html>`);
+  }
+});
+
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });

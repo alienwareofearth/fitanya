@@ -53,11 +53,45 @@
       <div class="section-title">Referral Program</div>
       <div id="ref-form"><div class="spinner"></div></div>
     </div>
+
+    <div class="card" style="max-width:540px">
+      <div class="section-title mb-4">Google Meet</div>
+      <p class="text-dim text-small mb-16">If members are seeing "Link Pending", the Google authorization token has expired. Re-authorize below to get a new token, then fix all pending links.</p>
+      <div class="flex gap-12 flex-wrap">
+        <button class="btn btn-primary" onclick="reauthorizeGoogle(this)">🔑 Re-authorize Google Calendar</button>
+        <button class="btn btn-dark" onclick="fixMeetLinks(this)">🔧 Fix Pending Meet Links</button>
+      </div>
+      <p class="text-dim text-small mt-8" id="meet-status"></p>
+    </div>
   </main>
 </div>
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
+  async function reauthorizeGoogle(btn) {
+    btn.disabled = true; btn.textContent = 'Opening…';
+    const data = await api.get('/api/admin/google-auth-url');
+    btn.disabled = false; btn.textContent = '🔑 Re-authorize Google Calendar';
+    if (data?.url) {
+      window.open(data.url, '_blank');
+      document.getElementById('meet-status').textContent = 'A Google sign-in page opened. After authorizing, copy the new GOOGLE_REFRESH_TOKEN shown and update it in your Render environment variables, then redeploy.';
+    } else {
+      toast('Failed to generate auth URL', 'error');
+    }
+  }
+
+  async function fixMeetLinks(btn) {
+    btn.disabled = true; btn.textContent = '⏳ Fixing…';
+    const data = await api.post('/api/admin/fix-meet-links', {});
+    btn.disabled = false; btn.textContent = '🔧 Fix Pending Meet Links';
+    if (data?.success) {
+      toast(data.message || 'Done!', 'success');
+      document.getElementById('meet-status').textContent = data.message || 'Meet links fixed.';
+    } else {
+      toast(data?.error || 'Failed', 'error');
+    }
+  }
+
   async function init() {
     const data = await api.get('/api/admin/referral-config');
     if (!data?.success) { window.location.href = '/login'; return; }
