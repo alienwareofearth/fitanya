@@ -209,13 +209,13 @@ function _renderMobileTopbar(user) {
   const greetEl = document.getElementById('mobile-topbar-greeting');
   if (greetEl) greetEl.innerHTML = `${getGreeting()}, <span class="tb-name">${firstName}!</span>`;
 
-  // Quote line below
-  const mid = document.getElementById('mobile-topbar-mid');
-  if (mid && !document.getElementById('mobile-topbar-quote')) {
+  // Quote line below the greeting
+  const textEl = document.getElementById('mobile-topbar-text') || document.getElementById('mobile-topbar-mid');
+  if (textEl && !document.getElementById('mobile-topbar-quote')) {
     const q = document.createElement('div');
     q.id = 'mobile-topbar-quote';
     q.textContent = getDailyQuote();
-    mid.appendChild(q);
+    textEl.appendChild(q);
   }
 
   // Avatar
@@ -377,8 +377,12 @@ function initSidebarToggle() {
         <span></span><span></span><span></span>
       </button>
       <div id="mobile-topbar-mid">
-        <img src="/icons/logo.png" alt="Fitanya" style="height:32px;width:auto;display:block;margin-bottom:2px">
-        <div id="mobile-topbar-greeting">Welcome</div>
+        <div style="display:flex;align-items:center;gap:8px;min-width:0">
+          <img src="/icons/logo.png" alt="Fitanya" style="height:38px;width:auto;flex-shrink:0">
+          <div id="mobile-topbar-text" style="min-width:0;overflow:hidden">
+            <div id="mobile-topbar-greeting">Welcome</div>
+          </div>
+        </div>
       </div>
       <div id="mobile-topbar-right">
         <button class="notif-btn" onclick="_globalToggleNotif()" title="Notifications"
