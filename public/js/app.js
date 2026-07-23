@@ -377,6 +377,7 @@ function initSidebarToggle() {
         <span></span><span></span><span></span>
       </button>
       <div id="mobile-topbar-mid">
+        <img src="/icons/logo.png" alt="Fitanya" style="height:32px;width:auto;display:block;margin-bottom:2px">
         <div id="mobile-topbar-greeting">Welcome</div>
       </div>
       <div id="mobile-topbar-right">
