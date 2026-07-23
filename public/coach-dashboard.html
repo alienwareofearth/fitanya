@@ -83,10 +83,8 @@
         </div>
         <div class="flex gap-8" style="flex-wrap:wrap">
           ${s.meet_link
-            ? `<a href="${s.meet_link}" target="_blank" class="btn btn-primary btn-sm" style="display:flex;align-items:center;gap:6px">
-                <span>▶</span> Join Meet
-               </a>`
-            : '<span class="text-dim text-small">No link</span>'}
+            ? `<a href="${s.meet_link}" target="_blank" class="btn btn-primary btn-sm" style="display:flex;align-items:center;gap:6px"><span>▶</span> Join Meet</a>`
+            : `<span class="btn btn-primary btn-sm" style="opacity:.5;cursor:default">Link Pending</span>`}
           ${s.is_completed
             ? `<span class="badge badge-green">Done</span>`
             : (!s.notes_id

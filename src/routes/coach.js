@@ -240,7 +240,8 @@ router.get('/init', async (req, res) => {
               JOIN schedule_slots ss ON ss.id = b.slot_id
               JOIN users u ON u.id = b.customer_id
               LEFT JOIN session_notes sn ON sn.booking_id = b.id
-              WHERE b.coach_id = ? ORDER BY ss.date DESC`,
+              WHERE b.coach_id = ? AND b.status != 'cancelled'
+              ORDER BY ss.date DESC`,
         args: [coachId],
       }),
       db.execute({

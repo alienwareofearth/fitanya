@@ -176,7 +176,7 @@
         if (slot.is_booked) {
           const meetBtn = slot.meet_link
             ? `<a href="${slot.meet_link}" target="_blank" style="display:block;margin-top:4px;font-size:10px;color:#4ade80;text-decoration:none">▶ Join Meet</a>`
-            : '';
+            : `<span style="display:block;margin-top:4px;font-size:10px;color:rgba(255,255,255,.4)">Link Pending</span>`;
           return `<div class="hour-block booked" title="${slot.customer_name||'Booked'}">${fmtH(h)}<div style="font-size:10px;margin-top:2px">${slot.customer_name||'Booked'}</div>${meetBtn}</div>`;
         } else {
           return `<div class="hour-block open" onclick="removeSlot(${slot.id},'${dateStr}')" title="Click to remove">${fmtH(h)}<div style="font-size:10px;margin-top:2px">Open ✕</div></div>`;

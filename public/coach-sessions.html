@@ -110,7 +110,9 @@
         </div>
       </div>
       <div class="flex gap-8 flex-wrap">
-        ${s.meet_link ? `<a href="${s.meet_link}" target="_blank" class="meet-btn">Join Google Meet</a>` : ''}
+        ${s.meet_link
+          ? `<a href="${s.meet_link}" target="_blank" class="meet-btn">Join Google Meet</a>`
+          : (!isPast ? `<span class="meet-btn" style="opacity:.5;cursor:default">Link Pending</span>` : '')}
         ${!s.has_notes ? `<button class="btn btn-primary btn-sm" onclick="openNotes(${s.id},'${s.customer_name}','${s.date}')">${isPast ? 'Add Notes' : 'Mark Complete + Notes'}</button>` : ''}
         ${s.has_notes && s.notes ? `<div class="text-dim text-small mt-8" style="width:100%">📝 ${s.notes}</div>` : ''}
       </div>
