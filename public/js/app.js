@@ -378,12 +378,12 @@ function initSidebarToggle() {
         <span></span><span></span><span></span>
       </button>
       <div id="mobile-topbar-mid">
-        <div style="display:flex;align-items:center;gap:8px;min-width:0">
+        <a href="/dashboard" style="display:flex;align-items:center;gap:8px;min-width:0;text-decoration:none">
           <img src="/icons/logo.png" alt="Fitanya" style="height:38px;width:auto;flex-shrink:0">
           <div id="mobile-topbar-text" style="min-width:0;overflow:hidden">
             <div id="mobile-topbar-greeting">Welcome</div>
           </div>
-        </div>
+        </a>
       </div>
       <div id="mobile-topbar-right">
         <button class="notif-btn" onclick="_globalToggleNotif()" title="Notifications"
