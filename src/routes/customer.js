@@ -744,40 +744,32 @@ router.get('/badges', requireAuth, async (req, res) => {
     const db = getDb();
     const userId = req.session.user.id;
 
-    const sessionsRes = await db.execute({
-      sql: `SELECT COUNT(*) as total FROM bookings b
-            JOIN schedule_slots s ON b.slot_id = s.id
-            WHERE b.customer_id = ? AND b.status != 'cancelled'
-              AND datetime(s.date || ' ' || s.start_time) <= datetime('now', '+330 minutes')`,
-      args: [userId],
-    });
-    const totalSessions = sessionsRes.rows[0]?.total || 0;
-
-    const winsRes = await db.execute({
-      sql: `SELECT g.name, g.end_date FROM monthly_game_participants mgp
-            JOIN monthly_games g ON g.id = mgp.game_id
-            WHERE mgp.user_id = ? AND mgp.is_winner = 1
+    // All past/ended games and whether this member won each one
+    const gamesRes = await db.execute({
+      sql: `SELECT g.id, g.name, g.start_date, g.end_date,
+                   mgp.is_winner,
+                   CASE WHEN mgp.user_id IS NOT NULL THEN 1 ELSE 0 END as participated
+            FROM monthly_games g
+            LEFT JOIN monthly_game_participants mgp
+              ON mgp.game_id = g.id AND mgp.user_id = ?
+            WHERE g.end_date < date('now')
             ORDER BY g.end_date DESC`,
       args: [userId],
     });
-    const wins = winsRes.rows;
+    const games = gamesRes.rows;
+    const wins = games.filter(g => g.is_winner === 1).length;
 
-    const badges = [];
-
-    // Session milestone badges
-    const milestones = [1, 10, 25, 50, 100, 200];
-    for (const m of milestones) {
-      if (totalSessions >= m) {
-        badges.push({ id: `sessions_${m}`, type: 'sessions', label: m === 1 ? 'First Session!' : `${m} Sessions`, value: m, earned: true });
-      }
-    }
-
-    // Challenge winner badges
-    for (const w of wins) {
-      badges.push({ id: `win_${w.end_date}`, type: 'win', label: 'Challenge Champion', challenge: w.name, earned: true });
-    }
-
-    res.json({ success: true, totalSessions, wins: wins.length, badges });
+    res.json({
+      success: true,
+      wins,
+      challenges: games.map(g => ({
+        id: g.id,
+        name: g.name,
+        end_date: g.end_date,
+        won: g.is_winner === 1,
+        participated: g.participated === 1,
+      })),
+    });
   } catch (err) { console.error('[customer] badges:', err.message); res.status(500).json({ error: 'Failed to load.' }); }
 });
 

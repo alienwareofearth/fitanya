@@ -11,166 +11,177 @@
   <title>My Badges — Fitanya</title>
   <link rel="stylesheet" href="/css/main.css">
   <style>
+    /* ── Hero ──────────────────────────────────────────────────────── */
     .badges-hero {
       text-align: center;
-      padding: 40px 20px 32px;
+      padding: 36px 20px 24px;
     }
     .badges-hero h1 {
       font-family: var(--font-display);
       font-size: 3rem;
       color: var(--white);
-      letter-spacing: 2px;
-      margin-bottom: 8px;
+      letter-spacing: 3px;
+      margin-bottom: 6px;
     }
-    .badges-hero p {
+    .badges-hero p { color: var(--text-dim); font-size: 13px; }
+
+    /* ── Stats ─────────────────────────────────────────────────────── */
+    .stats-row {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 36px;
+      justify-content: center;
+    }
+    .stat-pill {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      padding: 12px 28px;
+      text-align: center;
+      min-width: 110px;
+    }
+    .stat-pill-num {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      color: var(--orange);
+      line-height: 1;
+    }
+    .stat-pill-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
       color: var(--text-dim);
-      font-size: 14px;
+      margin-top: 3px;
     }
 
-    .badges-section-title {
+    /* ── Section header ────────────────────────────────────────────── */
+    .section-label {
       font-size: 10px;
       font-weight: 800;
       letter-spacing: 3px;
       text-transform: uppercase;
       color: var(--text-dim);
-      margin: 32px 0 16px;
+      margin: 0 0 20px;
     }
 
-    .badges-grid {
+    /* ── Badge grid ────────────────────────────────────────────────── */
+    .badge-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+    @media (max-width: 480px) {
+      .badge-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
     }
 
-    .badge-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px 16px 20px;
-      text-align: center;
-      transition: border-color 0.2s, transform 0.2s;
-      position: relative;
-      overflow: hidden;
-    }
-    .badge-card.earned {
-      border-color: #b8860b;
-      background: linear-gradient(160deg, #1e1a0e 0%, #181818 100%);
-    }
-    .badge-card.earned:hover {
-      border-color: var(--orange);
-      transform: translateY(-2px);
-    }
-    .badge-card.locked {
-      opacity: 0.4;
-    }
-
-    .badge-icon-wrap {
-      position: relative;
-      display: inline-block;
-      margin-bottom: 12px;
-    }
-    .badge-cup {
-      font-size: 52px;
-      display: block;
-      line-height: 1;
-      filter: drop-shadow(0 4px 12px rgba(255,180,0,0.4));
-    }
-    .badge-card.locked .badge-cup {
-      filter: grayscale(1);
-    }
-    .badge-logo-overlay {
-      position: absolute;
-      bottom: -4px;
-      right: -8px;
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      background: var(--card);
-      border: 2px solid #b8860b;
+    /* ── Badge cell ────────────────────────────────────────────────── */
+    .badge-cell {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-    .badge-logo-overlay img {
-      width: 20px;
-      height: 20px;
-      object-fit: contain;
+      gap: 12px;
+      cursor: default;
     }
 
-    .badge-label {
-      font-family: var(--font-display);
-      font-size: 1.1rem;
-      color: var(--white);
-      letter-spacing: 1px;
-      line-height: 1.2;
-      margin-bottom: 4px;
+    /* SVG ring container */
+    .badge-ring-wrap {
+      position: relative;
+      width: 130px;
+      height: 130px;
+      flex-shrink: 0;
     }
-    .badge-sub {
-      font-size: 11px;
-      color: var(--text-dim);
-      line-height: 1.3;
-    }
-    .badge-card.earned .badge-sub {
-      color: #c8a832;
+    .badge-ring-wrap svg {
+      width: 130px;
+      height: 130px;
+      overflow: visible;
     }
 
-    .badge-shine {
+    /* Glow halo for won badges */
+    .badge-cell.won .badge-ring-wrap::before {
+      content: '';
       position: absolute;
-      top: 0; left: -60%;
-      width: 40%;
-      height: 100%;
-      background: linear-gradient(105deg, transparent 40%, rgba(255,200,0,0.07) 50%, transparent 60%);
+      inset: -12px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,160,0,.22) 0%, transparent 70%);
       pointer-events: none;
+      animation: badgePulse 3s ease-in-out infinite;
     }
-    .badge-card.earned:hover .badge-shine {
-      animation: shine 0.6s ease forwards;
-    }
-    @keyframes shine {
-      to { left: 130%; }
-    }
-
-    /* Winner badge special style */
-    .badge-card.win-badge.earned {
-      border-color: var(--orange);
-      background: linear-gradient(160deg, #1c1000 0%, #181818 100%);
-    }
-    .badge-card.win-badge.earned .badge-sub {
-      color: var(--orange);
+    @keyframes badgePulse {
+      0%, 100% { opacity: 0.7; transform: scale(1); }
+      50%       { opacity: 1;   transform: scale(1.06); }
     }
 
-    /* Stats bar */
-    .stats-bar {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 8px;
+    /* Missed / not-won: greyscale overlay via CSS filter */
+    .badge-cell.missed .badge-ring-wrap {
+      filter: grayscale(1) brightness(0.45);
     }
-    .stats-bar-item {
-      flex: 1;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 16px 20px;
-      text-align: center;
+    .badge-cell.missed {
+      opacity: 0.75;
     }
-    .stats-bar-num {
+
+    /* Text below badge */
+    .badge-name {
       font-family: var(--font-display);
-      font-size: 2.2rem;
-      color: var(--orange);
-      line-height: 1;
+      font-size: 1rem;
+      letter-spacing: 1px;
+      color: var(--white);
+      text-align: center;
+      line-height: 1.2;
     }
-    .stats-bar-label {
-      font-size: 11px;
+    .badge-cell.missed .badge-name { color: var(--text-dim); }
+
+    .badge-sub {
+      font-size: 10px;
       color: var(--text-dim);
-      margin-top: 4px;
+      text-align: center;
+      margin-top: -6px;
+      letter-spacing: 0.3px;
+    }
+    .badge-cell.won .badge-sub { color: #c8a832; }
+
+    /* Won tick */
+    .badge-won-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(255,92,0,.15);
+      border: 1px solid rgba(255,92,0,.4);
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: var(--orange);
+      margin-top: -4px;
+    }
+    .badge-cell.missed .badge-missed-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: var(--text-dim);
+      margin-top: -4px;
     }
 
-    .empty-state {
+    /* Empty state */
+    .empty-card {
+      background: var(--card);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 48px 24px;
       text-align: center;
-      padding: 40px 20px;
       color: var(--text-dim);
       font-size: 14px;
     }
+    .empty-card .empty-icon { font-size: 40px; margin-bottom: 12px; }
   </style>
 </head>
 <body>
@@ -201,34 +212,26 @@
     <main class="main-content">
       <div class="badges-hero">
         <h1>MY BADGES</h1>
-        <p>Achievements you've unlocked on your fitness journey</p>
+        <p>Your challenge achievements — every medal tells a story</p>
       </div>
 
-      <!-- Stats bar -->
-      <div class="stats-bar">
-        <div class="stats-bar-item">
-          <div class="stats-bar-num" id="stat-sessions">—</div>
-          <div class="stats-bar-label">Sessions Done</div>
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-pill">
+          <div class="stat-pill-num" id="stat-wins">—</div>
+          <div class="stat-pill-label">Won</div>
         </div>
-        <div class="stats-bar-item">
-          <div class="stats-bar-num" id="stat-wins">—</div>
-          <div class="stats-bar-label">Challenges Won</div>
-        </div>
-        <div class="stats-bar-item">
-          <div class="stats-bar-num" id="stat-badges">—</div>
-          <div class="stats-bar-label">Badges Earned</div>
+        <div class="stat-pill">
+          <div class="stat-pill-num" id="stat-badges">—</div>
+          <div class="stat-pill-label">Badges Earned</div>
         </div>
       </div>
 
-      <!-- Challenge Champion badges -->
-      <div id="win-badges-section" style="display:none">
-        <div class="badges-section-title">Challenge Championships</div>
-        <div class="badges-grid" id="win-badges-grid"></div>
+      <!-- Challenge Badges -->
+      <div class="section-label">Monthly Challenges</div>
+      <div class="badge-grid" id="badge-grid">
+        <div class="spinner" style="grid-column:1/-1;justify-self:center;margin:40px 0"></div>
       </div>
-
-      <!-- Session milestone badges -->
-      <div class="badges-section-title">Session Milestones</div>
-      <div class="badges-grid" id="session-badges-grid"></div>
 
     </main>
   </div>
@@ -236,59 +239,128 @@
   <div id="toast-container"></div>
   <script src="/js/app.js"></script>
   <script>
-    const SESSION_MILESTONES = [
-      { value: 1,   label: 'First Step',    sub: 'Completed your first session' },
-      { value: 10,  label: '10 Sessions',   sub: 'Consistency is building' },
-      { value: 25,  label: '25 Sessions',   sub: 'Unstoppable momentum' },
-      { value: 50,  label: '50 Sessions',   sub: 'Halfway to a hundred' },
-      { value: 100, label: '100 Sessions',  sub: 'Century club member' },
-      { value: 200, label: '200 Sessions',  sub: 'Elite athlete status' },
-    ];
+    /* ── Inline SVG badge builder (Apple Watch ring style) ──────────── */
+    function buildBadgeSVG(won) {
+      // Colour palettes
+      const gold1 = '#FFD700', gold2 = '#FF8C00', gold3 = '#FF5C00';
+      const dimC  = '#444444';
 
-    function renderBadgeCard({ earned, cup, label, sub, isWin }) {
+      // We always render the full-colour SVG; CSS filter handles the missed look.
+      const id = 'g' + Math.random().toString(36).slice(2, 7);
+      return `<svg viewBox="0 0 130 130" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <!-- Outer ring gradient -->
+          <linearGradient id="${id}a" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%"   stop-color="${gold1}"/>
+            <stop offset="50%"  stop-color="${gold2}"/>
+            <stop offset="100%" stop-color="${gold3}"/>
+          </linearGradient>
+          <!-- Centre fill gradient -->
+          <radialGradient id="${id}b" cx="50%" cy="35%" r="65%">
+            <stop offset="0%"   stop-color="#2a1800"/>
+            <stop offset="100%" stop-color="#0e0800"/>
+          </radialGradient>
+          <!-- Shimmer gradient -->
+          <linearGradient id="${id}c" x1="0%" y1="0%" x2="60%" y2="100%">
+            <stop offset="0%"   stop-color="rgba(255,255,255,0.18)"/>
+            <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+          </linearGradient>
+          <!-- Inner ring gradient -->
+          <linearGradient id="${id}d" x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%"   stop-color="${gold2}" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="${gold3}" stop-opacity="0.4"/>
+          </linearGradient>
+          <!-- Drop shadow filter -->
+          <filter id="${id}f" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="${gold2}" flood-opacity="0.55"/>
+          </filter>
+        </defs>
+
+        <!-- Outer ring (thick, main activity ring) -->
+        <circle cx="65" cy="65" r="58" fill="none"
+          stroke="url(#${id}a)" stroke-width="10"
+          stroke-linecap="round"
+          filter="url(#${id}f)"/>
+
+        <!-- Ring end cap dot (top) -->
+        <circle cx="65" cy="7" r="5" fill="${gold1}" filter="url(#${id}f)"/>
+
+        <!-- Second inner decorative ring -->
+        <circle cx="65" cy="65" r="46" fill="none"
+          stroke="url(#${id}d)" stroke-width="2.5" stroke-dasharray="4 6"
+          stroke-linecap="round" opacity="0.7"/>
+
+        <!-- Centre disc -->
+        <circle cx="65" cy="65" r="40" fill="url(#${id}b)"/>
+
+        <!-- Shimmer highlight on centre -->
+        <ellipse cx="55" cy="48" rx="24" ry="14" fill="url(#${id}c)" opacity="0.6"/>
+
+        <!-- Trophy icon (text-based for universal render) -->
+        <text x="65" y="62" text-anchor="middle" font-size="28" dominant-baseline="middle">🏆</text>
+
+        <!-- Fitanya logo text at bottom of centre -->
+        <text x="65" y="84" text-anchor="middle"
+          font-family="'Bebas Neue',sans-serif" font-size="10" letter-spacing="2"
+          fill="${gold1}" opacity="0.9">FITANYA</text>
+
+        <!-- Outer ring tick mark at 12 o'clock -->
+        <line x1="65" y1="1" x2="65" y2="13" stroke="${gold1}" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>`;
+    }
+
+    /* ── Render a single badge cell ────────────────────────────────── */
+    function renderBadge({ name, endDate, won, participated }) {
+      const stateClass = won ? 'won' : 'missed';
+      const monthYear  = endDate
+        ? new Date(endDate + 'T12:00:00').toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
+        : '';
+      const tag = won
+        ? `<span class="badge-won-tag">✓ CHAMPION</span>`
+        : `<span class="badge-missed-tag">${participated ? 'NOT WON' : 'MISSED'}</span>`;
+
       return `
-        <div class="badge-card ${earned ? 'earned' : 'locked'} ${isWin ? 'win-badge' : ''}">
-          <div class="badge-shine"></div>
-          <div class="badge-icon-wrap">
-            <span class="badge-cup">${cup}</span>
-            ${earned ? `<div class="badge-logo-overlay"><img src="/icons/logo.png" alt="FA"></div>` : ''}
-          </div>
-          <div class="badge-label">${label}</div>
-          <div class="badge-sub">${sub}</div>
+        <div class="badge-cell ${stateClass}">
+          <div class="badge-ring-wrap">${buildBadgeSVG(won)}</div>
+          <div class="badge-name">${escapeHtml(name)}</div>
+          <div class="badge-sub">${monthYear}</div>
+          ${tag}
         </div>`;
     }
 
+    function escapeHtml(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    /* ── Init ──────────────────────────────────────────────────────── */
     async function initBadges() {
       await requireAuth();
       const data = await api.get('/api/customer/badges');
-      if (!data?.success) return;
-
-      const { totalSessions, wins, badges } = data;
-
-      document.getElementById('stat-sessions').textContent = totalSessions;
-      document.getElementById('stat-wins').textContent = wins;
-      document.getElementById('stat-badges').textContent = badges.length;
-
-      // Win badges
-      const winBadges = badges.filter(b => b.type === 'win');
-      if (winBadges.length > 0) {
-        document.getElementById('win-badges-section').style.display = '';
-        document.getElementById('win-badges-grid').innerHTML = winBadges.map(b =>
-          renderBadgeCard({ earned: true, cup: '🏆', label: 'CHAMPION', sub: b.challenge || 'Monthly Challenge', isWin: true })
-        ).join('');
+      if (!data?.success) {
+        document.getElementById('badge-grid').innerHTML =
+          '<div class="empty-card" style="grid-column:1/-1"><div class="empty-icon">⚠️</div>Could not load badges.</div>';
+        return;
       }
 
-      // Session milestone badges
-      const grid = document.getElementById('session-badges-grid');
-      grid.innerHTML = SESSION_MILESTONES.map(m =>
-        renderBadgeCard({
-          earned: totalSessions >= m.value,
-          cup: totalSessions >= m.value ? (m.value >= 100 ? '🥇' : m.value >= 50 ? '🥈' : '🥉') : '🔒',
-          label: m.label,
-          sub: totalSessions >= m.value ? m.sub : `Complete ${m.value} sessions to unlock`,
-          isWin: false,
-        })
-      ).join('');
+      const { wins, challenges } = data;
+      const earnedCount = challenges.filter(c => c.won).length;
+
+      document.getElementById('stat-wins').textContent   = wins;
+      document.getElementById('stat-badges').textContent = earnedCount;
+
+      const grid = document.getElementById('badge-grid');
+      if (!challenges.length) {
+        grid.innerHTML = `
+          <div class="empty-card" style="grid-column:1/-1">
+            <div class="empty-icon">🏅</div>
+            No challenges have ended yet.<br>Join a Monthly Game to start earning badges!
+          </div>`;
+        return;
+      }
+
+      // Won first, then missed
+      const sorted = [...challenges].sort((a, b) => b.won - a.won || b.end_date.localeCompare(a.end_date));
+      grid.innerHTML = sorted.map(c => renderBadge(c)).join('');
     }
 
     initBadges();
