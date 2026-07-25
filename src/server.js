@@ -55,7 +55,7 @@ app.use(helmet({
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc:      ["'self'", "'unsafe-inline'", 'fonts.googleapis.com', 'cdn.jsdelivr.net', 'unpkg.com'],
       fontSrc:       ["'self'", 'fonts.gstatic.com'],
-      imgSrc:        ["'self'", 'data:', 'res.cloudinary.com', '*.cloudinary.com'],
+      imgSrc:        ["'self'", 'data:', 'res.cloudinary.com', '*.cloudinary.com', 'lh3.googleusercontent.com'],
       connectSrc:    [
         "'self'",
         'api.razorpay.com', 'lumberjack.razorpay.com',
@@ -186,6 +186,108 @@ app.get('/admin/diet',          (req, res) => res.sendFile(path.join(pages, 'adm
 app.get('/admin/settings',      (req, res) => res.sendFile(path.join(pages, 'admin-settings.html')));
 app.get('/admin/schedule',      (req, res) => res.sendFile(path.join(pages, 'admin-schedule.html')));
 app.get('/admin/monthly-games', (req, res) => res.sendFile(path.join(pages, 'admin-monthly-games.html')));
+
+// ── Google Login for members ──────────────────────────────────────────────────
+const crypto = require('crypto');
+const { getDb } = require('./config/database');
+
+function _googleReferralCode(name) {
+  const safe = (name || '').replace(/[^a-zA-Z]/g, '') || 'FIT';
+  return (safe.slice(0, 3) + crypto.randomBytes(3).toString('hex')).toUpperCase();
+}
+
+app.get('/auth/login/google', (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_LOGIN_REDIRECT_URI) {
+    return res.redirect('/login?error=google_not_configured');
+  }
+  const state = crypto.randomBytes(16).toString('hex');
+  req.session.googleLoginState = state;
+  const params = new URLSearchParams({
+    client_id:     process.env.GOOGLE_CLIENT_ID,
+    redirect_uri:  process.env.GOOGLE_LOGIN_REDIRECT_URI,
+    response_type: 'code',
+    scope:         'openid email profile',
+    state,
+    prompt:        'select_account',
+  });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+
+app.get('/auth/login/google/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  if (error || !code) return res.redirect('/login?error=google_cancelled');
+  if (!state || state !== req.session.googleLoginState) return res.redirect('/login?error=invalid_state');
+  delete req.session.googleLoginState;
+
+  try {
+    const { google } = require('googleapis');
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_LOGIN_REDIRECT_URI,
+    );
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+
+    const oauthSvc = google.oauth2({ version: 'v2', auth: oauth2Client });
+    const { data: gUser } = await oauthSvc.userinfo.get();
+    const { id: googleId, email, name, picture } = gUser;
+
+    if (!email) return res.redirect('/login?error=google_no_email');
+
+    const db = getDb();
+    let user = null;
+
+    // 1. Find by google_id
+    const byGId = await db.execute({ sql: `SELECT * FROM users WHERE google_id = ? AND is_active = 1`, args: [googleId] });
+    if (byGId.rows.length) user = byGId.rows[0];
+
+    // 2. Find by email → link google_id
+    if (!user) {
+      const byEmail = await db.execute({ sql: `SELECT * FROM users WHERE email = ? AND is_active = 1`, args: [email.toLowerCase()] });
+      if (byEmail.rows.length) {
+        user = byEmail.rows[0];
+        await db.execute({ sql: `UPDATE users SET google_id = ? WHERE id = ?`, args: [googleId, user.id] });
+      }
+    }
+
+    // 3. Brand-new member — create account
+    if (!user) {
+      const refCode = _googleReferralCode(name);
+      const result  = await db.execute({
+        sql:  `INSERT INTO users (name, email, password, role, google_id, referral_code, is_active) VALUES (?, ?, '', 'customer', ?, ?, 1) RETURNING id`,
+        args: [name, email.toLowerCase(), googleId, refCode],
+      });
+      const userId = result.rows[0].id;
+      await db.execute({ sql: `INSERT INTO customer_profiles (user_id) VALUES (?)`, args: [userId] });
+      try {
+        const trial = await db.execute(`SELECT id FROM packages WHERE name = 'Free Trial' LIMIT 1`);
+        if (trial.rows.length) {
+          await db.execute({
+            sql:  `INSERT INTO memberships (user_id, package_id, sessions_total, sessions_used, start_date, end_date, status, is_trial) VALUES (?, ?, 1, 0, date('now'), date('now', '+30 days'), 'active', 1)`,
+            args: [userId, trial.rows[0].id],
+          });
+        }
+      } catch (_) {}
+      const fresh = await db.execute({ sql: `SELECT * FROM users WHERE id = ?`, args: [userId] });
+      user = fresh.rows[0];
+    }
+
+    // Block coaches and admins — Google login is members only
+    if (user.role !== 'customer') return res.redirect('/login?error=not_member');
+
+    await db.execute({ sql: `UPDATE users SET last_login_at = datetime('now') WHERE id = ?`, args: [user.id] });
+
+    req.session.user = {
+      id: user.id, name: user.name, email: user.email,
+      role: user.role, profile_picture: user.profile_picture || picture || null,
+    };
+    res.redirect('/dashboard');
+  } catch (err) {
+    console.error('[google-login] error:', err.message);
+    res.redirect('/login?error=google_failed');
+  }
+});
 
 // ── Google OAuth2 callback (re-auth for Meet token refresh) ──────────────────
 app.get('/auth/google/callback', async (req, res) => {

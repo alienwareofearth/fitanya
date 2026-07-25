@@ -46,6 +46,10 @@ async function initDb() {
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`);
 
+  // Add google_id column for Google login (migration — safe to run multiple times)
+  try { await client.execute(`ALTER TABLE users ADD COLUMN google_id TEXT`); } catch (_) {}
+  try { await client.execute(`ALTER TABLE users ADD COLUMN last_login_at TEXT`); } catch (_) {}
+
   // Customer profiles (extended data from registration form)
   await client.execute(`CREATE TABLE IF NOT EXISTS customer_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
