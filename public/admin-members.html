@@ -46,6 +46,23 @@
     .modal-info-row .minfo { display: flex; flex-direction: column; gap: 2px; }
     .modal-info-row .minfo-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
     .modal-info-row .minfo-val   { font-size: 14px; font-weight: 600; color: var(--white); }
+
+    /* ── Action button rows ─────────────────────────────────────── */
+    .action-rows { display: flex; flex-direction: column; gap: 5px; min-width: 190px; }
+    .action-group { display: flex; gap: 4px; }
+    .apill {
+      flex: 1; padding: 5px 0; font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+      border-radius: 6px; border: 1px solid transparent; cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s; white-space: nowrap; text-align: center;
+      line-height: 1.4;
+    }
+    .apill:hover { opacity: 0.85; transform: translateY(-1px); }
+    .apill:active { transform: translateY(0); }
+    .apill-green  { background: rgba(34,197,94,0.15);  border-color: rgba(34,197,94,0.35);  color: #4ade80; }
+    .apill-red    { background: rgba(248,113,113,0.15); border-color: rgba(248,113,113,0.35); color: #f87171; }
+    .apill-yellow { background: rgba(251,191,36,0.15);  border-color: rgba(251,191,36,0.35);  color: #fbbf24; }
+    .apill-orange { background: rgba(255,92,0,0.15);    border-color: rgba(255,92,0,0.35);    color: var(--orange); }
+    .apill-dim    { background: rgba(255,255,255,0.05); border-color: var(--border);           color: var(--text-dim); }
   </style>
 </head>
 <body>
@@ -303,16 +320,22 @@
           <td id="coach-cell-${m.id}">${m.coach_name || '<span class="text-dim">Unassigned</span>'}</td>
           <td>${m.sessions_used != null ? m.sessions_used + '/' + m.sessions_total : '—'}</td>
           <td><span class="badge ${m.membership_status === 'active' ? 'badge-green' : 'badge-yellow'}">${m.membership_status || 'no plan'}</span></td>
-          <td><div class="flex gap-8" style="flex-wrap:wrap">
-            ${m.membership_status === 'active'
-              ? `<button class="btn btn-dark btn-sm" onclick="openAddSessions(${m.id},'${m.name.replace(/'/g,"\\'")}',${m.sessions_used||0},${m.sessions_total||0})">+ Sessions</button>
-                 <button class="btn btn-dark btn-sm" style="color:#f87171" onclick="openDeduct(${m.id},'${m.name.replace(/'/g,"\\'")}',${m.sessions_used||0},${m.sessions_total||0})">− Session</button>
-                 <button class="btn btn-dark btn-sm" style="color:#fbbf24" onclick="openOffline(${m.id},'${m.name.replace(/'/g,"\\'")}')">📝 Offline</button>`
-              : `<button class="btn btn-dark btn-sm" onclick="assignTrial(${m.id}, this)">Give Trial</button>`}
-            <button class="btn btn-dark btn-sm" style="color:var(--orange)" onclick="openAssignPackage(${m.id},'${m.name.replace(/'/g,"\\'")}')">Add Package</button>
-            <button class="btn btn-dark btn-sm" onclick="openReassign(${m.id},'${m.name.replace(/'/g,"\\'")}','${m.coach_id||''}')">Assign Coach</button>
-            <button class="btn btn-dark btn-sm" onclick="openSetTimezone(${m.id},'${m.name.replace(/'/g,"\\'")}','${m.timezone||'Asia/Kolkata'}')">🌐 Timezone</button>
-          </div></td>
+          <td>
+            <div class="action-rows">
+              <div class="action-group">
+                ${m.membership_status === 'active'
+                  ? `<button class="apill apill-green" onclick="openAddSessions(${m.id},'${m.name.replace(/'/g,"\\'")}',${m.sessions_used||0},${m.sessions_total||0})">+&nbsp;Sess</button>
+                     <button class="apill apill-red"   onclick="openDeduct(${m.id},'${m.name.replace(/'/g,"\\'")}',${m.sessions_used||0},${m.sessions_total||0})">−&nbsp;Sess</button>
+                     <button class="apill apill-yellow" onclick="openOffline(${m.id},'${m.name.replace(/'/g,"\\'")}')">Offline</button>`
+                  : `<button class="apill apill-dim" onclick="assignTrial(${m.id}, this)">Give Trial</button>`}
+              </div>
+              <div class="action-group">
+                <button class="apill apill-orange" onclick="openAssignPackage(${m.id},'${m.name.replace(/'/g,"\\'")}')">Package</button>
+                <button class="apill apill-dim"    onclick="openReassign(${m.id},'${m.name.replace(/'/g,"\\'")}','${m.coach_id||''}')">Coach</button>
+                <button class="apill apill-dim"    onclick="openSetTimezone(${m.id},'${m.name.replace(/'/g,"\\'")}','${m.timezone||'Asia/Kolkata'}')">TZ</button>
+              </div>
+            </div>
+          </td>
         </tr>`).join('')}
       </tbody>
     </table></div></div>`;
