@@ -815,3 +815,9 @@ html { overflow-x: hidden; }
 .confirm-bar {
   padding-bottom: calc(14px + env(safe-area-inset-bottom));
 }
+
+/* ── Winner ticker scroll animation ─────────────────────────────────────── */
+@keyframes winnerScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}

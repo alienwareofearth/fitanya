@@ -36,4 +36,25 @@ router.get('/stories', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// GET /api/public/winners — first names of winners from the most recent completed game
+router.get('/winners', async (req, res) => {
+  try {
+    const db = getDb();
+    const result = await db.execute(`
+      SELECT u.name
+      FROM monthly_game_participants mgp
+      JOIN users u ON u.id = mgp.user_id
+      JOIN monthly_games g ON g.id = mgp.game_id
+      WHERE mgp.is_winner = 1
+        AND g.id = (
+          SELECT id FROM monthly_games
+          WHERE end_date < date('now')
+          ORDER BY end_date DESC LIMIT 1
+        )
+      ORDER BY u.name`);
+    const names = result.rows.map(r => r.name?.split(' ')[0] || r.name).filter(Boolean);
+    res.json({ success: true, winners: names });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;

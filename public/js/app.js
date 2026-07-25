@@ -451,7 +451,86 @@ function setActiveNav() {
   });
 }
 
+// ── Scrolling winner banner (all authenticated pages) ─────────────────────
+async function _initWinnerBanner() {
+  // Don't show on login/register/landing pages
+  if (!document.querySelector('.sidebar')) return;
+  try {
+    const data = await fetch('/api/public/winners', { credentials: 'include' }).then(r => r.json());
+    if (!data?.winners?.length) return;
+    const names = data.winners;
+    const repeat = Math.max(1, Math.ceil(12 / names.length));
+    const items = Array.from({ length: repeat }, () => names).flat();
+    const text = items.map(n => `🏆 ${n}`).join('   ·   ');
+
+    const bar = document.createElement('div');
+    bar.id = 'winner-ticker';
+    bar.style.cssText = [
+      'position:fixed', 'bottom:0', 'left:0', 'right:0', 'z-index:900',
+      'background:linear-gradient(90deg,#1a0a00,#2a1000,#1a0a00)',
+      'border-top:1px solid rgba(255,92,0,.35)',
+      'height:32px', 'display:flex', 'align-items:center', 'overflow:hidden',
+    ].join(';');
+
+    const label = document.createElement('span');
+    label.style.cssText = 'flex-shrink:0;font-size:9px;font-weight:800;letter-spacing:2px;color:var(--orange);padding:0 12px;white-space:nowrap;border-right:1px solid rgba(255,92,0,.3)';
+    label.textContent = 'WINNERS';
+
+    const track = document.createElement('div');
+    track.style.cssText = 'flex:1;overflow:hidden;position:relative';
+
+    const inner = document.createElement('div');
+    inner.id = 'winner-ticker-inner';
+    inner.style.cssText = 'display:inline-block;white-space:nowrap;font-size:11px;font-weight:700;color:#e8a020;letter-spacing:0.5px;animation:winnerScroll 28s linear infinite';
+    inner.textContent = text + '   ·   ' + text;
+
+    track.appendChild(inner);
+    bar.appendChild(label);
+    bar.appendChild(track);
+    document.body.appendChild(bar);
+
+    // Add padding to main content so ticker doesn't overlap bottom nav
+    const main = document.querySelector('.main-content');
+    if (main) main.style.paddingBottom = 'calc(var(--main-pb, 40px) + 32px)';
+  } catch {}
+}
+
+// ── Winner congratulations modal (member dashboard) ───────────────────────
+function showWinnerCongrats(challengeName) {
+  if (sessionStorage.getItem('congrats_shown')) return;
+  sessionStorage.setItem('congrats_shown', '1');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'congrats-overlay';
+  overlay.style.cssText = [
+    'position:fixed','inset:0','z-index:9999',
+    'background:rgba(0,0,0,.85)',
+    'display:flex','align-items:center','justify-content:center',
+    'padding:24px',
+  ].join(';');
+
+  overlay.innerHTML = `
+    <div style="background:linear-gradient(160deg,#1c1000,#181818);border:2px solid var(--orange);border-radius:20px;padding:40px 32px;max-width:380px;width:100%;text-align:center;position:relative">
+      <button onclick="this.closest('#congrats-overlay').remove()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;line-height:1">✕</button>
+      <div style="font-size:64px;margin-bottom:16px;line-height:1;filter:drop-shadow(0 4px 16px rgba(255,180,0,.5))">🏆</div>
+      <div style="font-family:var(--font-display);font-size:2.4rem;color:var(--white);letter-spacing:2px;margin-bottom:8px">CHAMPION!</div>
+      <div style="font-size:13px;color:#c8a832;font-weight:600;margin-bottom:16px">Monthly Challenge Winner</div>
+      <div style="font-size:14px;color:var(--text-dim);line-height:1.6;margin-bottom:28px">
+        Congratulations — you conquered <strong style="color:var(--white)">${challengeName || 'the Monthly Challenge'}</strong>!<br>
+        Your dedication and consistency paid off. You're a true Fitanya Champion! 💪
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:24px">
+        <img src="/icons/logo.png" alt="Fitanya" style="height:28px;width:auto">
+        <span style="font-family:var(--font-display);font-size:1.4rem;letter-spacing:3px;color:var(--white)">FIT<span style="color:var(--orange)">ANYA</span></span>
+      </div>
+      <button onclick="this.closest('#congrats-overlay').remove()" class="btn btn-primary btn-full">Let's Keep Going! 🔥</button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initSidebarToggle();
   setActiveNav();
+  _initWinnerBanner();
 });

@@ -167,6 +167,7 @@ app.get('/dashboard/diet',      (req, res) => res.sendFile(path.join(pages, 'die
 app.get('/dashboard/stories',   (req, res) => res.sendFile(path.join(pages, 'stories.html')));
 app.get('/dashboard/referral',       (req, res) => res.sendFile(path.join(pages, 'referral.html')));
 app.get('/dashboard/monthly-games',  (req, res) => res.sendFile(path.join(pages, 'monthly-games.html')));
+app.get('/dashboard/badges',         (req, res) => res.sendFile(path.join(pages, 'badges.html')));
 
 app.get('/coach',               (req, res) => res.sendFile(path.join(pages, 'coach-dashboard.html')));
 app.get('/coach/schedule',      (req, res) => res.sendFile(path.join(pages, 'coach-schedule.html')));

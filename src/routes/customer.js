@@ -738,4 +738,47 @@ router.get('/monthly-games', async (req, res) => {
   } catch (err) { console.error('[customer] monthly-games:', err.message); res.status(500).json({ error: 'Failed to load.' }); }
 });
 
+// GET /api/customer/badges
+router.get('/badges', requireAuth, async (req, res) => {
+  try {
+    const db = getDb();
+    const userId = req.session.user.id;
+
+    const sessionsRes = await db.execute({
+      sql: `SELECT COUNT(*) as total FROM bookings b
+            JOIN schedule_slots s ON b.slot_id = s.id
+            WHERE b.customer_id = ? AND b.status != 'cancelled'
+              AND (s.date < date('now') OR (s.date = date('now') AND s.start_time <= time('now', '+5 hours', '30 minutes')))`,
+      args: [userId],
+    });
+    const totalSessions = sessionsRes.rows[0]?.total || 0;
+
+    const winsRes = await db.execute({
+      sql: `SELECT g.name, g.end_date FROM monthly_game_participants mgp
+            JOIN monthly_games g ON g.id = mgp.game_id
+            WHERE mgp.user_id = ? AND mgp.is_winner = 1
+            ORDER BY g.end_date DESC`,
+      args: [userId],
+    });
+    const wins = winsRes.rows;
+
+    const badges = [];
+
+    // Session milestone badges
+    const milestones = [1, 10, 25, 50, 100, 200];
+    for (const m of milestones) {
+      if (totalSessions >= m) {
+        badges.push({ id: `sessions_${m}`, type: 'sessions', label: m === 1 ? 'First Session!' : `${m} Sessions`, value: m, earned: true });
+      }
+    }
+
+    // Challenge winner badges
+    for (const w of wins) {
+      badges.push({ id: `win_${w.end_date}`, type: 'win', label: 'Challenge Champion', challenge: w.name, earned: true });
+    }
+
+    res.json({ success: true, totalSessions, wins: wins.length, badges });
+  } catch (err) { console.error('[customer] badges:', err.message); res.status(500).json({ error: 'Failed to load.' }); }
+});
+
 module.exports = router;
