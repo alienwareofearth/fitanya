@@ -49,8 +49,9 @@ class TursoSessionStore extends Store {
     const oldSid = req.sessionID;
     this.destroy(oldSid, (err) => {
       if (err) return cb(err);
-      // express-session will generate a new sid and call set() automatically
-      req.session = req.sessionStore.generate(req);
+      // generate() sets req.session as a side-effect and returns undefined —
+      // do NOT assign the return value or req.session becomes undefined
+      req.sessionStore.generate(req);
       cb(null);
     });
   }
