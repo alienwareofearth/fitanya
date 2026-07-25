@@ -944,11 +944,17 @@ router.post('/monthly-games/:id/process-winners', async (req, res) => {
   try {
     const { id } = req.params;
     const db = getDb();
+
+    // Ensure reward_applied column exists (safe to run multiple times)
+    await db.execute(`ALTER TABLE monthly_game_participants ADD COLUMN reward_applied INTEGER DEFAULT 0`).catch(() => {});
+
     const gameRow = await db.execute({ sql: `SELECT * FROM monthly_games WHERE id=?`, args: [id] });
     const game = gameRow.rows[0];
     if (!game) return res.status(404).json({ error: 'Game not found.' });
 
-    const totalDays = challengeDays(game.start_date, game.end_date);
+    const rewardSessions = game.reward_sessions || 0;
+    const rewardPercent  = game.reward_percent  || 0;
+    const totalDays      = challengeDays(game.start_date, game.end_date);
 
     const membersRes = await db.execute({
       sql: `SELECT u.id, u.name, COALESCE(u.timezone,'Asia/Kolkata') as timezone
@@ -959,15 +965,17 @@ router.post('/monthly-games/:id/process-winners', async (req, res) => {
     });
 
     // Use game end_date as "now" so winner processing uses full game range
-    const gameEnd = new Date(game.end_date + 'T23:59:59+05:30');
+    const gameEnd  = new Date(game.end_date + 'T23:59:59+05:30');
     const statsNow = gameEnd < new Date() ? gameEnd : new Date();
     const memberStats = await getMemberGameStats(db, game, membersRes.rows, statsNow);
 
     const { createNotification } = require('../services/notifications');
     let winnersCount = 0;
+    let rewardsAppliedCount = 0;
 
     for (const m of memberStats) {
       const isWinner = m.days_completed === totalDays;
+
       await db.execute({
         sql: `INSERT INTO monthly_game_participants
               (game_id, user_id, sessions_expected, sessions_completed, sessions_cancelled, is_winner, processed_at)
@@ -980,25 +988,73 @@ router.post('/monthly-games/:id/process-winners', async (req, res) => {
         args: [id, m.id, totalDays, m.days_completed, isWinner ? 1 : 0],
       });
 
-      if (isWinner) {
-        winnersCount++;
-        const pRow = await db.execute({
-          sql: `SELECT reward_notified FROM monthly_game_participants WHERE game_id=? AND user_id=?`,
+      if (!isWinner) continue;
+      winnersCount++;
+
+      const pRow = await db.execute({
+        sql: `SELECT reward_notified, reward_applied FROM monthly_game_participants WHERE game_id=? AND user_id=?`,
+        args: [id, m.id],
+      });
+      const alreadyNotified = pRow.rows[0]?.reward_notified === 1;
+      const alreadyApplied  = pRow.rows[0]?.reward_applied  === 1;
+
+      if (alreadyApplied) continue; // rewards already delivered — skip
+
+      // ── 1. Add free sessions to active membership ──────────────────
+      let discountCode = null;
+      if (rewardSessions > 0) {
+        await db.execute({
+          sql: `UPDATE memberships SET sessions_total = sessions_total + ?, updated_at = datetime('now')
+                WHERE user_id = ? AND status = 'active'`,
+          args: [rewardSessions, m.id],
+        }).catch(() => {});
+      }
+
+      // ── 2. Create a personal one-time discount code ────────────────
+      if (rewardPercent > 0) {
+        discountCode = `CHAMP-${id}-${m.id}`;
+        const expires = new Date();
+        expires.setDate(expires.getDate() + 90); // valid 90 days
+        const expiresStr = expires.toISOString().split('T')[0];
+        await db.execute({
+          sql: `INSERT INTO discount_codes (code, type, value, min_amount, max_uses, expires_at, applies_to)
+                VALUES (?, 'percent', ?, 0, 1, ?, 'all')
+                ON CONFLICT(code) DO NOTHING`,
+          args: [discountCode, rewardPercent, expiresStr],
+        }).catch(() => {});
+      }
+
+      // ── 3. Mark rewards applied ────────────────────────────────────
+      await db.execute({
+        sql: `UPDATE monthly_game_participants SET reward_applied=1 WHERE game_id=? AND user_id=?`,
+        args: [id, m.id],
+      });
+      rewardsAppliedCount++;
+
+      // ── 4. Notify — full notification if first time, brief if re-run ──
+      if (!alreadyNotified) {
+        const codeNote = discountCode ? `\n✅ Your personal discount code: ${discountCode}` : '';
+        await createNotification({
+          userId: m.id,
+          type: 'games',
+          title: '🏆 You Won the Monthly Challenge!',
+          body: `Congratulations ${m.name}! You showed up every single day — ${totalDays} days, zero misses.\n\n🎁 Your rewards have been applied:\n✅ ${rewardSessions} FREE sessions added to your membership${codeNote ? codeNote + ` (${rewardPercent}% off next renewal, valid 90 days)` : ''}\n\nThank you for your consistency!\n\n— Fitanya`,
+          link: '/dashboard/monthly-games',
+        }).catch(() => {});
+        await db.execute({
+          sql: `UPDATE monthly_game_participants SET reward_notified=1 WHERE game_id=? AND user_id=?`,
           args: [id, m.id],
         });
-        if (!pRow.rows[0]?.reward_notified) {
-          await createNotification({
-            userId: m.id,
-            type: 'games',
-            title: '🏆 You Won the Monthly Challenge!',
-            body: `Congratulations ${m.name}! You showed up every single day of the Fitanya Monthly Games challenge — ${totalDays} days, ${totalDays} sessions, zero misses.\n\n🎁 Your rewards:\n✅ ${game.reward_percent}% OFF on your next renewal\n✅ ${game.reward_sessions} sessions absolutely FREE\n\nOur team will apply these rewards to your account shortly. Thank you for your consistency!\n\n— Fitanya`,
-            link: '/dashboard/monthly-games',
-          }).catch(() => {});
-          await db.execute({
-            sql: `UPDATE monthly_game_participants SET reward_notified=1 WHERE game_id=? AND user_id=?`,
-            args: [id, m.id],
-          });
-        }
+      } else {
+        // Already notified earlier but rewards weren't applied — send follow-up
+        const codeNote = discountCode ? ` Use code ${discountCode} for ${rewardPercent}% off your next renewal (valid 90 days).` : '';
+        await createNotification({
+          userId: m.id,
+          type: 'games',
+          title: '🎁 Your Challenge Rewards Have Been Applied!',
+          body: `Hi ${m.name}! Your rewards for winning the ${game.title} challenge are now live.\n\n✅ ${rewardSessions} FREE sessions have been added to your membership.${codeNote}\n\n— Fitanya`,
+          link: '/dashboard/membership',
+        }).catch(() => {});
       }
     }
 
@@ -1008,7 +1064,12 @@ router.post('/monthly-games/:id/process-winners', async (req, res) => {
       args: [id],
     });
 
-    res.json({ success: true, message: `Winners processed. ${winnersCount} member(s) completed all ${totalDays} days.`, winners: winnersCount });
+    res.json({
+      success: true,
+      message: `Winners processed. ${winnersCount} winner(s) found. Rewards applied to ${rewardsAppliedCount} member(s).`,
+      winners: winnersCount,
+      rewardsApplied: rewardsAppliedCount,
+    });
   } catch (err) { console.error('[admin] process-winners:', err.message); res.status(500).json({ error: 'Failed.' }); }
 });
 
