@@ -100,14 +100,26 @@ const paymentLimiter = rateLimit({
   legacyHeaders:   false,
 });
 
+// Health sync limiter — 30 syncs per 15 min per IP (iOS Shortcuts runs frequently)
+const healthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max:      30,
+  skip:     () => isDev,
+  message:  { error: 'Too many health sync requests. Please wait.' },
+  standardHeaders: true,
+  legacyHeaders:   false,
+});
+
 app.use('/api/',               globalLimiter);
-app.use('/api/auth/login',     authLimiter);
-app.use('/api/auth/send-otp',  authLimiter);
-app.use('/api/auth/verify-otp', authLimiter);
-app.use('/api/auth/register',  authLimiter);
-app.use('/api/payments/initiate',       paymentLimiter);
-app.use('/api/payments/upi/submit',     paymentLimiter);
-app.use('/api/payments/razorpay/verify', paymentLimiter);
+app.use('/api/auth/login',            authLimiter);
+app.use('/api/auth/send-otp',         authLimiter);
+app.use('/api/auth/verify-otp',       authLimiter);
+app.use('/api/auth/register',         authLimiter);
+app.use('/api/auth/forgot-password',  authLimiter);
+app.use('/api/payments/initiate',         paymentLimiter);
+app.use('/api/payments/upi/submit',       paymentLimiter);
+app.use('/api/payments/razorpay/verify',  paymentLimiter);
+app.use('/api/customer/health/sync',      healthLimiter);
 
 // ── Body parsing ──────────────────────────────────────────────────────────────
 app.use((req, res, next) => {
@@ -175,6 +187,14 @@ app.get('/coach/schedule',      (req, res) => res.sendFile(path.join(pages, 'coa
 app.get('/coach/customers',     (req, res) => res.sendFile(path.join(pages, 'coach-customers.html')));
 app.get('/coach/sessions',      (req, res) => res.sendFile(path.join(pages, 'coach-sessions.html')));
 app.get('/coach/profile',       (req, res) => res.sendFile(path.join(pages, 'coach-profile.html')));
+
+// Protect all admin HTML pages — redirect to login if not authenticated as admin
+app.use('/admin', (req, res, next) => {
+  if (!req.session?.user || req.session.user.role !== 'admin') {
+    return res.redirect('/login');
+  }
+  next();
+});
 
 app.get('/admin',               (req, res) => res.sendFile(path.join(pages, 'admin-dashboard.html')));
 app.get('/admin/packages',      (req, res) => res.sendFile(path.join(pages, 'admin-packages.html')));
@@ -285,11 +305,19 @@ app.get('/auth/login/google/callback', async (req, res) => {
     const prevLogin = user.last_login_at || null;
     await db.execute({ sql: `UPDATE users SET last_login_at = datetime('now') WHERE id = ?`, args: [user.id] });
 
-    req.session.user = {
+    const userData = {
       id: user.id, name: user.name, email: user.email,
       role: user.role, profile_picture: user.profile_picture || picture || null,
       prev_login: prevLogin,
     };
+    // Regenerate session ID to prevent session fixation
+    await new Promise((resolve, reject) => {
+      req.session.regenerate(err => {
+        if (err) return reject(err);
+        req.session.user = userData;
+        resolve();
+      });
+    });
     res.redirect('/dashboard');
   } catch (err) {
     console.error('[google-login] error:', err.message);
@@ -298,7 +326,12 @@ app.get('/auth/login/google/callback', async (req, res) => {
 });
 
 // ── Google OAuth2 callback (re-auth for Meet token refresh) ──────────────────
-app.get('/auth/google/callback', async (req, res) => {
+app.get('/auth/google/callback', (req, res, next) => {
+  if (!req.session?.user || req.session.user.role !== 'admin') {
+    return res.redirect('/login');
+  }
+  next();
+}, async (req, res) => {
   const { code } = req.query;
   if (!code) return res.status(400).send('Missing code parameter.');
   try {

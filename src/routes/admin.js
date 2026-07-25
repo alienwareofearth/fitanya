@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const crypto  = require('crypto');
 const { getDb } = require('../config/database');
 const { requireAdmin } = require('../middleware/auth');
 const { upload, uploadBuffer } = require('../middleware/upload');
@@ -142,10 +143,10 @@ router.post('/coaches', async (req, res) => {
     const { name, email, phone, bio, specializations, certifications } = req.body;
     const db = getDb();
 
-    // Generate a readable temp password
-    const tempPassword = 'Fit@' + Math.random().toString(36).slice(2, 8).toUpperCase();
+    // Generate a cryptographically secure temp password
+    const tempPassword = 'Fit@' + crypto.randomBytes(6).toString('base64url').toUpperCase();
     const hashedPassword = await bcrypt.hash(tempPassword, 12);
-    const referralCode = (name.slice(0, 3) + Math.random().toString(36).slice(2, 5)).toUpperCase();
+    const referralCode = (name.slice(0, 3) + crypto.randomBytes(3).toString('hex')).toUpperCase();
 
     const user = await db.execute({
       sql: `INSERT INTO users (name, email, phone, password, role, referral_code) VALUES (?, ?, ?, ?, 'coach', ?) RETURNING id`,
@@ -229,7 +230,7 @@ router.get('/members', async (req, res) => {
 router.get('/members/:id', async (req, res) => {
   const db = getDb();
   const [user, profile, bookings] = await Promise.all([
-    db.execute({ sql: `SELECT u.*, cp.* FROM users u LEFT JOIN customer_profiles cp ON cp.user_id = u.id WHERE u.id = ?`, args: [req.params.id] }),
+    db.execute({ sql: `SELECT u.id, u.name, u.email, u.phone, u.timezone, u.role, u.is_active, u.profile_picture, u.created_at, u.updated_at, u.referral_code, u.assigned_coach_id, u.reward_credits, u.last_login_at, u.deleted_at, u.deletion_scheduled_at, cp.* FROM users u LEFT JOIN customer_profiles cp ON cp.user_id = u.id WHERE u.id = ?`, args: [req.params.id] }),
     db.execute({ sql: `SELECT * FROM progress_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 12`, args: [req.params.id] }),
     db.execute({ sql: `SELECT b.*, ss.date, ss.start_time, COALESCE(u.name, 'Coach Removed') as coach_name FROM bookings b JOIN schedule_slots ss ON ss.id = b.slot_id LEFT JOIN users u ON u.id = b.coach_id AND u.is_active = 1 WHERE b.customer_id = ? ORDER BY ss.date DESC LIMIT 10`, args: [req.params.id] }),
   ]);
@@ -1016,7 +1017,7 @@ router.post('/monthly-games/:id/process-winners', async (req, res) => {
         const expiresStr = expires.toISOString().split('T')[0];
         await db.execute({
           sql: `INSERT INTO discount_codes (code, type, value, min_amount, max_uses, expires_at, applies_to)
-                VALUES (?, 'percent', ?, 0, 1, ?, 'all')
+                VALUES (?, 'percentage', ?, 0, 1, ?, 'all')
                 ON CONFLICT(code) DO NOTHING`,
           args: [discountCode, rewardPercent, expiresStr],
         }).catch(() => {});

@@ -11,7 +11,7 @@ router.get('/workout-styles', async (req, res) => {
     const db = getDb();
     const result = await db.execute(`SELECT * FROM workout_styles WHERE is_active = 1 ORDER BY sort_order`);
     res.json({ success: true, styles: result.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[public] workout-styles:', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // GET /api/public/packages
@@ -20,7 +20,7 @@ router.get('/packages', async (req, res) => {
     const db = getDb();
     const result = await db.execute(`SELECT * FROM packages WHERE is_active = 1 ORDER BY sort_order`);
     res.json({ success: true, packages: result.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[public] packages:', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // GET /api/public/stories (approved only, latest 3 per user — max 9 total)
@@ -33,7 +33,7 @@ router.get('/stories', async (req, res) => {
       WHERE s.status = 'approved'
       ORDER BY s.reviewed_at DESC LIMIT 9`);
     res.json({ success: true, stories: result.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[public] stories:', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 // GET /api/public/winners — first names of winners from the most recent completed game
@@ -54,7 +54,7 @@ router.get('/winners', async (req, res) => {
       ORDER BY u.name`);
     const names = result.rows.map(r => r.name?.split(' ')[0] || r.name).filter(Boolean);
     res.json({ success: true, winners: names });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error('[public] winners:', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
 module.exports = router;

@@ -1,5 +1,15 @@
 // ── FITANYA GLOBAL JS ────────────────────────────────────────────────────
 
+// Escape HTML entities to prevent XSS when inserting user-controlled text into innerHTML
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ── 24-hour page cache (localStorage) ────────────────────────────────────
 const pageCache = {
   TTL: 24 * 60 * 60 * 1000,
@@ -121,7 +131,7 @@ function _renderSidebarProfile(user) {
     <a href="${profileHref}" class="user-profile-pill" style="text-decoration:none;display:flex;align-items:center;gap:12px;cursor:pointer">
       <div class="user-avatar">${initial}</div>
       <div class="user-info">
-        <div class="user-display-name">${user.name || ''}</div>
+        <div class="user-display-name">${escHtml(user.name)}</div>
         <span class="user-role-badge">${roleLabel}</span>
       </div>
     </a>
@@ -208,7 +218,14 @@ function _renderMobileTopbar(user) {
 
   // Greeting line — same style as dashboard: display font, orange name
   const greetEl = document.getElementById('mobile-topbar-greeting');
-  if (greetEl) greetEl.innerHTML = `${getGreeting()}, <span class="tb-name">${firstName}!</span>`;
+  if (greetEl) {
+    greetEl.textContent = '';
+    greetEl.appendChild(document.createTextNode(`${getGreeting()}, `));
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'tb-name';
+    nameSpan.textContent = `${firstName}!`;
+    greetEl.appendChild(nameSpan);
+  }
 
   // Quote line below the greeting
   const textEl = document.getElementById('mobile-topbar-text') || document.getElementById('mobile-topbar-mid');
@@ -222,14 +239,20 @@ function _renderMobileTopbar(user) {
   // Avatar
   const avatarWrap = document.getElementById('mobile-topbar-avatar-wrap');
   if (avatarWrap) {
+    avatarWrap.innerHTML = '';
     if (user.profile_picture) {
-      avatarWrap.innerHTML = `<img src="${user.profile_picture}" alt="Profile"
-        style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--border);display:block">`;
+      const img = document.createElement('img');
+      img.src = user.profile_picture;
+      img.alt = 'Profile';
+      img.style.cssText = 'width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--border);display:block';
+      avatarWrap.appendChild(img);
     } else {
       const initial = (user.name || 'U').charAt(0).toUpperCase();
-      avatarWrap.innerHTML = `<div class="user-avatar"
-        style="width:38px;height:38px;font-size:15px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center">
-        ${initial}</div>`;
+      const div = document.createElement('div');
+      div.className = 'user-avatar';
+      div.style.cssText = 'width:38px;height:38px;font-size:15px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center';
+      div.textContent = initial;
+      avatarWrap.appendChild(div);
     }
   }
 }
@@ -248,18 +271,32 @@ async function _globalToggleNotif() {
     list.innerHTML = '<p style="padding:20px;color:#666;text-align:center;font-size:13px">No notifications yet</p>';
     return;
   }
-  list.innerHTML = data.notifications.map(n => {
+  const fragment = document.createDocumentFragment();
+  data.notifications.forEach(n => {
     const dt = n.created_at ? new Date(n.created_at.replace(' ', 'T')) : null;
     const timeStr = dt && !isNaN(dt)
       ? dt.toLocaleString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', hour12:true })
       : '';
-    return `
-    <div style="padding:13px 16px;border-bottom:1px solid var(--border);${!n.is_read ? 'background:rgba(255,92,0,.04)' : ''}">
-      <div style="font-size:13px;font-weight:600;color:${n.is_read ? 'var(--text-dim)' : 'var(--white)'};margin-bottom:3px">${n.title || ''}</div>
-      <div style="font-size:12px;color:var(--text-dim);line-height:1.4">${n.body || ''}</div>
-      ${timeStr ? `<div style="font-size:11px;color:#555;margin-top:5px">${timeStr}</div>` : ''}
-    </div>`;
-  }).join('');
+    const row = document.createElement('div');
+    row.style.cssText = `padding:13px 16px;border-bottom:1px solid var(--border);${!n.is_read ? 'background:rgba(255,92,0,.04)' : ''}`;
+    const titleEl = document.createElement('div');
+    titleEl.style.cssText = `font-size:13px;font-weight:600;color:${n.is_read ? 'var(--text-dim)' : 'var(--white)'};margin-bottom:3px`;
+    titleEl.textContent = n.title || '';
+    const bodyEl = document.createElement('div');
+    bodyEl.style.cssText = 'font-size:12px;color:var(--text-dim);line-height:1.4';
+    bodyEl.textContent = n.body || '';
+    row.appendChild(titleEl);
+    row.appendChild(bodyEl);
+    if (timeStr) {
+      const timeEl = document.createElement('div');
+      timeEl.style.cssText = 'font-size:11px;color:#555;margin-top:5px';
+      timeEl.textContent = timeStr;
+      row.appendChild(timeEl);
+    }
+    fragment.appendChild(row);
+  });
+  list.innerHTML = '';
+  list.appendChild(fragment);
   // Mark all as read & hide dots
   api.post('/api/customer/notifications/read', {});
   document.querySelectorAll('.notif-dot').forEach(el => el.classList.add('hidden'));

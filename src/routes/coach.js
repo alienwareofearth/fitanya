@@ -43,16 +43,23 @@ router.put('/profile', async (req, res) => {
     const { name, phone, timezone, bio, specializations } = req.body;
     const VALID_TZ = ['Asia/Kolkata', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London', 'Asia/Dubai'];
     const tz = VALID_TZ.includes(timezone) ? timezone : 'Asia/Kolkata';
+    const PHONE_RE = /^[+\d][\d\s\-().]{6,19}$/;
+    const safeName  = (typeof name === 'string' ? name.trim().slice(0, 100) : '');
+    const safePhone = (typeof phone === 'string' ? phone.trim().slice(0, 20) : '');
+    const safeBio   = (typeof bio === 'string' ? bio.trim().slice(0, 1000) : '');
+    const safeSpec  = (typeof specializations === 'string' ? specializations.trim().slice(0, 500) : '');
+    if (!safeName || safeName.length < 2) return res.status(400).json({ error: 'Name must be at least 2 characters' });
+    if (safePhone && !PHONE_RE.test(safePhone)) return res.status(400).json({ error: 'Invalid phone number format' });
     const db = getDb();
     await db.execute({
       sql: `UPDATE users SET name=?, phone=?, timezone=?, updated_at=datetime('now') WHERE id=?`,
-      args: [name, phone, tz, req.session.user.id],
+      args: [safeName, safePhone || null, tz, req.session.user.id],
     });
     await db.execute({
       sql: `UPDATE coach_profiles SET bio=?, specializations=?, updated_at=datetime('now') WHERE user_id=?`,
-      args: [bio, specializations, req.session.user.id],
+      args: [safeBio, safeSpec, req.session.user.id],
     });
-    req.session.user.name = name;
+    req.session.user.name = safeName;
     res.json({ success: true });
   } catch (err) { console.error('[coach]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
@@ -281,6 +288,16 @@ router.post('/book', async (req, res) => {
     });
     if (!slot.rows.length) return res.status(400).json({ error: 'Slot not available' });
     const slotData = slot.rows[0];
+
+    // Verify customer is assigned to this coach (prevents cross-coach IDOR)
+    const assignedCheck = await db.execute({
+      sql: `SELECT u.id FROM users u
+            LEFT JOIN memberships m ON m.user_id = u.id AND m.status = 'active'
+            WHERE u.id = ? AND (m.coach_id = ? OR u.assigned_coach_id = ?)
+            LIMIT 1`,
+      args: [customer_id, coachId, coachId],
+    });
+    if (!assignedCheck.rows.length) return res.status(403).json({ error: 'Customer is not assigned to you' });
 
     const membership = await db.execute({
       sql: `SELECT * FROM memberships WHERE user_id = ? AND status = 'active' AND (coach_id = ? OR coach_id IS NULL) ORDER BY created_at DESC LIMIT 1`,

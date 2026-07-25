@@ -211,10 +211,22 @@ router.post('/login', async (req, res) => {
 
     // Master admin check first — before any format validation
     if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD &&
-        timingSafeEqual(email, process.env.ADMIN_EMAIL.toLowerCase()) &&
-        timingSafeEqual(password, process.env.ADMIN_PASSWORD)) {
-      req.session.user = { id: 0, name: 'Admin', email, role: 'admin' };
-      return res.json({ success: true, redirect: '/admin' });
+        timingSafeEqual(email, process.env.ADMIN_EMAIL.toLowerCase())) {
+      const storedPw = process.env.ADMIN_PASSWORD;
+      const adminMatch = storedPw.startsWith('$2')
+        ? await bcrypt.compare(password, storedPw)
+        : timingSafeEqual(password, storedPw);
+      if (adminMatch) {
+        await new Promise((resolve, reject) => {
+          req.session.regenerate(err => {
+            if (err) return reject(err);
+            req.session.user = { id: 0, name: 'Admin', email, role: 'admin' };
+            resolve();
+          });
+        });
+        return res.json({ success: true, redirect: '/admin' });
+      }
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     if (!validEmail(email)) return res.status(400).json({ error: 'Invalid email format' });
@@ -248,11 +260,19 @@ router.post('/login', async (req, res) => {
       args: [user.id],
     });
 
-    req.session.user = {
+    const userData = {
       id: user.id, name: user.name, email: user.email,
       role: user.role, profile_picture: user.profile_picture,
       prev_login: prevLogin,
     };
+    // Regenerate session ID on login to prevent session fixation attacks
+    await new Promise((resolve, reject) => {
+      req.session.regenerate(err => {
+        if (err) return reject(err);
+        req.session.user = userData;
+        resolve();
+      });
+    });
     const redirectMap = { admin: '/admin', coach: '/coach', customer: '/dashboard' };
     res.json({ success: true, redirect: redirectMap[user.role] || '/dashboard', pendingDeletion, daysRemaining });
   } catch (err) {

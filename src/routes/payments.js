@@ -14,6 +14,20 @@ const router = express.Router();
 const isDev  = (process.env.NODE_ENV || 'development') === 'development';
 const MODE   = () => (process.env.PAYMENT_MODE || 'personal').toLowerCase();
 
+// Routes that are intentionally public (no auth required)
+const PUBLIC_ROUTES = [
+  'GET /config',
+  'GET /validate-code',
+  'POST /razorpay/webhook',
+  'POST /phonepe/callback',
+];
+
+router.use((req, res, next) => {
+  const key = `${req.method} ${req.path}`;
+  if (PUBLIC_ROUTES.includes(key)) return next();
+  return requireAuth(req, res, next);
+});
+
 // ── GET /api/payments/config  (frontend reads this to know which mode is active)
 router.get('/config', (req, res) => {
   const mode = MODE();

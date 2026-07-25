@@ -56,18 +56,19 @@
       </div>`;
       return;
     }
+    function eh(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     el.innerHTML = notes.map(b => `
       <div class="card mb-16">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:12px">
           <div>
             <div style="font-weight:600;color:var(--white)">${formatSessionDate(b.date, b.start_time)} · ${formatSessionTime(b.start_time, b.date)}</div>
-            <div class="text-dim text-small">Coach: ${b.coach_name}</div>
+            <div class="text-dim text-small">Coach: ${eh(b.coach_name)}</div>
           </div>
           <span class="badge badge-green">Completed</span>
         </div>
-        <p style="color:var(--text);font-size:14px;margin-bottom:8px"><strong class="text-orange">Notes:</strong><br>${b.session_notes}</p>
-        ${b.workout_done     ? `<p style="font-size:13px;color:var(--text);margin-bottom:6px"><strong class="text-dim">Workout done:</strong> ${b.workout_done}</p>` : ''}
-        ${b.next_session_plan ? `<p style="font-size:13px;color:var(--text)"><strong class="text-dim">Next session plan:</strong> ${b.next_session_plan}</p>` : ''}
+        <p style="color:var(--text);font-size:14px;margin-bottom:8px"><strong class="text-orange">Notes:</strong><br>${eh(b.session_notes)}</p>
+        ${b.workout_done     ? `<p style="font-size:13px;color:var(--text);margin-bottom:6px"><strong class="text-dim">Workout done:</strong> ${eh(b.workout_done)}</p>` : ''}
+        ${b.next_session_plan ? `<p style="font-size:13px;color:var(--text)"><strong class="text-dim">Next session plan:</strong> ${eh(b.next_session_plan)}</p>` : ''}
       </div>`).join('');
   }
   init();
