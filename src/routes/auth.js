@@ -211,16 +211,19 @@ router.post('/login', async (req, res) => {
 
     // Master admin check first — before any format validation
     if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD &&
-        timingSafeEqual(email, process.env.ADMIN_EMAIL.toLowerCase()) &&
-        timingSafeEqual(password, process.env.ADMIN_PASSWORD)) {
-      await new Promise((resolve, reject) => {
-        req.session.regenerate(err => {
-          if (err) return reject(err);
-          req.session.user = { id: 0, name: 'Admin', email, role: 'admin' };
-          resolve();
+        timingSafeEqual(email, process.env.ADMIN_EMAIL.toLowerCase())) {
+      // Email matches admin — check password and stop here regardless of result
+      if (timingSafeEqual(password, process.env.ADMIN_PASSWORD)) {
+        await new Promise((resolve, reject) => {
+          req.session.regenerate(err => {
+            if (err) return reject(err);
+            req.session.user = { id: 0, name: 'Admin', email, role: 'admin' };
+            resolve();
+          });
         });
-      });
-      return res.json({ success: true, redirect: '/admin' });
+        return res.json({ success: true, redirect: '/admin' });
+      }
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     if (!validEmail(email)) return res.status(400).json({ error: 'Invalid email format' });
