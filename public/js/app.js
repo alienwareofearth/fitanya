@@ -496,10 +496,11 @@ async function _initWinnerBanner() {
 }
 
 // ── Winner congratulations modal (member dashboard) ───────────────────────
-function showWinnerCongrats(challengeName) {
+function showWinnerCongrats(challengeName, firstName) {
   if (sessionStorage.getItem('congrats_shown')) return;
   sessionStorage.setItem('congrats_shown', '1');
 
+  const nameGreeting = firstName ? `${firstName}, you're a` : 'You\'re a true';
   const overlay = document.createElement('div');
   overlay.id = 'congrats-overlay';
   overlay.style.cssText = [
@@ -513,11 +514,12 @@ function showWinnerCongrats(challengeName) {
     <div style="background:linear-gradient(160deg,#1c1000,#181818);border:2px solid var(--orange);border-radius:20px;padding:40px 32px;max-width:380px;width:100%;text-align:center;position:relative">
       <button onclick="this.closest('#congrats-overlay').remove()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;line-height:1">✕</button>
       <div style="font-size:64px;margin-bottom:16px;line-height:1;filter:drop-shadow(0 4px 16px rgba(255,180,0,.5))">🏆</div>
-      <div style="font-family:var(--font-display);font-size:2.4rem;color:var(--white);letter-spacing:2px;margin-bottom:8px">CHAMPION!</div>
+      <div style="font-family:var(--font-display);font-size:2.4rem;color:var(--white);letter-spacing:2px;margin-bottom:4px">CHAMPION!</div>
+      ${firstName ? `<div style="font-family:var(--font-display);font-size:1.6rem;color:var(--orange);letter-spacing:2px;margin-bottom:8px">${firstName.toUpperCase()}</div>` : ''}
       <div style="font-size:13px;color:#c8a832;font-weight:600;margin-bottom:16px">Monthly Challenge Winner</div>
       <div style="font-size:14px;color:var(--text-dim);line-height:1.6;margin-bottom:28px">
-        Congratulations — you conquered <strong style="color:var(--white)">${challengeName || 'the Monthly Challenge'}</strong>!<br>
-        Your dedication and consistency paid off. You're a true Fitanya Champion! 💪
+        Congratulations on conquering <strong style="color:var(--white)">${challengeName || 'the Monthly Challenge'}</strong>!<br>
+        ${nameGreeting} true Fitanya Champion! 💪
       </div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:24px">
         <img src="/icons/logo.png" alt="Fitanya" style="height:28px;width:auto">

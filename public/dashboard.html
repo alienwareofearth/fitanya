@@ -368,6 +368,7 @@
   <script src="/js/app.js"></script>
   <script>
     let _profile = null;
+    let _user = null;
     let _progressLogs = [];
 
     async function initDashboard() {
@@ -377,6 +378,7 @@
       window.__userTz = user.timezone || 'Asia/Kolkata';
       showLastLoginBanner(prev_login);
       _profile = profile;
+      _user = user;
 
       // Stats
       const sessionsUsed = membership?.sessions_used || 0;
@@ -403,7 +405,8 @@
       try {
         const data = await api.get('/api/customer/monthly-games');
         if (data?.progress?.officialWinner) {
-          showWinnerCongrats(data.recentGame?.name);
+          const firstName = _user?.name?.split(' ')[0] || '';
+          showWinnerCongrats(data.recentGame?.name, firstName);
         }
       } catch {}
     }

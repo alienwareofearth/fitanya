@@ -748,7 +748,7 @@ router.get('/badges', requireAuth, async (req, res) => {
       sql: `SELECT COUNT(*) as total FROM bookings b
             JOIN schedule_slots s ON b.slot_id = s.id
             WHERE b.customer_id = ? AND b.status != 'cancelled'
-              AND (s.date < date('now') OR (s.date = date('now') AND s.start_time <= time('now', '+5 hours', '30 minutes')))`,
+              AND datetime(s.date || ' ' || s.start_time) <= datetime('now', '+330 minutes')`,
       args: [userId],
     });
     const totalSessions = sessionsRes.rows[0]?.total || 0;
