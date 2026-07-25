@@ -746,7 +746,7 @@ router.get('/badges', requireAuth, async (req, res) => {
 
     // All past/ended games and whether this member won each one
     const gamesRes = await db.execute({
-      sql: `SELECT g.id, g.name, g.start_date, g.end_date,
+      sql: `SELECT g.id, g.title, g.start_date, g.end_date,
                    mgp.is_winner,
                    CASE WHEN mgp.user_id IS NOT NULL THEN 1 ELSE 0 END as participated
             FROM monthly_games g
@@ -764,7 +764,7 @@ router.get('/badges', requireAuth, async (req, res) => {
       wins,
       challenges: games.map(g => ({
         id: g.id,
-        name: g.name,
+        name: g.title,
         end_date: g.end_date,
         won: g.is_winner === 1,
         participated: g.participated === 1,

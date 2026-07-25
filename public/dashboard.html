@@ -406,7 +406,7 @@
         const data = await api.get('/api/customer/monthly-games');
         if (data?.progress?.officialWinner) {
           const firstName = _user?.name?.split(' ')[0] || '';
-          showWinnerCongrats(data.recentGame?.name, firstName);
+          showWinnerCongrats(data.recentGame?.title, firstName);
         }
       } catch {}
     }
