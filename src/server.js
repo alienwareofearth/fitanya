@@ -196,15 +196,21 @@ function _googleReferralCode(name) {
   return (safe.slice(0, 3) + crypto.randomBytes(3).toString('hex')).toUpperCase();
 }
 
+function _googleLoginRedirectUri(req) {
+  // Use explicit env var if set, otherwise derive from the incoming request host
+  return process.env.GOOGLE_LOGIN_REDIRECT_URI ||
+    `${req.protocol}://${req.get('host')}/auth/login/google/callback`;
+}
+
 app.get('/auth/login/google', (req, res) => {
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_LOGIN_REDIRECT_URI) {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return res.redirect('/login?error=google_not_configured');
   }
   const state = crypto.randomBytes(16).toString('hex');
   req.session.googleLoginState = state;
   const params = new URLSearchParams({
     client_id:     process.env.GOOGLE_CLIENT_ID,
-    redirect_uri:  process.env.GOOGLE_LOGIN_REDIRECT_URI,
+    redirect_uri:  _googleLoginRedirectUri(req),
     response_type: 'code',
     scope:         'openid email profile',
     state,
@@ -224,7 +230,7 @@ app.get('/auth/login/google/callback', async (req, res) => {
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_LOGIN_REDIRECT_URI,
+      _googleLoginRedirectUri(req),
     );
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
