@@ -230,17 +230,15 @@
       <a href="/dashboard" class="sidebar-logo"><img src="/icons/logo.png" alt="Fitanya"><span class="sidebar-logo-text">FIT<span>ANYA</span></span></a>
       <div id="sidebar-profile"></div>
       <nav class="sidebar-nav">
-        <a href="/dashboard" class="nav-item active"><span class="icon">🏠</span>Dashboard</a>
-        <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
+        <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Sessions</a>
         <a href="/dashboard/membership" class="nav-item"><span class="icon">🎫</span>Membership</a>
-      <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
+        <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Meal Plan</a>
+        <a href="/dashboard/monthly-games" class="nav-item"><span class="icon">🏆</span>Challenges</a>
+        <a href="/dashboard/badges" class="nav-item"><span class="icon">🥇</span>Badges & Achievements</a>
         <a href="/dashboard/progress" class="nav-item"><span class="icon">📊</span>Progress</a>
-        <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
-        <a href="/dashboard/monthly-games" class="nav-item"><span class="icon">🏆</span>Monthly Games</a>
-        <a href="/dashboard/badges" class="nav-item"><span class="icon">🥇</span>My Badges</a>
-        <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
+        <a href="/dashboard/stories" class="nav-item"><span class="icon">⭐</span>Reviews</a>
+        <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
         <a href="/dashboard/referral" class="nav-item"><span class="icon">🎁</span>Refer & Earn</a>
-        <a href="/dashboard/profile" class="nav-item"><span class="icon">👤</span>Profile</a>
       </nav>
       <div class="sidebar-footer">
         <button class="nav-item" onclick="logout()" style="width:100%"><span class="icon">🚪</span>Logout</button>
@@ -281,41 +279,11 @@
         <div class="journey-quote" id="wj-quote">"Every step counts. Let's get started — your journey begins here!"</div>
       </div>
 
-      <!-- Stats -->
-      <div class="stats-grid mb-24" id="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">Sessions Remaining</div>
-          <div class="stat-value orange" id="stat-remaining">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Sessions Completed</div>
-          <div class="stat-value" id="stat-completed">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Days Active</div>
-          <div class="stat-value" id="stat-days">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Reward Credits</div>
-          <div class="stat-value orange" id="stat-credits">—</div>
-        </div>
-      </div>
-
-
-      <!-- Upcoming sessions + Progress side by side -->
-      <div class="grid-2 gap-24 mb-32">
-        <div>
-          <div class="section-title">Upcoming Sessions</div>
-          <div id="upcoming-sessions">
-            <div class="spinner"></div>
-          </div>
-          <a href="/dashboard/schedule" class="btn btn-outline btn-sm mt-16">View All & Book →</a>
-        </div>
-        <div>
-          <div class="section-title">This Week's Progress</div>
-          <div id="weekly-progress" class="card">
-            <div class="spinner"></div>
-          </div>
+      <!-- This Week's Progress -->
+      <div class="mb-32">
+        <div class="section-title">This Week's Progress</div>
+        <div id="weekly-progress" class="card">
+          <div class="spinner"></div>
         </div>
       </div>
 
@@ -338,21 +306,8 @@
       _profile = profile;
       _user = user;
 
-      // Stats
-      const sessionsUsed = membership?.sessions_used || 0;
-      const sessionsTotal = membership?.sessions_total || membership?.sessions || 0;
-      const remaining = Math.max(0, sessionsTotal - sessionsUsed);
-      const joinDate = new Date(user.created_at);
-      const daysActive = Math.floor((Date.now() - joinDate) / 86400000);
-
-      document.getElementById('stat-remaining').textContent = remaining;
-      document.getElementById('stat-completed').textContent = sessionsUsed;
-      document.getElementById('stat-days').textContent = daysActive;
-      document.getElementById('stat-credits').textContent = `₹${user.reward_credits || 0}`;
-
       loadNotifCount();
       checkWeightPopup();
-      loadUpcomingSessions();
       loadWeeklyProgress();
       loadWeightJourney();
       checkWinnerCongrats();
@@ -480,46 +435,6 @@
         btn.disabled = false;
         btn.textContent = 'Log My Weight 💪';
       }
-    }
-
-    async function loadUpcomingSessions() {
-      const data = await api.get('/api/bookings/my');
-      const el = document.getElementById('upcoming-sessions');
-      if (!data?.bookings?.length) {
-        el.innerHTML = `<div class="card text-center" style="padding:32px">
-          <p class="text-dim">No sessions yet.</p>
-          <a href="/dashboard/schedule" class="btn btn-primary btn-sm mt-16">Book Your First Session</a>
-        </div>`;
-        return;
-      }
-      // Show upcoming: not completed, not cancelled, date is today or future — sort soonest first
-      const todayIST = new Date(Date.now() + 5.5 * 3600000).toISOString().split('T')[0];
-      const upcoming = data.bookings
-        .filter(b => !b.is_completed && b.status !== 'cancelled' && b.date >= todayIST)
-        .sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.start_time.localeCompare(b.start_time))
-        .slice(0, 3);
-      if (!upcoming.length) {
-        el.innerHTML = `<p class="text-dim">No upcoming sessions. <a href="/dashboard/schedule" class="text-orange">Book one!</a></p>`;
-        return;
-      }
-      el.innerHTML = upcoming.map(b => {
-        const localDt = new Date(`${b.date}T${b.start_time}:00+05:30`);
-        const day = localDt.toLocaleString('en-US', { timeZone: window.__userTz, day: 'numeric' });
-        const month = localDt.toLocaleString('en-US', { timeZone: window.__userTz, month: 'short' }).toUpperCase();
-        return `
-          <div class="upcoming-card">
-            <div class="session-date">
-              <div class="session-day">${day}</div>
-              <div class="session-month">${month}</div>
-            </div>
-            <div class="session-info">
-              <h4>Session with ${b.coach_name}</h4>
-              <p>${formatSessionTime(b.start_time, b.date)} – ${formatSessionTime(b.end_time, b.date)}</p>
-            </div>
-            ${!b.is_completed && b.status !== 'cancelled' && !isMeetExpired(b.date, b.start_time) ? (b.meet_link ? `<a href="${meetUrl(b.meet_link)}" target="_blank" class="btn btn-primary btn-sm">Join Meet</a>` : `<span class="btn btn-primary btn-sm" style="opacity:.5;cursor:default">Link Pending</span>`) : ''}
-          </div>
-        `;
-      }).join('');
     }
 
     async function loadWeeklyProgress() {

@@ -77,17 +77,15 @@
     <a href="/dashboard" class="sidebar-logo"><img src="/icons/logo.png" alt="Fitanya"><span class="sidebar-logo-text">FIT<span>ANYA</span></span></a>
     <div id="sidebar-profile"></div>
     <nav class="sidebar-nav">
-      <a href="/dashboard" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
-      <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
+      <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Sessions</a>
       <a href="/dashboard/membership" class="nav-item active"><span class="icon">🎫</span>Membership</a>
-      <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
+      <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Meal Plan</a>
+      <a href="/dashboard/monthly-games" class="nav-item"><span class="icon">🏆</span>Challenges</a>
+      <a href="/dashboard/badges" class="nav-item"><span class="icon">🥇</span>Badges & Achievements</a>
       <a href="/dashboard/progress" class="nav-item"><span class="icon">📊</span>Progress</a>
-      <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
-      <a href="/dashboard/monthly-games" class="nav-item"><span class="icon">🏆</span>Monthly Games</a>
-        <a href="/dashboard/badges" class="nav-item"><span class="icon">🥇</span>My Badges</a>
-        <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
+      <a href="/dashboard/stories" class="nav-item"><span class="icon">⭐</span>Reviews</a>
+      <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
       <a href="/dashboard/referral" class="nav-item"><span class="icon">🎁</span>Refer & Earn</a>
-      <a href="/dashboard/profile" class="nav-item"><span class="icon">👤</span>Profile</a>
     </nav>
     <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
   </aside>
@@ -198,7 +196,18 @@
       </div><!-- /body-switch -->
     </div>
 
-    <!-- ── Section 3: Payment History ─────────────────────────────────── -->
+    <!-- ── Section 3: Membership History ───────────────────────────────── -->
+    <div style="margin-top:32px">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:4px 0" onclick="toggleSection('memhistory')">
+        <div class="section-title mb-0">Membership History</div>
+        <span id="chev-memhistory" style="color:var(--text-dim);font-size:13px;transition:transform 0.2s">▶</span>
+      </div>
+      <div id="body-memhistory" style="display:none">
+        <div id="mem-history-list" class="mt-16"></div>
+      </div>
+    </div>
+
+    <!-- ── Section 4: Payment History ─────────────────────────────────── -->
     <div style="margin-top:32px">
       <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:4px 0" onclick="toggleSection('history')">
         <div class="section-title mb-0">Payment History</div>
@@ -284,7 +293,36 @@
     _pkgs = pkgData?.packages || [];
     renderCurrentPlan(memData);
     renderPackageDropdown();
+    renderMembershipHistory(memData?.memberships || []);
     renderPaymentHistory(memData?.payments || []);
+  }
+
+  function renderMembershipHistory(memberships) {
+    const el = document.getElementById('mem-history-list');
+    if (!memberships.length) {
+      el.innerHTML = '<p class="text-dim text-center" style="padding:24px">No membership history yet.</p>';
+      return;
+    }
+    el.innerHTML = memberships.map(m => {
+      const statusCls = m.status === 'active' ? 'badge-green' : m.status === 'expired' ? 'badge-red' : 'badge-yellow';
+      const used = m.sessions_used || 0;
+      const total = m.sessions_total || m.sessions || 0;
+      return `
+        <div class="card mb-12" style="padding:18px 20px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+            <div>
+              <div style="font-family:var(--font-display);font-size:1.2rem;color:var(--white)">${m.package_name || 'Plan'}</div>
+              <div class="text-dim text-small">Coach: ${m.coach_name || 'Not assigned'}</div>
+            </div>
+            <span class="badge ${statusCls}">${m.status}</span>
+          </div>
+          <div style="display:flex;gap:24px;flex-wrap:wrap;font-size:13px">
+            <div><span class="text-dim">From</span> <strong>${formatDate(m.start_date)}</strong></div>
+            <div><span class="text-dim">To</span> <strong>${formatDate(m.end_date)}</strong></div>
+            <div><span class="text-dim">Sessions</span> <strong>${used}/${total}</strong></div>
+          </div>
+        </div>`;
+    }).join('');
   }
 
   // ── Current plan hero card ─────────────────────────────────────────────
@@ -363,7 +401,7 @@
             <div class="renew-banner-sub">Renew <strong>${mem.package_name}</strong> now — your remaining sessions carry over as credit.</div>
           </div>
         </div>
-        <button class="btn btn-primary" onclick="quickRenew()">Renew Now →</button>
+        <a href="/dashboard/payment" class="btn btn-primary">Pay Now →</a>
       </div>
     `;
   }

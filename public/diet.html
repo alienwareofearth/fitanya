@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Fitanya">
   <link rel="apple-touch-icon" href="/icons/icon.svg">
-  <title>Diet & Nutrition — Fitanya</title>
+  <title>Meal Plan — Fitanya</title>
   <link rel="stylesheet" href="/css/main.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <style>
@@ -26,63 +26,58 @@
     <a href="/dashboard" class="sidebar-logo"><img src="/icons/logo.png" alt="Fitanya"><span class="sidebar-logo-text">FIT<span>ANYA</span></span></a>
     <div id="sidebar-profile"></div>
     <nav class="sidebar-nav">
-      <a href="/dashboard" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
-      <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
+      <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Sessions</a>
       <a href="/dashboard/membership" class="nav-item"><span class="icon">🎫</span>Membership</a>
-      <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
+      <a href="/dashboard/diet" class="nav-item active"><span class="icon">🥗</span>Meal Plan</a>
+      <a href="/dashboard/monthly-games" class="nav-item"><span class="icon">🏆</span>Challenges</a>
+      <a href="/dashboard/badges" class="nav-item"><span class="icon">🥇</span>Badges & Achievements</a>
       <a href="/dashboard/progress" class="nav-item"><span class="icon">📊</span>Progress</a>
-      <a href="/dashboard/diet" class="nav-item active"><span class="icon">🥗</span>Diet & Nutrition</a>
-      <a href="/dashboard/monthly-games" class="nav-item"><span class="icon">🏆</span>Monthly Games</a>
-        <a href="/dashboard/badges" class="nav-item"><span class="icon">🥇</span>My Badges</a>
-        <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
+      <a href="/dashboard/stories" class="nav-item"><span class="icon">⭐</span>Reviews</a>
+      <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
       <a href="/dashboard/referral" class="nav-item"><span class="icon">🎁</span>Refer & Earn</a>
-      <a href="/dashboard/profile" class="nav-item"><span class="icon">👤</span>Profile</a>
     </nav>
     <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
   </aside>
   <main class="main-content">
     <div class="page-header flex-between mb-32">
       <div>
-        <h2>Diet &amp; Nutrition</h2>
+        <h2>Meal Plan</h2>
         <p>Your personalised meal plan &nbsp;<span id="cache-age" class="text-dim text-small"></span></p>
       </div>
       <button class="btn btn-dark btn-sm" onclick="syncDiet()">🔄 Refresh</button>
     </div>
 
-    <div class="grid-2 gap-24">
-      <!-- Meal plan -->
-      <div>
-        <div class="card mb-24">
-          <div class="section-title">Today's Meal Plan</div>
-          <div class="form-group">
-            <label>Select Date</label>
-            <input class="form-control" id="diet-date" readonly />
-          </div>
-          <div id="diet-plan-info" class="mb-16"></div>
-          <div id="meals-wrap"><div class="spinner"></div></div>
+    <!-- Food Preference & Fitness Goal -->
+    <div class="card mb-24" id="prefs-card" style="display:none">
+      <div class="section-title">Your Preferences</div>
+      <div class="grid-2 gap-16">
+        <div class="form-group">
+          <label>Food Preference</label>
+          <select class="form-control" id="pref-food" onchange="savePrefs()">
+            <option value="">Select</option>
+            <option>Veg</option><option>Vegan</option><option>Non-Veg</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fitness Goal</label>
+          <select class="form-control" id="pref-goal" onchange="savePrefs()">
+            <option value="">Select</option>
+            <option>Get Lean</option><option>Build Muscle</option><option>Tone &amp; Sculpt</option><option>Improve Fitness</option>
+          </select>
         </div>
       </div>
+      <p class="text-dim text-small">Your coach uses these to customise your meal plan.</p>
+    </div>
 
-      <!-- Hydration tracker -->
-      <div>
-        <div class="card">
-          <div class="section-title">💧 Water Tracker</div>
-          <p class="text-dim text-small mb-24">Stay hydrated! Tap a glass to log water intake.</p>
-          <div id="water-glasses" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px"></div>
-          <div class="flex-between mb-12">
-            <span class="text-dim text-small">Progress</span>
-            <span id="water-label" class="text-orange text-small">0 / 8 glasses</span>
-          </div>
-          <div class="progress-bar-wrap mb-24">
-            <div class="progress-bar-fill" id="water-bar" style="width:0%"></div>
-          </div>
-          <div class="flex gap-8">
-            <button class="btn btn-dark btn-sm" onclick="changeGoal(-1)">− Goal</button>
-            <button class="btn btn-primary btn-sm" onclick="changeGoal(1)">+ Goal</button>
-          </div>
-          <p class="text-dim text-small mt-8">Goal: <span id="goal-display">8</span> glasses/day</p>
-        </div>
+    <!-- Meal plan -->
+    <div class="card mb-24">
+      <div class="section-title">Today's Meal Plan</div>
+      <div class="form-group">
+        <label>Select Date</label>
+        <input class="form-control" id="diet-date" readonly />
       </div>
+      <div id="diet-plan-info" class="mb-16"></div>
+      <div id="meals-wrap"><div class="spinner"></div></div>
     </div>
   </main>
 </div>
@@ -90,10 +85,9 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="/js/app.js"></script>
 <script>
-  let currentGlasses = 0;
-  let goalGlasses = 8;
   let today = new Date().toISOString().split('T')[0];
   let _currentDate = today;
+  let _savePrefsTimer = null;
 
   function dietCacheKey(date) { return 'diet_' + date; }
 
@@ -109,30 +103,45 @@
   }
 
   async function init() {
-    await requireAuth();
+    const data = await requireAuth();
+    if (!data) return;
+    // Pre-fill preferences from profile
+    const profile = data.profile || {};
+    if (profile.food_preference || profile.fitness_goal) {
+      document.getElementById('pref-food').value = profile.food_preference || '';
+      document.getElementById('pref-goal').value = profile.fitness_goal || '';
+    }
+    document.getElementById('prefs-card').style.display = '';
+
     flatpickr('#diet-date', {
       defaultDate: today,
       dateFormat: 'Y-m-d',
       onChange: ([d]) => { _currentDate = d.toISOString().split('T')[0]; loadDiet(_currentDate); },
     });
     loadDiet(today);
-    loadHydration(today);
+  }
+
+  function savePrefs() {
+    clearTimeout(_savePrefsTimer);
+    _savePrefsTimer = setTimeout(async () => {
+      const payload = {
+        food_preference: document.getElementById('pref-food').value,
+        fitness_goal: document.getElementById('pref-goal').value,
+      };
+      await api.put('/api/customer/profile', payload);
+      toast('Preferences saved!', 'success');
+    }, 800);
   }
 
   async function loadDiet(date, bust = false) {
     if (bust) pageCache.bust(dietCacheKey(date));
     const cacheKey = dietCacheKey(date);
     const cached = pageCache.get(cacheKey);
-    if (cached) {
-      renderDietData(cached);
-      showAge(date);
-      return;
-    }
+    if (cached) { renderDietData(cached); showAge(date); return; }
     document.getElementById('meals-wrap').innerHTML = '<div class="spinner"></div>';
     const data = await api.get('/api/customer/diet?date=' + date);
     if (data?.success) pageCache.set(cacheKey, data);
     if (!data?.success) return;
-
     renderDietData(data);
     showAge(date);
   }
@@ -146,20 +155,17 @@
         </div>
       `;
     }
-
     if (!data.meals?.length) {
       document.getElementById('meals-wrap').innerHTML = `
         <div class="text-center" style="padding:32px">
           <p class="text-dim">No meal plan for ${data.day || 'this day'}.</p>
-          <p class="text-dim text-small mt-8">Your coach or admin will add meals soon.</p>
+          <p class="text-dim text-small mt-8">Your coach or admin will add a plan once your preferences are set.</p>
         </div>
       `;
       return;
     }
-
     const grouped = {};
     data.meals.forEach(m => { if (!grouped[m.meal_type]) grouped[m.meal_type] = []; grouped[m.meal_type].push(m); });
-
     document.getElementById('meals-wrap').innerHTML = Object.entries(grouped).map(([type, meals]) => `
       <div class="meal-card">
         <div class="meal-type">${type}</div>
@@ -173,41 +179,6 @@
         `).join('')}
       </div>
     `).join('');
-  }
-
-  async function loadHydration(date) {
-    const data = await api.get('/api/customer/hydration?date=' + date);
-    currentGlasses = data?.log?.glasses || 0;
-    goalGlasses = data?.log?.goal_glasses || 8;
-    renderGlasses();
-  }
-
-  function renderGlasses() {
-    const wrap = document.getElementById('water-glasses');
-    wrap.innerHTML = '';
-    for (let i = 1; i <= goalGlasses; i++) {
-      const span = document.createElement('span');
-      span.className = 'water-glass ' + (i <= currentGlasses ? 'filled' : 'empty');
-      span.textContent = '💧';
-      span.onclick = () => toggleGlass(i);
-      wrap.appendChild(span);
-    }
-    document.getElementById('water-label').textContent = `${currentGlasses} / ${goalGlasses} glasses`;
-    document.getElementById('goal-display').textContent = goalGlasses;
-    const pct = Math.min(100, Math.round((currentGlasses / goalGlasses) * 100));
-    document.getElementById('water-bar').style.width = pct + '%';
-  }
-
-  async function toggleGlass(n) {
-    currentGlasses = currentGlasses === n ? n - 1 : n;
-    renderGlasses();
-    await api.post('/api/customer/hydration', { glasses: currentGlasses, goal_glasses: goalGlasses, date: today });
-  }
-
-  async function changeGoal(delta) {
-    goalGlasses = Math.max(4, Math.min(16, goalGlasses + delta));
-    renderGlasses();
-    await api.post('/api/customer/hydration', { glasses: currentGlasses, goal_glasses: goalGlasses, date: today });
   }
 
   init();

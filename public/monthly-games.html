@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Fitanya">
   <link rel="apple-touch-icon" href="/icons/icon.svg">
-  <title>Monthly Games — Fitanya</title>
+  <title>Challenges — Fitanya</title>
   <link rel="stylesheet" href="/css/main.css">
   <style>
     .mg-wrap { max-width: 540px; margin: 0 auto; padding: 0 0 40px; }
@@ -120,6 +120,30 @@
     .mg-inactive-title { font-family: var(--font-display); font-size: 1.4rem; color: var(--white); margin-bottom: 8px; }
 
     @media (min-width: 900px) { .mg-wrap { padding: 0 24px 40px; } }
+
+    /* ── Challenge tiles ──────────────────────────────────────────── */
+    .ch-tile {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 20px; cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s;
+      position: relative; overflow: hidden;
+    }
+    .ch-tile:hover { border-color: var(--orange); transform: translateY(-2px); }
+    .ch-tile.active  { border-color: var(--orange); background: rgba(255,92,0,.04); }
+    .ch-tile.completed { filter: grayscale(0.8) brightness(0.6); cursor: default; pointer-events: none; }
+    .ch-tile-badge {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(255,92,0,.15); color: var(--orange);
+      font-size: 10px; font-weight: 800; letter-spacing: 1px;
+      padding: 3px 10px; border-radius: 20px;
+      border: 1px solid rgba(255,92,0,.3);
+    }
+    .ch-tile-badge.done { background: rgba(34,197,94,.15); color: #22c55e; border-color: rgba(34,197,94,.3); }
+    .ch-tile-badge.won  { background: rgba(255,215,0,.15); color: #fbbf24; border-color: rgba(255,215,0,.3); }
+    .ch-tile-icon { font-size: 32px; margin-bottom: 12px; }
+    .ch-tile-title { font-family: var(--font-display); font-size: 1.2rem; color: var(--white); margin-bottom: 6px; line-height: 1.2; }
+    .ch-tile-dates { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; }
+    .ch-tile-reward { font-size: 12px; color: var(--orange); font-weight: 600; }
   </style>
 </head>
 <body>
@@ -128,17 +152,15 @@
     <a href="/dashboard" class="sidebar-logo"><img src="/icons/logo.png" alt="Fitanya"><span class="sidebar-logo-text">FIT<span>ANYA</span></span></a>
     <div id="sidebar-profile"></div>
     <nav class="sidebar-nav">
-      <a href="/dashboard" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
-      <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
+      <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Sessions</a>
       <a href="/dashboard/membership" class="nav-item"><span class="icon">🎫</span>Membership</a>
-      <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
+      <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Meal Plan</a>
+      <a href="/dashboard/monthly-games" class="nav-item active"><span class="icon">🏆</span>Challenges</a>
+      <a href="/dashboard/badges" class="nav-item"><span class="icon">🥇</span>Badges & Achievements</a>
       <a href="/dashboard/progress" class="nav-item"><span class="icon">📊</span>Progress</a>
-      <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
-      <a href="/dashboard/monthly-games" class="nav-item active"><span class="icon">🏆</span>Monthly Games</a>
-        <a href="/dashboard/badges" class="nav-item"><span class="icon">🥇</span>My Badges</a>
-      <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
+      <a href="/dashboard/stories" class="nav-item"><span class="icon">⭐</span>Reviews</a>
+      <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
       <a href="/dashboard/referral" class="nav-item"><span class="icon">🎁</span>Refer & Earn</a>
-      <a href="/dashboard/profile" class="nav-item"><span class="icon">👤</span>Profile</a>
     </nav>
     <div class="sidebar-footer">
       <button class="nav-item" onclick="logout()" style="width:100%"><span class="icon">🚪</span>Logout</button>
@@ -146,8 +168,18 @@
   </aside>
 
   <main class="main-content">
-    <div class="mg-wrap">
-      <div id="page-content"><div class="spinner"></div></div>
+    <!-- Challenge tiles -->
+    <div class="page-header mb-24">
+      <h2>Challenges</h2>
+      <p>Monthly fitness challenges — complete all sessions to win rewards</p>
+    </div>
+    <div id="challenge-tiles" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-bottom:32px"><div class="spinner"></div></div>
+
+    <!-- Active challenge detail (shown when clicking a live tile) -->
+    <div id="active-detail" style="display:none">
+      <div class="mg-wrap">
+        <div id="page-content"></div>
+      </div>
     </div>
   </main>
 </div>
@@ -156,26 +188,106 @@
 <script>
   async function init() {
     await requireAuth();
-    const data = await api.get('/api/customer/monthly-games');
-    const wrap = document.getElementById('page-content');
-    const game = data?.game || data?.recentGame;
+    const [gameData, badgesData] = await Promise.all([
+      api.get('/api/customer/monthly-games'),
+      api.get('/api/customer/badges'),
+    ]);
+    renderTiles(gameData, badgesData);
 
-    if (!game) {
-      wrap.innerHTML = `
-        <div class="mg-inactive">
-          <div class="mg-inactive-icon">🏆</div>
-          <div class="mg-inactive-title">No Active Competition</div>
-          <p class="text-dim mt-8">Check back soon — Fitanya Monthly Games are coming your way!</p>
-          <p class="text-dim text-small mt-16" style="font-style:italic">Every month brings a fresh challenge, new rewards, and surprises. Stay tuned!</p>
-        </div>`;
+    const game = gameData?.game || gameData?.recentGame;
+    if (game) renderActiveDetail(gameData);
+  }
+
+  function renderTiles(gameData, badgesData) {
+    const tilesEl = document.getElementById('challenge-tiles');
+    const activeGame = gameData?.game || gameData?.recentGame;
+    const pastChallenges = badgesData?.challenges || [];
+
+    // Build a set of past game IDs so we don't duplicate
+    const pastIds = new Set(pastChallenges.map(c => c.id));
+
+    const allTiles = [];
+
+    // Active game tile (if not already in past list)
+    if (activeGame && !pastIds.has(activeGame.id)) {
+      const isUpcoming = activeGame.start_date > new Date().toISOString().split('T')[0];
+      allTiles.push({
+        id: activeGame.id,
+        title: activeGame.title || activeGame.challenge_title,
+        start_date: activeGame.start_date,
+        end_date: activeGame.end_date,
+        reward_percent: activeGame.reward_percent,
+        reward_sessions: activeGame.reward_sessions,
+        completed: false,
+        won: false,
+        active: true,
+      });
+    }
+
+    // Past challenge tiles
+    pastChallenges.forEach(c => {
+      allTiles.push({
+        id: c.id,
+        title: c.name,
+        start_date: c.start_date,
+        end_date: c.end_date,
+        reward_percent: null,
+        reward_sessions: null,
+        completed: true,
+        won: c.won,
+        active: false,
+      });
+    });
+
+    if (!allTiles.length) {
+      tilesEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 24px;border:2px dashed var(--border);border-radius:16px">
+        <div style="font-size:48px;margin-bottom:16px">🏆</div>
+        <div style="font-family:var(--font-display);font-size:1.4rem;color:var(--white);margin-bottom:8px">No Challenges Yet</div>
+        <p class="text-dim">Check back soon — challenges drop every month!</p>
+      </div>`;
       return;
     }
+
+    tilesEl.innerHTML = allTiles.map(c => {
+      const tileClass = c.completed ? 'ch-tile completed' : c.active ? 'ch-tile active' : 'ch-tile';
+      const badge = c.won
+        ? `<div class="ch-tile-badge won">🏆 WON</div>`
+        : c.completed
+          ? `<div class="ch-tile-badge done">COMPLETED</div>`
+          : c.active
+            ? `<div class="ch-tile-badge">ACTIVE</div>`
+            : '';
+      const startFmt = fmtDate(c.start_date);
+      const endFmt   = fmtDate(c.end_date);
+      const rewardHtml = c.reward_percent
+        ? `<div class="ch-tile-reward">${c.reward_percent}% off + ${c.reward_sessions} free sessions</div>`
+        : '';
+      const clickAttr = c.active
+        ? `onclick="document.getElementById('active-detail').scrollIntoView({behavior:'smooth'})"`
+        : '';
+      return `
+        <div class="${tileClass}" ${clickAttr}>
+          ${badge}
+          <div class="ch-tile-icon">🏆</div>
+          <div class="ch-tile-title">${esc(c.title)}</div>
+          <div class="ch-tile-dates">${startFmt} — ${endFmt}</div>
+          ${rewardHtml}
+        </div>`;
+    }).join('');
+  }
+
+  function renderActiveDetail(data) {
+    const detailEl = document.getElementById('active-detail');
+    const wrap = document.getElementById('page-content');
+    const game = data?.game || data?.recentGame;
+    if (!game) return;
+    detailEl.style.display = '';
 
     const p = data.progress;
     const pct  = game.reward_percent;
     const sess = game.reward_sessions;
-    const startFmt = fmtDate(game.start_date, p.userTz);
-    const endFmt   = fmtDate(game.end_date,   p.userTz);
+    const startFmt = fmtDate(game.start_date, p?.userTz);
+    const endFmt   = fmtDate(game.end_date,   p?.userTz);
 
     wrap.innerHTML = `
       <div class="mg-banner">FITANYA PRESENTS</div>
@@ -184,45 +296,26 @@
         <div class="mg-title">${esc(game.title || 'MONTHLY GAMES')}</div>
         <div class="mg-edition">${esc(game.edition||'').toUpperCase()} &bull; ${esc(game.tagline||'').toUpperCase()}</div>
         <div class="mg-tagline">Train. Transform. Transcend.</div>
-
         ${p ? renderProgress(p, pct, sess) : ''}
-
         <div class="mg-challenge">
           <div class="mg-challenge-label">THIS MONTH'S CHALLENGE</div>
           <div class="mg-challenge-title">${esc(game.challenge_title)}</div>
           <div class="mg-dates">${startFmt} <span class="mg-dates-sep">—</span> ${endFmt}</div>
           ${game.challenge_desc ? `<div class="mg-challenge-desc">${esc(game.challenge_desc)}</div>` : ''}
           <div class="mg-rewards">
-            <div class="mg-reward">
-              <div class="mg-reward-val">${pct}% OFF</div>
-              <div class="mg-reward-lbl">ON YOUR NEXT RENEWAL</div>
-            </div>
-            <div class="mg-reward">
-              <div class="mg-reward-val">${sess} SESSIONS</div>
-              <div class="mg-reward-lbl">ABSOLUTELY FREE</div>
-            </div>
+            <div class="mg-reward"><div class="mg-reward-val">${pct}% OFF</div><div class="mg-reward-lbl">ON YOUR NEXT RENEWAL</div></div>
+            <div class="mg-reward"><div class="mg-reward-val">${sess} SESSIONS</div><div class="mg-reward-lbl">ABSOLUTELY FREE</div></div>
           </div>
           <div class="mg-reward-note">Rewards apply to your very next renewal cycle after the challenge.</div>
         </div>
-
         <div class="mg-how">
           <div class="mg-how-title">HOW IT WORKS</div>
-          <div class="mg-step">
-            <div class="mg-step-num">01</div>
-            <div class="mg-step-text">Book and attend <strong>all your sessions</strong> between <strong>${startFmt} – ${endFmt}</strong>.</div>
-          </div>
-          <div class="mg-step">
-            <div class="mg-step-num">02</div>
-            <div class="mg-step-text">Zero cancellations during the challenge period — <strong>consistency is the game.</strong></div>
-          </div>
-          <div class="mg-step">
-            <div class="mg-step-num">03</div>
-            <div class="mg-step-text">Complete all sessions → unlock <strong>${pct}% off</strong> your next renewal + <strong>${sess} free sessions</strong>, credited automatically.</div>
-          </div>
+          <div class="mg-step"><div class="mg-step-num">01</div><div class="mg-step-text">Book and attend <strong>all your sessions</strong> between <strong>${startFmt} – ${endFmt}</strong>.</div></div>
+          <div class="mg-step"><div class="mg-step-num">02</div><div class="mg-step-text">Zero cancellations during the challenge period — <strong>consistency is the game.</strong></div></div>
+          <div class="mg-step"><div class="mg-step-num">03</div><div class="mg-step-text">Complete all sessions → unlock <strong>${pct}% off</strong> your next renewal + <strong>${sess} free sessions</strong>, credited automatically.</div></div>
         </div>
-
         <div class="mg-footer">
-          <div class="mg-footer-title">FITANYA MONTHLY GAMES</div>
+          <div class="mg-footer-title">FITANYA CHALLENGES</div>
           <div class="mg-footer-desc">A brand-new challenge drops every month — fresh games, offers & surprises for our Fitanya family.</div>
         </div>
       </div>`;

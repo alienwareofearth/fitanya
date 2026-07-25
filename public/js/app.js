@@ -116,14 +116,15 @@ function _renderSidebarProfile(user) {
   if (!el || !user) return;
   const initial = (user.name || 'U').charAt(0).toUpperCase();
   const roleLabel = user.role === 'coach' ? 'Coach' : 'Member';
+  const profileHref = user.role === 'coach' ? '/coach/profile' : '/dashboard/profile';
   el.innerHTML = `
-    <div class="user-profile-pill">
+    <a href="${profileHref}" class="user-profile-pill" style="text-decoration:none;display:flex;align-items:center;gap:12px;cursor:pointer">
       <div class="user-avatar">${initial}</div>
       <div class="user-info">
         <div class="user-display-name">${user.name || ''}</div>
         <span class="user-role-badge">${roleLabel}</span>
       </div>
-    </div>
+    </a>
   `;
 }
 

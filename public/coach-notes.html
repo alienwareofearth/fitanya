@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#FF5C00">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Fitanya">
+  <link rel="apple-touch-icon" href="/icons/icon.svg">
+  <title>Coach Notes — Fitanya</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <a href="/dashboard" class="sidebar-logo"><img src="/icons/logo.png" alt="Fitanya"><span class="sidebar-logo-text">FIT<span>ANYA</span></span></a>
+    <div id="sidebar-profile"></div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Sessions</a>
+      <a href="/dashboard/membership" class="nav-item"><span class="icon">🎫</span>Membership</a>
+      <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Meal Plan</a>
+      <a href="/dashboard/monthly-games" class="nav-item"><span class="icon">🏆</span>Challenges</a>
+      <a href="/dashboard/badges" class="nav-item"><span class="icon">🥇</span>Badges & Achievements</a>
+      <a href="/dashboard/progress" class="nav-item"><span class="icon">📊</span>Progress</a>
+      <a href="/dashboard/stories" class="nav-item"><span class="icon">⭐</span>Reviews</a>
+      <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
+      <a href="/dashboard/referral" class="nav-item"><span class="icon">🎁</span>Refer & Earn</a>
+    </nav>
+    <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
+  </aside>
+  <main class="main-content">
+    <div class="page-header mb-32">
+      <div>
+        <h2>Coach Notes</h2>
+        <p>Session feedback &amp; next-session plans from your coach</p>
+      </div>
+      <a href="/dashboard/progress" class="btn btn-dark btn-sm">← Back to Progress</a>
+    </div>
+    <div id="notes-list"><div class="spinner"></div></div>
+  </main>
+</div>
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script>
+  async function init() {
+    await requireAuth();
+    const data = await api.get('/api/bookings/my');
+    const el = document.getElementById('notes-list');
+    const notes = data?.bookings?.filter(b => b.session_notes) || [];
+    if (!notes.length) {
+      el.innerHTML = `<div class="card text-center" style="padding:48px">
+        <div style="font-size:48px;margin-bottom:16px">🗒️</div>
+        <h4 style="margin-bottom:8px">No coach notes yet</h4>
+        <p class="text-dim">Notes appear here after each completed session.</p>
+      </div>`;
+      return;
+    }
+    el.innerHTML = notes.map(b => `
+      <div class="card mb-16">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+          <div>
+            <div style="font-weight:600;color:var(--white)">${formatSessionDate(b.date, b.start_time)} · ${formatSessionTime(b.start_time, b.date)}</div>
+            <div class="text-dim text-small">Coach: ${b.coach_name}</div>
+          </div>
+          <span class="badge badge-green">Completed</span>
+        </div>
+        <p style="color:var(--text);font-size:14px;margin-bottom:8px"><strong class="text-orange">Notes:</strong><br>${b.session_notes}</p>
+        ${b.workout_done     ? `<p style="font-size:13px;color:var(--text);margin-bottom:6px"><strong class="text-dim">Workout done:</strong> ${b.workout_done}</p>` : ''}
+        ${b.next_session_plan ? `<p style="font-size:13px;color:var(--text)"><strong class="text-dim">Next session plan:</strong> ${b.next_session_plan}</p>` : ''}
+      </div>`).join('');
+  }
+  init();
+</script>
+<script src="/js/pwa.js" defer></script>
+</body>
+</html>

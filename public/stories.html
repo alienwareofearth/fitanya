@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Fitanya">
   <link rel="apple-touch-icon" href="/icons/icon.svg">
-  <title>My Stories — Fitanya</title>
+  <title>Reviews — Fitanya</title>
   <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
@@ -17,24 +17,22 @@
     <a href="/dashboard" class="sidebar-logo"><img src="/icons/logo.png" alt="Fitanya"><span class="sidebar-logo-text">FIT<span>ANYA</span></span></a>
     <div id="sidebar-profile"></div>
     <nav class="sidebar-nav">
-      <a href="/dashboard" class="nav-item"><span class="icon">🏠</span>Dashboard</a>
-      <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Schedule</a>
+      <a href="/dashboard/schedule" class="nav-item"><span class="icon">📅</span>Sessions</a>
       <a href="/dashboard/membership" class="nav-item"><span class="icon">🎫</span>Membership</a>
-      <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
+      <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Meal Plan</a>
+      <a href="/dashboard/monthly-games" class="nav-item"><span class="icon">🏆</span>Challenges</a>
+      <a href="/dashboard/badges" class="nav-item"><span class="icon">🥇</span>Badges & Achievements</a>
       <a href="/dashboard/progress" class="nav-item"><span class="icon">📊</span>Progress</a>
-      <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
-      <a href="/dashboard/monthly-games" class="nav-item"><span class="icon">🏆</span>Monthly Games</a>
-        <a href="/dashboard/badges" class="nav-item"><span class="icon">🥇</span>My Badges</a>
-        <a href="/dashboard/stories" class="nav-item active"><span class="icon">📸</span>My Stories</a>
+      <a href="/dashboard/stories" class="nav-item active"><span class="icon">⭐</span>Reviews</a>
+      <a href="/dashboard/payment" class="nav-item"><span class="icon">💳</span>Pay Now</a>
       <a href="/dashboard/referral" class="nav-item"><span class="icon">🎁</span>Refer & Earn</a>
-      <a href="/dashboard/profile" class="nav-item"><span class="icon">👤</span>Profile</a>
     </nav>
     <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
   </aside>
   <main class="main-content">
     <div class="page-header flex-between mb-32">
       <div>
-        <h2>My Stories</h2>
+        <h2>Reviews</h2>
         <p>Share your transformation and inspire others &nbsp;<span id="cache-age" class="text-dim text-small"></span></p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
