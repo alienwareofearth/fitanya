@@ -498,6 +498,59 @@ router.get('/bookings', async (req, res) => {
   } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
+// POST /api/admin/bookings — admin books a slot for a specific member
+router.post('/bookings', async (req, res) => {
+  try {
+    const { slot_id, customer_id } = req.body;
+    if (!slot_id || !customer_id) return res.status(400).json({ error: 'slot_id and customer_id are required' });
+
+    const db = getDb();
+    const { createMeetSession } = require('../services/googleMeet');
+    const { notify } = require('../services/notifications');
+
+    const slot = await db.execute({
+      sql: `SELECT ss.*, u.name as coach_name, u.email as coach_email FROM schedule_slots ss JOIN users u ON u.id = ss.coach_id WHERE ss.id = ? AND ss.is_booked = 0 AND ss.is_active = 1`,
+      args: [slot_id],
+    });
+    if (!slot.rows.length) return res.status(400).json({ error: 'Slot not available or already booked' });
+    const slotData = slot.rows[0];
+
+    const membership = await db.execute({
+      sql: `SELECT * FROM memberships WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`,
+      args: [customer_id],
+    });
+    if (!membership.rows.length) return res.status(400).json({ error: 'Member has no active membership' });
+    const mem = membership.rows[0];
+    if (mem.sessions_used >= mem.sessions_total) return res.status(400).json({ error: 'No sessions remaining for this member' });
+
+    const customerRow = await db.execute({ sql: `SELECT name, email, timezone FROM users WHERE id = ?`, args: [customer_id] });
+    const customerData = customerRow.rows[0];
+
+    const { meetLink, eventId } = await createMeetSession({
+      summary: `Fitanya Session — ${customerData.name} with ${slotData.coach_name}`,
+      description: 'Personal training session via Fitanya',
+      date: slotData.date,
+      startTime: slotData.start_time,
+      endTime: slotData.end_time,
+      attendeeEmails: [customerData.email, slotData.coach_email],
+    });
+
+    await db.execute({
+      sql: `INSERT INTO bookings (membership_id, customer_id, coach_id, slot_id, meet_link, google_event_id) VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [mem.id, customer_id, slotData.coach_id, slot_id, meetLink, eventId],
+    });
+    await db.execute({ sql: `UPDATE schedule_slots SET is_booked = 1 WHERE id = ?`, args: [slot_id] });
+    await db.execute({ sql: `UPDATE memberships SET sessions_used = sessions_used + 1 WHERE id = ?`, args: [mem.id] });
+    if (!mem.coach_id) {
+      await db.execute({ sql: `UPDATE memberships SET coach_id = ? WHERE id = ?`, args: [slotData.coach_id, mem.id] });
+    }
+
+    notify.newBookingForCoach(slotData.coach_id, customerData.name, slotData.date, slotData.start_time).catch(() => {});
+
+    res.json({ success: true, meetLink });
+  } catch (err) { console.error('[admin] book:', err.message); res.status(500).json({ error: 'Failed to book session.' }); }
+});
+
 router.delete('/bookings/:id', async (req, res) => {
   try {
     const db = getDb();
@@ -522,8 +575,11 @@ router.delete('/bookings/:id', async (req, res) => {
 router.get('/slots', async (req, res) => {
   const db = getDb();
   const result = await db.execute(`
-    SELECT ss.*, u.name as coach_name FROM schedule_slots ss
+    SELECT ss.*, u.name as coach_name, cu.name as customer_name
+    FROM schedule_slots ss
     JOIN users u ON u.id = ss.coach_id
+    LEFT JOIN bookings b ON b.slot_id = ss.id AND b.status != 'cancelled'
+    LEFT JOIN users cu ON cu.id = b.customer_id
     WHERE ss.date >= date('now') ORDER BY ss.date, ss.start_time`);
   res.json({ success: true, slots: result.rows });
 });

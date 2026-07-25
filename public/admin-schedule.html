@@ -111,11 +111,30 @@
   </div>
 </div>
 
+<!-- Book for Member Modal -->
+<div class="modal-overlay hidden" id="book-modal">
+  <div class="modal" style="position:relative;max-width:420px">
+    <button class="modal-close" onclick="closeBookModal()">×</button>
+    <h3 class="modal-title">Book Session for Member</h3>
+    <p class="text-dim mt-4 mb-8" id="book-slot-info"></p>
+    <div class="form-group mt-16">
+      <label>Select Member *</label>
+      <select class="form-control" id="book-member-select">
+        <option value="">— choose member —</option>
+      </select>
+    </div>
+    <p class="text-small text-dim mb-16">Only members with an active membership and sessions remaining are listed.</p>
+    <button class="btn btn-primary btn-full" id="book-confirm-btn" onclick="confirmBooking()">Book Session</button>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
   let coaches = [];
   let bulkSlots = [];
+  let allMembers = [];
+  let bookingSlotId = null;
 
   function showTab(tab) {
     document.getElementById('view-slots').style.display = tab === 'slots' ? '' : 'none';
@@ -172,7 +191,8 @@
                 <span class="text-dim text-small">${s.coach_name}</span>
               </div>
               <div class="flex gap-12" style="align-items:center">
-                <span class="badge ${s.is_booked ? 'badge-green' : 'badge-yellow'}">${s.is_booked ? 'Booked' : 'Open'}</span>
+                <span class="badge ${s.is_booked ? 'badge-green' : 'badge-yellow'}">${s.is_booked ? `Booked — ${s.customer_name || ''}` : 'Open'}</span>
+                ${!s.is_booked ? `<button class="btn btn-primary btn-sm" onclick="openBookModal(${s.id},'${s.date}','${s.start_time}','${s.end_time}','${(s.coach_name||'').replace(/'/g,"\\'")}')">Book for Member</button>` : ''}
                 ${!s.is_booked ? `<button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="deleteSlot(${s.id})">Delete</button>` : ''}
               </div>
             </div>
@@ -245,6 +265,45 @@
       loadSlots();
     } finally {
       btn.disabled = false; btn.textContent = 'Add Slot';
+    }
+  }
+
+  async function openBookModal(slotId, date, start, end, coachName) {
+    bookingSlotId = slotId;
+    document.getElementById('book-slot-info').textContent = `${date}  ·  ${start} – ${end}  ·  Coach ${coachName}`;
+
+    // Load members on first open
+    if (!allMembers.length) {
+      const data = await api.get('/api/admin/members');
+      allMembers = (data?.members || []).filter(m => m.membership_status === 'active');
+    }
+    const sel = document.getElementById('book-member-select');
+    sel.innerHTML = '<option value="">— choose member —</option>' +
+      allMembers.map(m => `<option value="${m.id}">${m.name}${m.email ? ' (' + m.email + ')' : ''}</option>`).join('');
+    document.getElementById('book-modal').classList.remove('hidden');
+  }
+
+  function closeBookModal() {
+    bookingSlotId = null;
+    document.getElementById('book-modal').classList.add('hidden');
+  }
+
+  async function confirmBooking() {
+    const customerId = document.getElementById('book-member-select').value;
+    if (!customerId) return toast('Please select a member', 'error');
+    const btn = document.getElementById('book-confirm-btn');
+    btn.disabled = true; btn.textContent = 'Booking…';
+    try {
+      const data = await api.post('/api/admin/bookings', { slot_id: bookingSlotId, customer_id: parseInt(customerId) });
+      if (data?.success) {
+        toast('Session booked!', 'success');
+        closeBookModal();
+        loadSlots();
+      } else {
+        toast(data?.error || 'Booking failed', 'error');
+      }
+    } finally {
+      btn.disabled = false; btn.textContent = 'Book Session';
     }
   }
 
