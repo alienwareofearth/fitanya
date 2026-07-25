@@ -752,7 +752,7 @@ router.get('/badges', requireAuth, async (req, res) => {
             FROM monthly_games g
             LEFT JOIN monthly_game_participants mgp
               ON mgp.game_id = g.id AND mgp.user_id = ?
-            WHERE g.end_date < date('now')
+            WHERE g.end_date < date('now') OR mgp.is_winner = 1
             ORDER BY g.end_date DESC`,
       args: [userId],
     });
