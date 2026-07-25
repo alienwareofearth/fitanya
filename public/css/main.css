@@ -189,7 +189,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   display: flex;
   align-items: center;
 }
-.nav-logo img { height: 40px; width: auto; display: block; mix-blend-mode: multiply; }
+.nav-logo img { height: 40px; width: auto; display: block; }
 .nav-logo-text { font-family: var(--font-display); font-size: 28px; letter-spacing: 3px; color: var(--white); }
 .nav-logo-text span { color: var(--orange); }
 .nav-logo .nav-logo-text span { color: var(--orange); }
@@ -239,7 +239,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   align-items: center;
   gap: 10px;
 }
-.sidebar-logo img { height: 44px; width: auto; display: block; mix-blend-mode: multiply; }
+.sidebar-logo img { height: 44px; width: auto; display: block; }
 .sidebar-logo-text { font-family: var(--font-display); font-size: 22px; letter-spacing: 3px; color: var(--white); }
 .sidebar-logo-text span { color: var(--orange); }
 
