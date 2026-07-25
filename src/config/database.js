@@ -419,6 +419,44 @@ async function initDb() {
     expired_at TEXT NOT NULL
   )`);
 
+  // Migrate progress_logs: change unique constraint from (user_id, week_number, year) to (user_id, log_date)
+  // This allows multiple entries per week, fixing the overwrite-on-same-week bug.
+  try {
+    const idxCheck = await client.execute(`
+      SELECT name FROM sqlite_master
+      WHERE type='index' AND tbl_name='progress_logs' AND name LIKE '%week_number%'
+    `);
+    if (idxCheck.rows.length > 0) {
+      await client.execute(`CREATE TABLE IF NOT EXISTS progress_logs_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        week_number INTEGER NOT NULL,
+        year INTEGER NOT NULL,
+        log_date TEXT NOT NULL,
+        weight REAL,
+        steps INTEGER,
+        waist REAL,
+        thigh REAL,
+        arm REAL,
+        chest REAL,
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(user_id, log_date)
+      )`);
+      await client.execute(`
+        INSERT OR IGNORE INTO progress_logs_new
+          (id, user_id, week_number, year, log_date, weight, steps, waist, thigh, arm, chest, notes, created_at)
+        SELECT id, user_id, week_number, year, log_date, weight, steps, waist, thigh, arm, chest, notes, created_at
+        FROM progress_logs
+      `);
+      await client.execute(`DROP TABLE progress_logs`);
+      await client.execute(`ALTER TABLE progress_logs_new RENAME TO progress_logs`);
+      console.log('[db] Migrated progress_logs: unique constraint now (user_id, log_date)');
+    }
+  } catch (e) {
+    console.error('[db] progress_logs migration error:', e.message);
+  }
+
   // Seed default data
   await seedDefaults(client);
 

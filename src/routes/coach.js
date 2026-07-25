@@ -180,7 +180,7 @@ router.get('/customer/:id/progress', async (req, res) => {
               LEFT JOIN customer_profiles cp ON cp.user_id = u.id WHERE u.id = ?`,
         args: [req.params.id],
       }),
-      db.execute({ sql: `SELECT * FROM progress_logs WHERE user_id = ? ORDER BY year DESC, week_number DESC LIMIT 20`, args: [req.params.id] }),
+      db.execute({ sql: `SELECT * FROM progress_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 20`, args: [req.params.id] }),
       db.execute({ sql: `SELECT b.*, ss.date, ss.start_time, sn.notes FROM bookings b JOIN schedule_slots ss ON ss.id = b.slot_id LEFT JOIN session_notes sn ON sn.booking_id = b.id WHERE b.customer_id = ? AND b.coach_id = ? ORDER BY ss.date DESC`, args: [req.params.id, coachId] }),
     ]);
     res.json({ success: true, profile: profile.rows[0], progress: progress.rows, bookings: bookings.rows });

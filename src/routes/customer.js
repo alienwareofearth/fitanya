@@ -380,7 +380,7 @@ router.get('/progress', async (req, res) => {
   try {
     const db = getDb();
     const logs = await db.execute({
-      sql: `SELECT * FROM progress_logs WHERE user_id = ? ORDER BY year DESC, week_number DESC LIMIT 52`,
+      sql: `SELECT * FROM progress_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 52`,
       args: [req.session.user.id],
     });
     res.json({ success: true, logs: logs.rows });
@@ -401,10 +401,9 @@ router.post('/progress', async (req, res) => {
     await db.execute({
       sql: `INSERT INTO progress_logs (user_id, week_number, year, log_date, weight, steps, waist, thigh, arm, chest, notes)
             VALUES (?, ?, ?, date('now'), ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(user_id, week_number, year) DO UPDATE SET
+            ON CONFLICT(user_id, log_date) DO UPDATE SET
             weight=excluded.weight, steps=excluded.steps, waist=excluded.waist,
-            thigh=excluded.thigh, arm=excluded.arm, chest=excluded.chest, notes=excluded.notes,
-            log_date=date('now')`,
+            thigh=excluded.thigh, arm=excluded.arm, chest=excluded.chest, notes=excluded.notes`,
       args: [req.session.user.id, weekNumber, year, n(weight), n(steps), n(waist), n(thigh), n(arm), n(chest), n(notes)],
     });
     res.json({ success: true });

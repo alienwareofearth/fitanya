@@ -175,7 +175,7 @@
       return;
     }
 
-    // logs come latest-first from API (ORDER BY year DESC, week_number DESC)
+    // logs come latest-first from API (ORDER BY log_date DESC)
     el.innerHTML = logs.map(l => {
       const metrics = [
         { val: l.weight,  label: 'kg',     cls: 'orange' },

@@ -230,7 +230,7 @@ router.get('/members/:id', async (req, res) => {
   const db = getDb();
   const [user, profile, bookings] = await Promise.all([
     db.execute({ sql: `SELECT u.*, cp.* FROM users u LEFT JOIN customer_profiles cp ON cp.user_id = u.id WHERE u.id = ?`, args: [req.params.id] }),
-    db.execute({ sql: `SELECT * FROM progress_logs WHERE user_id = ? ORDER BY year DESC, week_number DESC LIMIT 12`, args: [req.params.id] }),
+    db.execute({ sql: `SELECT * FROM progress_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 12`, args: [req.params.id] }),
     db.execute({ sql: `SELECT b.*, ss.date, ss.start_time, COALESCE(u.name, 'Coach Removed') as coach_name FROM bookings b JOIN schedule_slots ss ON ss.id = b.slot_id LEFT JOIN users u ON u.id = b.coach_id AND u.is_active = 1 WHERE b.customer_id = ? ORDER BY ss.date DESC LIMIT 10`, args: [req.params.id] }),
   ]);
   res.json({ success: true, member: user.rows[0], progress: profile.rows, bookings: bookings.rows });
