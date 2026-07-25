@@ -94,39 +94,16 @@
       z-index: 10;
     }
     .sched-tab {
-      flex: 1; padding: 15px 6px;
-      font-size: 13px; font-weight: 600;
+      flex: 1; padding: 15px 8px;
+      font-size: 14px; font-weight: 600;
       color: var(--text-dim);
       background: none; border: none;
       border-bottom: 2.5px solid transparent;
       cursor: pointer; transition: all 0.15s;
       text-align: center; letter-spacing: 0.2px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .sched-tab.active { color: var(--orange); border-bottom-color: var(--orange); }
     .sched-tab:hover:not(.active) { color: var(--white); }
-
-    /* ── Coach Notes tab ─────────────────────────────────────────────── */
-    .note-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 18px;
-      margin-bottom: 12px;
-    }
-    .note-card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 12px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid var(--border);
-    }
-    .note-date  { font-size: 12px; font-weight: 700; color: var(--orange); letter-spacing: 0.5px; }
-    .note-coach { font-size: 12px; color: var(--text-dim); }
-    .note-body  { font-size: 14px; color: var(--text); line-height: 1.65; white-space: pre-wrap; }
 
     /* ── Tab content ─────────────────────────────────────────────────── */
     .tab-panel { padding-top: 20px; }
@@ -246,13 +223,8 @@
         top: calc(76px + env(safe-area-inset-top));
       }
 
-      .sched-tab { font-size: 12px; padding: 13px 4px; }
-
       .bk-actions { gap: 6px; }
-      .slot-tile  { min-width: 80px; }
-
-      /* Stack booking card top on very small screens */
-      .booking-card-top { flex-wrap: wrap; }
+      .slot-tile  { min-width: 88px; }
 
       /* Confirm bar: respect left safe-area on iPhone landscape */
       .confirm-bar {
@@ -261,14 +233,6 @@
         padding-left:  calc(16px + env(safe-area-inset-left));
         padding-right: calc(16px + env(safe-area-inset-right));
       }
-
-      /* Note cards full-width comfortable reading */
-      .note-card { padding: 14px; }
-      .note-body { font-size: 13px; }
-    }
-
-    @media (max-width: 380px) {
-      .sched-tab { font-size: 11px; }
     }
 
     /* On desktop, contain confirm bar inside main area */
@@ -317,9 +281,8 @@
 
     <!-- Tab bar -->
     <div class="sched-tab-bar">
-      <button class="sched-tab" id="tab-btn-booked" onclick="switchTab('booked')">📋&nbsp;Booked PT</button>
-      <button class="sched-tab active" id="tab-btn-slots"  onclick="switchTab('slots')">📅&nbsp;Schedule</button>
-      <button class="sched-tab" id="tab-btn-notes" onclick="switchTab('notes')">🗒️&nbsp;Coach Notes</button>
+      <button class="sched-tab" id="tab-btn-booked" onclick="switchTab('booked')">📋&nbsp; Booked PT</button>
+      <button class="sched-tab active" id="tab-btn-slots"  onclick="switchTab('slots')">📅&nbsp; Schedule</button>
     </div>
 
     <!-- ── Tab 1: Booked PT ── -->
@@ -331,11 +294,6 @@
     <div class="tab-panel" id="tab-slots">
       <div id="pref-panel-inline"></div>
       <div id="slots-content"><div class="spinner"></div></div>
-    </div>
-
-    <!-- ── Tab 3: Coach Notes ── -->
-    <div class="tab-panel hidden" id="tab-notes">
-      <div id="notes-content"><div class="spinner"></div></div>
     </div>
 
   </main>
@@ -473,49 +431,11 @@
   }
 
   // ── Tab switching ─────────────────────────────────────────────────────────
-  let _notesLoaded = false;
-
   function switchTab(tab) {
-    ['booked', 'slots', 'notes'].forEach(t => {
-      document.getElementById('tab-btn-' + t).classList.toggle('active', tab === t);
-      document.getElementById('tab-' + t).classList.toggle('hidden', tab !== t);
-    });
-    if (tab === 'notes' && !_notesLoaded) {
-      _notesLoaded = true;
-      loadCoachNotes();
-    }
-  }
-
-  // ── Coach Notes tab ───────────────────────────────────────────────────────
-  async function loadCoachNotes() {
-    const el = document.getElementById('notes-content');
-    const data = await api.get('/api/bookings/my');
-    const notes = (data?.bookings || []).filter(b => b.session_notes);
-
-    if (!notes.length) {
-      el.innerHTML = `<div class="empty-state">
-        <div class="empty-state-icon">📭</div>
-        <div class="empty-state-title">No coach notes yet</div>
-        <p>Notes appear here after your completed sessions.</p>
-      </div>`;
-      return;
-    }
-
-    el.innerHTML = notes.map(b => {
-      const localDt = new Date(\`\${b.date}T\${b.start_time}:00+05:30\`);
-      const dateStr = localDt.toLocaleDateString('en-IN', {
-        timeZone: window.__userTz || 'Asia/Kolkata',
-        day: 'numeric', month: 'short', year: 'numeric'
-      });
-      return \`
-        <div class="note-card">
-          <div class="note-card-header">
-            <span class="note-date">\${dateStr}</span>
-            <span class="note-coach">Coach: \${b.coach_name || 'Coach'}</span>
-          </div>
-          <div class="note-body">\${b.session_notes}</div>
-        </div>\`;
-    }).join('');
+    document.getElementById('tab-btn-booked').classList.toggle('active', tab === 'booked');
+    document.getElementById('tab-btn-slots').classList.toggle('active',  tab === 'slots');
+    document.getElementById('tab-booked').classList.toggle('hidden', tab !== 'booked');
+    document.getElementById('tab-slots').classList.toggle('hidden',  tab !== 'slots');
   }
 
   // ── Load all available slots ──────────────────────────────────────────────
