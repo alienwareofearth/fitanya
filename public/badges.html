@@ -76,50 +76,115 @@
       .badge-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
     }
 
-    /* ── Badge cell ────────────────────────────────────────────────── */
+    /* ── Badge cell — flip card wrapper ───────────────────────────── */
     .badge-cell {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 12px;
-      cursor: default;
+      cursor: pointer;
     }
 
-    /* SVG ring container */
-    .badge-ring-wrap {
-      position: relative;
-      width: 130px;
-      height: 130px;
+    /* 3-D flip container */
+    .badge-flipper-wrap {
+      width: 150px;
+      height: 150px;
+      perspective: 700px;
       flex-shrink: 0;
     }
-    .badge-ring-wrap svg {
-      width: 130px;
-      height: 130px;
+    .badge-flipper {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.2, 1);
+      border-radius: 50%;
+    }
+    .badge-flipper-wrap.flipped .badge-flipper {
+      transform: rotateY(180deg);
+    }
+
+    /* Front face */
+    .badge-front,
+    .badge-back {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* SVG ring sits inside front */
+    .badge-front svg {
+      width: 150px;
+      height: 150px;
       overflow: visible;
     }
 
+    /* Back face */
+    .badge-back {
+      transform: rotateY(180deg);
+      background: linear-gradient(145deg, #1c1000, #0e0800);
+      border: 2px solid #b8860b;
+      box-shadow: 0 0 18px rgba(255,160,0,.25);
+      flex-direction: column;
+      gap: 6px;
+      padding: 16px 12px;
+      text-align: center;
+    }
+    .badge-back-icon { font-size: 26px; line-height: 1; }
+    .badge-back-title {
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+      color: #FFD700;
+      line-height: 1.2;
+    }
+    .badge-back-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+    .badge-back-dates {
+      font-size: 11px;
+      color: var(--white);
+      font-weight: 600;
+      line-height: 1.5;
+    }
+    .badge-back-tap {
+      font-size: 9px;
+      color: var(--text-dim);
+      margin-top: 4px;
+      letter-spacing: 0.5px;
+    }
+
     /* Glow halo for won badges */
-    .badge-cell.won .badge-ring-wrap::before {
+    .badge-cell.won .badge-flipper-wrap::before {
       content: '';
       position: absolute;
-      inset: -12px;
+      inset: -14px;
       border-radius: 50%;
       background: radial-gradient(circle, rgba(255,160,0,.22) 0%, transparent 70%);
       pointer-events: none;
       animation: badgePulse 3s ease-in-out infinite;
     }
+    .badge-flipper-wrap { position: relative; }
     @keyframes badgePulse {
       0%, 100% { opacity: 0.7; transform: scale(1); }
       50%       { opacity: 1;   transform: scale(1.06); }
     }
 
-    /* Missed / not-won: greyscale overlay via CSS filter */
-    .badge-cell.missed .badge-ring-wrap {
+    /* Missed: greyscale */
+    .badge-cell.missed .badge-front {
       filter: grayscale(1) brightness(0.45);
     }
-    .badge-cell.missed {
-      opacity: 0.75;
-    }
+    .badge-cell.missed { opacity: 0.75; }
 
     /* Text below badge */
     .badge-name {
@@ -137,38 +202,23 @@
       color: var(--text-dim);
       text-align: center;
       margin-top: -6px;
-      letter-spacing: 0.3px;
     }
     .badge-cell.won .badge-sub { color: #c8a832; }
 
-    /* Won tick */
+    /* Tags */
     .badge-won-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: rgba(255,92,0,.15);
-      border: 1px solid rgba(255,92,0,.4);
-      border-radius: 20px;
-      padding: 2px 10px;
-      font-size: 9px;
-      font-weight: 800;
-      letter-spacing: 1.5px;
-      color: var(--orange);
-      margin-top: -4px;
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(255,92,0,.15); border: 1px solid rgba(255,92,0,.4);
+      border-radius: 20px; padding: 2px 10px;
+      font-size: 9px; font-weight: 800; letter-spacing: 1.5px;
+      color: var(--orange); margin-top: -4px;
     }
-    .badge-cell.missed .badge-missed-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: rgba(255,255,255,.04);
-      border: 1px solid rgba(255,255,255,.1);
-      border-radius: 20px;
-      padding: 2px 10px;
-      font-size: 9px;
-      font-weight: 800;
-      letter-spacing: 1.5px;
-      color: var(--text-dim);
-      margin-top: -4px;
+    .badge-missed-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 20px; padding: 2px 10px;
+      font-size: 9px; font-weight: 800; letter-spacing: 1.5px;
+      color: var(--text-dim); margin-top: -4px;
     }
 
     /* Empty state */
@@ -239,97 +289,87 @@
   <div id="toast-container"></div>
   <script src="/js/app.js"></script>
   <script>
-    /* ── Inline SVG badge builder (Apple Watch ring style) ──────────── */
-    function buildBadgeSVG(won) {
-      // Colour palettes
-      const gold1 = '#FFD700', gold2 = '#FF8C00', gold3 = '#FF5C00';
-      const dimC  = '#444444';
+    function escapeHtml(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
 
-      // We always render the full-colour SVG; CSS filter handles the missed look.
+    function fmtDate(d) {
+      return d ? new Date(d + 'T12:00:00').toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—';
+    }
+
+    /* ── Inline SVG badge front (Apple Watch ring style) ────────────── */
+    function buildBadgeSVG() {
+      const gold1 = '#FFD700', gold2 = '#FF8C00', gold3 = '#FF5C00';
       const id = 'g' + Math.random().toString(36).slice(2, 7);
       return `<svg viewBox="0 0 130 130" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <!-- Outer ring gradient -->
           <linearGradient id="${id}a" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%"   stop-color="${gold1}"/>
             <stop offset="50%"  stop-color="${gold2}"/>
             <stop offset="100%" stop-color="${gold3}"/>
           </linearGradient>
-          <!-- Centre fill gradient -->
           <radialGradient id="${id}b" cx="50%" cy="35%" r="65%">
             <stop offset="0%"   stop-color="#2a1800"/>
             <stop offset="100%" stop-color="#0e0800"/>
           </radialGradient>
-          <!-- Shimmer gradient -->
           <linearGradient id="${id}c" x1="0%" y1="0%" x2="60%" y2="100%">
             <stop offset="0%"   stop-color="rgba(255,255,255,0.18)"/>
             <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
           </linearGradient>
-          <!-- Inner ring gradient -->
           <linearGradient id="${id}d" x1="100%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%"   stop-color="${gold2}" stop-opacity="0.9"/>
             <stop offset="100%" stop-color="${gold3}" stop-opacity="0.4"/>
           </linearGradient>
-          <!-- Drop shadow filter -->
           <filter id="${id}f" x="-20%" y="-20%" width="140%" height="140%">
             <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="${gold2}" flood-opacity="0.55"/>
           </filter>
         </defs>
-
-        <!-- Outer ring (thick, main activity ring) -->
-        <circle cx="65" cy="65" r="58" fill="none"
-          stroke="url(#${id}a)" stroke-width="10"
-          stroke-linecap="round"
-          filter="url(#${id}f)"/>
-
-        <!-- Ring end cap dot (top) -->
-        <circle cx="65" cy="7" r="5" fill="${gold1}" filter="url(#${id}f)"/>
-
-        <!-- Second inner decorative ring -->
-        <circle cx="65" cy="65" r="46" fill="none"
-          stroke="url(#${id}d)" stroke-width="2.5" stroke-dasharray="4 6"
-          stroke-linecap="round" opacity="0.7"/>
-
-        <!-- Centre disc -->
+        <circle cx="65" cy="65" r="58" fill="none" stroke="url(#${id}a)" stroke-width="10" stroke-linecap="round" filter="url(#${id}f)"/>
+        <circle cx="65" cy="7"  r="5"  fill="${gold1}" filter="url(#${id}f)"/>
+        <circle cx="65" cy="65" r="46" fill="none" stroke="url(#${id}d)" stroke-width="2.5" stroke-dasharray="4 6" stroke-linecap="round" opacity="0.7"/>
         <circle cx="65" cy="65" r="40" fill="url(#${id}b)"/>
-
-        <!-- Shimmer highlight on centre -->
         <ellipse cx="55" cy="48" rx="24" ry="14" fill="url(#${id}c)" opacity="0.6"/>
-
-        <!-- Trophy icon (text-based for universal render) -->
         <text x="65" y="62" text-anchor="middle" font-size="28" dominant-baseline="middle">🏆</text>
-
-        <!-- Fitanya logo text at bottom of centre -->
-        <text x="65" y="84" text-anchor="middle"
-          font-family="'Bebas Neue',sans-serif" font-size="10" letter-spacing="2"
-          fill="${gold1}" opacity="0.9">FITANYA</text>
-
-        <!-- Outer ring tick mark at 12 o'clock -->
+        <text x="65" y="84" text-anchor="middle" font-family="'Bebas Neue',sans-serif" font-size="10" letter-spacing="2" fill="${gold1}" opacity="0.9">FITANYA</text>
         <line x1="65" y1="1" x2="65" y2="13" stroke="${gold1}" stroke-width="2.5" stroke-linecap="round"/>
       </svg>`;
     }
 
-    /* ── Render a single badge cell ────────────────────────────────── */
-    function renderBadge({ name, endDate, won, participated }) {
+    /* ── Render a single badge cell with flip card ───────────────────── */
+    function renderBadge({ name, startDate, endDate, won, participated }) {
       const stateClass = won ? 'won' : 'missed';
-      const monthYear  = endDate
-        ? new Date(endDate + 'T12:00:00').toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
-        : '';
       const tag = won
         ? `<span class="badge-won-tag">✓ CHAMPION</span>`
         : `<span class="badge-missed-tag">${participated ? 'NOT WON' : 'MISSED'}</span>`;
 
+      const backContent = won
+        ? `<div class="badge-back-icon">🏆</div>
+           <div class="badge-back-title">${escapeHtml(name)}</div>
+           <div class="badge-back-label">Challenge Period</div>
+           <div class="badge-back-dates">${fmtDate(startDate)}<br>— ${fmtDate(endDate)}</div>
+           <div class="badge-back-tap">Tap to flip back</div>`
+        : `<div class="badge-back-icon">${participated ? '😔' : '📅'}</div>
+           <div class="badge-back-title">${escapeHtml(name)}</div>
+           <div class="badge-back-label">Challenge Period</div>
+           <div class="badge-back-dates">${fmtDate(startDate)}<br>— ${fmtDate(endDate)}</div>
+           <div class="badge-back-tap">Tap to flip back</div>`;
+
       return `
-        <div class="badge-cell ${stateClass}">
-          <div class="badge-ring-wrap">${buildBadgeSVG(won)}</div>
+        <div class="badge-cell ${stateClass}" onclick="toggleFlip(this)">
+          <div class="badge-flipper-wrap">
+            <div class="badge-flipper">
+              <div class="badge-front">${buildBadgeSVG()}</div>
+              <div class="badge-back">${backContent}</div>
+            </div>
+          </div>
           <div class="badge-name">${escapeHtml(name)}</div>
-          <div class="badge-sub">${monthYear}</div>
+          <div class="badge-sub">${fmtDate(endDate)}</div>
           ${tag}
         </div>`;
     }
 
-    function escapeHtml(s) {
-      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    function toggleFlip(cell) {
+      cell.querySelector('.badge-flipper-wrap').classList.toggle('flipped');
     }
 
     /* ── Init ──────────────────────────────────────────────────────── */
@@ -360,7 +400,13 @@
 
       // Won first, then missed
       const sorted = [...challenges].sort((a, b) => b.won - a.won || b.end_date.localeCompare(a.end_date));
-      grid.innerHTML = sorted.map(c => renderBadge(c)).join('');
+      grid.innerHTML = sorted.map(c => renderBadge({
+        name: c.name,
+        startDate: c.start_date,
+        endDate: c.end_date,
+        won: c.won,
+        participated: c.participated,
+      })).join('');
     }
 
     initBadges();

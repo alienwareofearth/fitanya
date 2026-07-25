@@ -765,6 +765,7 @@ router.get('/badges', requireAuth, async (req, res) => {
       challenges: games.map(g => ({
         id: g.id,
         name: g.title,
+        start_date: g.start_date,
         end_date: g.end_date,
         won: g.is_winner === 1,
         participated: g.participated === 1,
