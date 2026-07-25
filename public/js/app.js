@@ -489,10 +489,11 @@ async function _initWinnerBanner() {
     bar.appendChild(label);
     bar.appendChild(track);
     document.body.appendChild(bar);
+    document.body.classList.add('has-winner-ticker');
 
-    // Add padding to main content so ticker doesn't overlap bottom nav
+    // Add safe padding so ticker doesn't overlap bottom content
     const main = document.querySelector('.main-content');
-    if (main) main.style.paddingBottom = 'calc(var(--main-pb, 40px) + 32px)';
+    if (main) main.style.paddingBottom = 'calc(52px + env(safe-area-inset-bottom))';
   } catch {}
 }
 

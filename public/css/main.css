@@ -91,6 +91,8 @@ p { color: var(--text-dim); }
   transition: all 0.2s;
   text-decoration: none;
   white-space: nowrap;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .btn-primary {
@@ -153,7 +155,7 @@ p { color: var(--text-dim); }
   border-radius: var(--radius-sm);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 16px;
   padding: 12px 16px;
   transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
@@ -323,6 +325,8 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   border-bottom: none;
   width: 100%;
   text-align: left;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .nav-item:hover { color: var(--text); background: rgba(255,92,0,0.06); }
 .nav-item.active {
@@ -821,3 +825,103 @@ html { overflow-x: hidden; }
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
+
+/* ── Mobile / iPhone alignment fixes ────────────────────────────────────── */
+
+/* 5-column measurement grid (Progress page) */
+.grid-5 {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+/* Stack page-header flex-between vertically on small screens */
+@media (max-width: 540px) {
+  .page-header.flex-between {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .page-header.flex-between > button,
+  .page-header.flex-between > a { align-self: flex-start; }
+}
+
+@media (max-width: 768px) {
+  /* 3-col on tablet */
+  .grid-5 { grid-template-columns: repeat(3, 1fr); }
+
+  /* Renew banner stacks on mobile */
+  .renew-banner { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .renew-banner > .btn { width: 100%; justify-content: center; }
+
+  /* plan-hero stat cards: 3-up still fine on tablet, force it */
+  .plan-hero .grid-3 { grid-template-columns: repeat(3, 1fr); }
+
+  /* Challenge tiles: single col under 480, 2-col on tablet is OK */
+  #challenge-tiles { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+}
+
+@media (max-width: 480px) {
+  /* 2-col measurement grid on phone */
+  .grid-5 { grid-template-columns: repeat(2, 1fr); }
+
+  /* Collapse plan-hero stat cards to 1 row of 3 smaller pills */
+  .plan-hero .grid-3 { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .plan-hero .stat-card { padding: 12px 10px; }
+  .plan-hero .stat-value { font-size: 1.6rem; }
+
+  /* Full-width challenge tiles on phone */
+  #challenge-tiles { grid-template-columns: 1fr !important; }
+
+  /* Tighten the top greeting area */
+  #mobile-topbar-greeting { font-size: 1.4rem; }
+
+  /* Winner ticker bottom padding so content isn't hidden */
+  .main-content { padding-bottom: calc(52px + env(safe-area-inset-bottom)); }
+
+  /* Action rows in admin tables: smaller pill text */
+  .apill { font-size: 10px; padding: 4px 0; }
+
+  /* Ensure modal fits on small screen */
+  .modal { padding: 20px 16px; margin: 0 8px; max-height: 92vh; }
+}
+
+/* Label truncation in tight grids */
+.grid-5 .form-group label {
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Cards inside tables scroll horizontally */
+@media (max-width: 768px) {
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { min-width: 520px; }
+}
+
+/* Bottom-safe padding when winner ticker visible */
+body.has-winner-ticker .main-content {
+  padding-bottom: calc(52px + env(safe-area-inset-bottom));
+}
+
+/* Profile photo card: full-width on mobile */
+@media (max-width: 640px) {
+  .grid-2 > div:first-child .card { text-align: left; padding: 20px; }
+  .grid-2 > div:first-child img#profile-pic { width: 80px; height: 80px; }
+}
+
+/* Diet preferences grid: single col on phone */
+@media (max-width: 480px) {
+  #prefs-card .grid-2 { grid-template-columns: 1fr; }
+}
+
+/* Progress log-card: full-width button on mobile */
+@media (max-width: 640px) {
+  .log-card .btn { width: 100%; justify-content: center; }
+}
+
+/* Monthly games challenge tiles: equal height */
+.ch-tile { min-height: 140px; display: flex; flex-direction: column; }
+.ch-tile-title { flex: 1; }
