@@ -301,48 +301,6 @@
         </div>
       </div>
 
-      <!-- Today's Activity -->
-      <div class="activity-section-title">
-        <span>Today's Activity</span>
-        <a href="/dashboard/progress" style="font-size:12px;color:var(--orange);text-decoration:none">View More ›</a>
-      </div>
-      <div class="activity-grid mb-32">
-        <!-- Steps -->
-        <div class="steps-card">
-          <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
-            <div class="steps-card-label">Steps</div>
-            <button class="steps-refresh" onclick="loadActivity()" title="Refresh">↻</button>
-          </div>
-          <div class="steps-ring">
-            <svg width="100" height="100" viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="40" fill="none" stroke="var(--muted)" stroke-width="8"/>
-              <circle id="steps-arc" cx="50" cy="50" r="40" fill="none" stroke="var(--orange)"
-                stroke-width="8" stroke-linecap="round"
-                stroke-dasharray="251.2" stroke-dashoffset="251.2"
-                style="transition:stroke-dashoffset 0.8s ease"/>
-            </svg>
-            <div class="steps-ring-inner">
-              <div class="steps-num" id="activity-steps">—</div>
-              <div class="steps-unit">steps</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Weight -->
-        <div class="weight-display-card">
-          <div class="weight-display-icon">⚖️</div>
-          <div class="weight-display-num" id="activity-weight">—</div>
-          <div class="weight-display-unit">kg</div>
-        </div>
-
-        <!-- Water -->
-        <div class="water-mini-card">
-          <div class="water-mini-label">💧 Water Intake</div>
-          <div class="water-mini-amount" id="water-mini-amount">0 ml / 2.0 L</div>
-          <div class="water-cups" id="water-mini-cups"></div>
-          <a href="/dashboard/diet" class="water-mini-link">Manage hydration →</a>
-        </div>
-      </div>
 
       <!-- Upcoming sessions + Progress side by side -->
       <div class="grid-2 gap-24 mb-32">
@@ -396,9 +354,14 @@
       checkWeightPopup();
       loadUpcomingSessions();
       loadWeeklyProgress();
-      loadActivity();
-      loadWaterMini();
+      loadWeightJourney();
       checkWinnerCongrats();
+    }
+
+    async function loadWeightJourney() {
+      const data = await api.get('/api/customer/progress');
+      const latest = data?.logs?.[0];
+      renderWeightJourney(latest?.weight);
     }
 
     async function checkWinnerCongrats() {
@@ -411,76 +374,51 @@
       } catch {}
     }
 
-    async function loadActivity() {
-      const data = await api.get('/api/customer/progress');
-      _progressLogs = data?.logs || [];
-      const latest = _progressLogs[0];
-
-      // Steps ring
-      const steps = latest?.steps || 0;
-      const goal = 10000;
-      const pct = Math.min(steps / goal, 1);
-      const circumference = 251.2;
-      document.getElementById('activity-steps').textContent = steps ? steps.toLocaleString('en-IN') : '0';
-      document.getElementById('steps-arc').style.strokeDashoffset = circumference * (1 - pct);
-
-      // Weight display
-      const w = latest?.weight;
-      document.getElementById('activity-weight').textContent = w ? `${w} kg` : '—';
-
-      // Weight journey
-      renderWeightJourney(latest?.weight);
+    function bmiIdealWeight(heightCm) {
+      // Ideal weight = BMI 22 (midpoint of healthy 18.5–24.9) × height²
+      if (!heightCm || isNaN(heightCm)) return null;
+      const h = parseFloat(heightCm) / 100;
+      return Math.round(22 * h * h * 10) / 10;
     }
 
     function renderWeightJourney(currentWeight) {
-      const start = _profile?.weight;
-      const ideal = _profile?.ideal_weight;
-      const card = document.getElementById('weight-journey-card');
+      const start  = _profile?.weight ? parseFloat(_profile.weight) : null;
+      const height = _profile?.height ? parseFloat(_profile.height) : null;
+      // Prefer BMI-calculated ideal; fall back to manually entered
+      const ideal  = bmiIdealWeight(height) || (_profile?.ideal_weight ? parseFloat(_profile.ideal_weight) : null);
+      const card   = document.getElementById('weight-journey-card');
 
       if (!start && !currentWeight && !ideal) { card.style.display = 'none'; return; }
       card.style.display = '';
 
-      const cur = currentWeight || start || 0;
-      document.getElementById('activity-weight').textContent = cur ? `${cur} kg` : '—';
+      const cur = currentWeight ? parseFloat(currentWeight) : (start || 0);
       document.getElementById('wj-current').textContent = cur || '—';
-      document.getElementById('wj-start').textContent = start || '—';
-      document.getElementById('wj-ideal').textContent = ideal || '—';
+      document.getElementById('wj-start').textContent   = start || '—';
+      document.getElementById('wj-ideal').textContent   = ideal || '—';
 
       if (start && ideal && cur) {
-        const total = Math.abs(parseFloat(start) - parseFloat(ideal));
-        const done = Math.abs(parseFloat(start) - parseFloat(cur));
+        // Direction: losing (start > ideal) or gaining (start < ideal)
+        const total = Math.abs(start - ideal);
+        const done  = Math.abs(start - cur);
+        // Clamp: don't exceed 100% or go negative
         const pct = total > 0 ? Math.min(Math.max(done / total, 0), 1) * 100 : 0;
         document.getElementById('wj-fill').style.width = pct + '%';
         document.getElementById('wj-thumb').style.left = pct + '%';
 
-        const lost = (parseFloat(start) - parseFloat(cur)).toFixed(1);
-        const toGo = (parseFloat(cur) - parseFloat(ideal)).toFixed(1);
-        if (lost > 0 && toGo > 0) {
+        const losing = start > ideal;
+        const diff   = losing ? (start - cur).toFixed(1) : (cur - start).toFixed(1);
+        const toGo   = losing ? (cur - ideal).toFixed(1) : (ideal - cur).toFixed(1);
+        const goalReached = losing ? cur <= ideal : cur >= ideal;
+
+        if (goalReached) {
+          document.getElementById('wj-quote').textContent = 'Goal reached! 🎉 Talk to your coach about your next target.';
+        } else if (parseFloat(diff) > 0) {
           document.getElementById('wj-quote').textContent =
-            `You've lost ${lost} kg so far — ${toGo} kg more to reach your goal! Keep going! 💪`;
-        } else if (lost <= 0) {
-          document.getElementById('wj-quote').textContent =
-            '"Every step counts. Let\'s get started — your journey begins here!"';
+            `${losing ? 'Lost' : 'Gained'} ${diff} kg so far — ${toGo} kg more to reach your BMI goal! 💪`;
         } else {
-          document.getElementById('wj-quote').textContent =
-            'Goal achieved! 🎉 Talk to your coach about your next target.';
+          document.getElementById('wj-quote').textContent = '"Every step counts. Your journey begins here!"';
         }
       }
-    }
-
-    async function loadWaterMini() {
-      const today = new Date().toISOString().split('T')[0];
-      const data = await api.get('/api/customer/hydration?date=' + today);
-      const log = data?.log;
-      const glasses = log?.glasses || 0;
-      const goal = log?.goal_glasses || 8;
-      const ml = glasses * 250;
-      const goalL = (goal * 250 / 1000).toFixed(1);
-      document.getElementById('water-mini-amount').textContent = `${ml} ml / ${goalL} L`;
-      const cupsEl = document.getElementById('water-mini-cups');
-      cupsEl.innerHTML = Array.from({ length: goal }, (_, i) =>
-        `<span class="water-cup${i < glasses ? '' : ' empty'}">🥤</span>`
-      ).join('');
     }
 
     function showLastLoginBanner(prevLogin) {
@@ -532,7 +470,7 @@
         if (data?.success) {
           closeWeightPopup();
           toast('Weight logged! 💪', 'success');
-          loadActivity();
+          loadWeightJourney();
         } else {
           toast(data?.error || 'Failed to save weight — please try again', 'error');
         }
@@ -599,13 +537,13 @@
             <div style="font-family:var(--font-display);font-size:2rem;color:var(--orange)">${latest.weight || '—'} <span style="font-size:1rem">kg</span></div>
           </div>
           <div>
-            <div class="stat-label">Steps</div>
-            <div style="font-family:var(--font-display);font-size:2rem;color:var(--white)">${latest.steps ? latest.steps.toLocaleString('en-IN') : '—'}</div>
+            <div class="stat-label">Waist</div>
+            <div style="font-family:var(--font-display);font-size:2rem;color:var(--white)">${latest.waist || '—'}<span style="font-size:1rem">"</span></div>
           </div>
         </div>
         <div class="grid-2 gap-16 mt-16">
-          <div><div class="stat-label">Waist</div><div class="text-orange">${latest.waist || '—'}"</div></div>
-          <div><div class="stat-label">Chest</div><div class="text-white">${latest.chest || '—'}"</div></div>
+          <div><div class="stat-label">Chest</div><div class="text-orange">${latest.chest || '—'}"</div></div>
+          <div><div class="stat-label">Arm</div><div class="text-white">${latest.arm || '—'}"</div></div>
         </div>
         <a href="/dashboard/progress" class="btn btn-dark btn-sm btn-full mt-16">Full Progress →</a>
       `;

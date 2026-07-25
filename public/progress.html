@@ -10,8 +10,72 @@
   <link rel="apple-touch-icon" href="/icons/icon.svg">
   <title>Progress — Fitanya</title>
   <link rel="stylesheet" href="/css/main.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    .log-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .log-card-title {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      letter-spacing: 1px;
+      color: var(--white);
+      margin-bottom: 20px;
+    }
+    .history-row {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px 18px;
+      margin-bottom: 10px;
+    }
+    .history-row-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .history-date {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--orange);
+      letter-spacing: 0.5px;
+    }
+    .history-week {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .history-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 10px;
+    }
+    .history-metric { text-align: center; }
+    .history-metric-val {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      color: var(--white);
+      line-height: 1;
+    }
+    .history-metric-val.orange { color: var(--orange); }
+    .history-metric-label {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 3px;
+    }
+    .history-notes {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-dim);
+      font-style: italic;
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+    }
     .prog-section { border: 1px solid var(--border); border-radius: 14px; margin-bottom: 10px; overflow: hidden; }
     .prog-section-header {
       display: flex; align-items: center; justify-content: space-between;
@@ -29,21 +93,6 @@
     .prog-section-body { display: none; }
     .prog-section-body.open { display: block; }
     .prog-section-inner { padding: 20px; }
-    /* health stats */
-    .health-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
-    .health-stat { background: var(--dark); border: 1px solid var(--border); border-radius: 12px; padding: 14px; text-align: center; }
-    .health-stat-icon { font-size: 1.4rem; margin-bottom: 4px; }
-    .health-stat-val { font-family: var(--font-display); font-size: 1.6rem; color: var(--white); line-height: 1; }
-    .health-stat-label { font-size: 11px; color: var(--text-dim); margin-top: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
-    .steps-bar-wrap { display: flex; align-items: flex-end; gap: 6px; height: 72px; margin: 12px 0 4px; }
-    .steps-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; }
-    .steps-bar { width: 100%; background: var(--orange); border-radius: 3px 3px 0 0; min-height: 3px; transition: height 0.4s ease; }
-    .steps-bar.today { background: var(--grad); box-shadow: 0 0 8px rgba(255,92,0,0.4); }
-    .steps-bar-day { font-size: 10px; color: var(--text-dim); }
-    /* setup guide */
-    .setup-step { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text); line-height: 1.6; }
-    .setup-step:last-child { border-bottom: none; }
-    .setup-step-num { width: 22px; height: 22px; background: var(--grad); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0; margin-top: 2px; }
   </style>
 </head>
 <body>
@@ -59,104 +108,45 @@
       <a href="/dashboard/progress" class="nav-item active"><span class="icon">📊</span>Progress</a>
       <a href="/dashboard/diet" class="nav-item"><span class="icon">🥗</span>Diet & Nutrition</a>
       <a href="/dashboard/monthly-games" class="nav-item"><span class="icon">🏆</span>Monthly Games</a>
-        <a href="/dashboard/badges" class="nav-item"><span class="icon">🥇</span>My Badges</a>
-        <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
+      <a href="/dashboard/badges" class="nav-item"><span class="icon">🥇</span>My Badges</a>
+      <a href="/dashboard/stories" class="nav-item"><span class="icon">📸</span>My Stories</a>
       <a href="/dashboard/referral" class="nav-item"><span class="icon">🎁</span>Refer & Earn</a>
       <a href="/dashboard/profile" class="nav-item"><span class="icon">👤</span>Profile</a>
     </nav>
     <div class="sidebar-footer"><button class="nav-item" onclick="logout()"><span class="icon">🚪</span>Logout</button></div>
   </aside>
   <main class="main-content">
-    <div class="page-header flex-between mb-20">
+    <div class="page-header flex-between mb-24">
       <div>
         <h2>My Progress</h2>
-        <p>Tap any section to expand and load your data &nbsp;<span id="cache-age" class="text-dim text-small"></span></p>
-      </div>
-      <button class="btn btn-dark btn-sm" onclick="syncAll()">🔄 Sync</button>
-    </div>
-
-    <!-- ── 1. Daily Activity ────────────────────────────────────────────── -->
-    <div class="prog-section">
-      <div class="prog-section-header" id="hdr-activity" onclick="toggle('activity')">
-        <div class="prog-section-title">
-          <span class="prog-section-icon">📊</span>
-          <div>
-            <div class="prog-section-name">Daily Activity</div>
-            <div class="prog-section-sub" id="sub-activity">Steps, calories &amp; health sync</div>
-          </div>
-        </div>
-        <span class="prog-section-chev" id="chev-activity">▶</span>
-      </div>
-      <div class="prog-section-body" id="body-activity">
-        <div class="prog-section-inner" id="inner-activity"></div>
+        <p class="text-dim">Track your body measurements over time</p>
       </div>
     </div>
 
-    <!-- ── 2. Connect Health App ────────────────────────────────────────── -->
-    <div class="prog-section">
-      <div class="prog-section-header" id="hdr-setup" onclick="toggle('setup')">
-        <div class="prog-section-title">
-          <span class="prog-section-icon">📱</span>
-          <div>
-            <div class="prog-section-name">Connect Health App</div>
-            <div class="prog-section-sub">iPhone Shortcut · Android setup</div>
-          </div>
-        </div>
-        <span class="prog-section-chev" id="chev-setup">▶</span>
+    <!-- Log Your Measurements -->
+    <div class="log-card">
+      <div class="log-card-title">Log Your Measurements</div>
+      <div class="grid-2 gap-16">
+        <div class="form-group"><label>Weight (kg)</label><input class="form-control" type="number" id="log-weight" placeholder="e.g. 72.5" step="0.1"></div>
+        <div class="form-group"><label>Waist (inches)</label><input class="form-control" type="number" id="log-waist" placeholder="e.g. 32" step="0.5"></div>
+        <div class="form-group"><label>Thigh (inches)</label><input class="form-control" type="number" id="log-thigh" placeholder="e.g. 22" step="0.5"></div>
+        <div class="form-group"><label>Arm (inches)</label><input class="form-control" type="number" id="log-arm" placeholder="e.g. 12" step="0.5"></div>
+        <div class="form-group"><label>Chest (inches)</label><input class="form-control" type="number" id="log-chest" placeholder="e.g. 36" step="0.5"></div>
       </div>
-      <div class="prog-section-body" id="body-setup">
-        <div class="prog-section-inner" id="inner-setup"></div>
-      </div>
+      <div class="form-group"><label>Notes</label><textarea class="form-control" id="log-notes" rows="2" placeholder="How are you feeling?"></textarea></div>
+      <button class="btn btn-primary" onclick="saveProgress()">Save Measurements 💪</button>
     </div>
 
-    <!-- ── 3. Log This Week (pre-opened, no data load needed) ──────────── -->
-    <div class="prog-section">
-      <div class="prog-section-header open" id="hdr-log" onclick="toggle('log')">
-        <div class="prog-section-title">
-          <span class="prog-section-icon">📝</span>
-          <div>
-            <div class="prog-section-name">Log This Week</div>
-            <div class="prog-section-sub">Record your measurements</div>
-          </div>
-        </div>
-        <span class="prog-section-chev open" id="chev-log">▶</span>
-      </div>
-      <div class="prog-section-body open" id="body-log">
-        <div class="prog-section-inner">
-          <div class="grid-2 gap-16">
-            <div class="form-group"><label>Weight (kg)</label><input class="form-control" type="number" id="log-weight" placeholder="e.g. 72.5" step="0.1"></div>
-            <div class="form-group"><label>Steps Today</label><input class="form-control" type="number" id="log-steps" placeholder="e.g. 8000"></div>
-            <div class="form-group"><label>Waist (inches)</label><input class="form-control" type="number" id="log-waist" placeholder="e.g. 32" step="0.5"></div>
-            <div class="form-group"><label>Thigh (inches)</label><input class="form-control" type="number" id="log-thigh" placeholder="e.g. 22" step="0.5"></div>
-            <div class="form-group"><label>Arm (inches)</label><input class="form-control" type="number" id="log-arm" placeholder="e.g. 12" step="0.5"></div>
-            <div class="form-group"><label>Chest (inches)</label><input class="form-control" type="number" id="log-chest" placeholder="e.g. 36" step="0.5"></div>
-          </div>
-          <div class="form-group"><label>Notes</label><textarea class="form-control" id="log-notes" rows="2" placeholder="How are you feeling this week?"></textarea></div>
-          <button class="btn btn-primary" onclick="saveProgress()">Save Progress 💪</button>
-        </div>
-      </div>
+    <!-- Measurement History -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="section-title" style="margin:0">Measurement History</div>
+      <span id="history-count" class="text-dim text-small"></span>
     </div>
+    <div id="history-list"><div class="spinner"></div></div>
 
-    <!-- ── 4. Charts & History (shared progress API call) ──────────────── -->
-    <div class="prog-section">
-      <div class="prog-section-header" id="hdr-progress" onclick="toggle('progress')">
-        <div class="prog-section-title">
-          <span class="prog-section-icon">📈</span>
-          <div>
-            <div class="prog-section-name">Charts &amp; History</div>
-            <div class="prog-section-sub" id="sub-progress">Weight trend, measurements &amp; log history</div>
-          </div>
-        </div>
-        <span class="prog-section-chev" id="chev-progress">▶</span>
-      </div>
-      <div class="prog-section-body" id="body-progress">
-        <div class="prog-section-inner" id="inner-progress"></div>
-      </div>
-    </div>
-
-    <!-- ── 5. Coach Notes ───────────────────────────────────────────────── -->
-    <div class="prog-section">
-      <div class="prog-section-header" id="hdr-notes" onclick="toggle('notes')">
+    <!-- Coach Notes -->
+    <div class="prog-section" style="margin-top:24px">
+      <div class="prog-section-header" id="hdr-notes" onclick="toggleNotes()">
         <div class="prog-section-title">
           <span class="prog-section-icon">🗒️</span>
           <div>
@@ -176,381 +166,98 @@
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
-  // ── State ───────────────────────────────────────────────────────────────
-  let _progressData = null;   // in-memory mirror of pageCache('progress_data')
-  let _syncUrl = '';
-  let weightChart, measChart;
-  const _loaded = { log: true };  // log section is pre-populated
-
-  const CACHE_KEYS = {
-    activity: 'progress_activity',
-    setup:    'progress_token',
-    progress: 'progress_data',
-    notes:    'progress_notes',
-  };
-
-  function showAge() {
-    // Show age of the oldest loaded cache entry
-    const ages = Object.values(CACHE_KEYS).map(k => pageCache.ageLabel(k)).filter(Boolean);
-    const el = document.getElementById('cache-age');
-    if (el && ages.length) el.textContent = '· synced ' + ages[ages.length - 1];
-  }
-
-  async function syncAll() {
-    Object.values(CACHE_KEYS).forEach(k => pageCache.bust(k));
-    _progressData = null;
-    // Reload whichever sections are currently open
-    for (const name of Object.keys(CACHE_KEYS)) {
-      _loaded[name] = false;
-      if (document.getElementById('body-' + name)?.classList.contains('open')) {
-        await loadSection(name);
-      }
-    }
-    showAge();
-    toast('Progress synced from server', 'success');
-  }
+  let _notesLoaded = false;
 
   async function init() {
     await requireAuth();
+    loadHistory();
   }
 
-  // ── Accordion toggle ────────────────────────────────────────────────────
-  async function toggle(name) {
-    const body = document.getElementById('body-' + name);
-    const hdr  = document.getElementById('hdr-'  + name);
-    const chev = document.getElementById('chev-' + name);
-    const opening = !body.classList.contains('open');
+  async function loadHistory() {
+    const el = document.getElementById('history-list');
+    const data = await api.get('/api/customer/progress');
+    const logs = data?.logs || [];
 
-    body.classList.toggle('open', opening);
-    hdr.classList.toggle('open',  opening);
-    chev.classList.toggle('open', opening);
+    document.getElementById('history-count').textContent = logs.length ? `${logs.length} entr${logs.length === 1 ? 'y' : 'ies'}` : '';
 
-    if (opening && !_loaded[name]) {
-      _loaded[name] = true;
-      await loadSection(name);
-    }
-  }
-
-  // ── Lazy section loaders ────────────────────────────────────────────────
-  async function loadSection(name) {
-    const setInner = html => {
-      const el = document.getElementById('inner-' + name);
-      if (el) el.innerHTML = html;
-    };
-
-    switch (name) {
-
-      case 'activity': {
-        const cached = pageCache.get(CACHE_KEYS.activity);
-        if (cached) { renderActivity(cached); showAge(); break; }
-        setInner('<div class="spinner"></div>');
-        const data = await api.get('/api/customer/health/logs?days=7');
-        if (data?.logs) pageCache.set(CACHE_KEYS.activity, data.logs);
-        renderActivity(data?.logs || []);
-        showAge();
-        break;
-      }
-
-      case 'setup': {
-        const cached = pageCache.get(CACHE_KEYS.setup);
-        if (cached !== null) { renderSetupGuide(cached); showAge(); break; }
-        setInner('<div class="spinner"></div>');
-        const data = await api.get('/api/customer/health/token');
-        if (data?.token !== undefined) pageCache.set(CACHE_KEYS.setup, data.token || '');
-        renderSetupGuide(data?.token || '');
-        showAge();
-        break;
-      }
-
-      case 'progress': {
-        const cached = pageCache.get(CACHE_KEYS.progress);
-        if (cached) { _progressData = cached; renderProgress(cached); showAge(); break; }
-        setInner('<div class="spinner"></div>');
-        const data = await api.get('/api/customer/progress');
-        _progressData = data?.logs || [];
-        if (data?.logs) pageCache.set(CACHE_KEYS.progress, _progressData);
-        renderProgress(_progressData);
-        showAge();
-        break;
-      }
-
-      case 'notes': {
-        const cached = pageCache.get(CACHE_KEYS.notes);
-        if (cached) { renderNotes(cached); showAge(); break; }
-        setInner('<div class="spinner"></div>');
-        const data = await api.get('/api/bookings/my');
-        const notes = data?.bookings?.filter(b => b.session_notes) || [];
-        pageCache.set(CACHE_KEYS.notes, notes);
-        renderNotes(notes);
-        showAge();
-        break;
-      }
-    }
-  }
-
-  // ── Section: Daily Activity ─────────────────────────────────────────────
-  function renderActivity(logs) {
-    const today    = new Date().toLocaleDateString('en-CA');
-    const todayLog = logs.find(l => l.date === today);
-    const hasData  = logs.length > 0;
-
-    const steps = todayLog?.steps          || 0;
-    const cals  = todayLog?.calories       || 0;
-    const mins  = todayLog?.active_minutes || 0;
-    const dist  = todayLog?.distance_km    || 0;
-    const goal  = 10000;
-    const pct   = Math.min(100, Math.round((steps / goal) * 100));
-
-    const lastSync = todayLog?.synced_at
-      ? new Date(todayLog.synced_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
-      : null;
-
-    // Update section subtitle
-    const sub = document.getElementById('sub-activity');
-    if (hasData) {
-      sub.innerHTML = lastSync
-        ? `<span style="color:#4ade80">●</span> Synced today at ${lastSync}`
-        : '<span style="color:#4ade80">●</span> Connected';
-    } else {
-      sub.textContent = 'Not connected yet';
-    }
-
-    if (!hasData) {
-      document.getElementById('inner-activity').innerHTML = `
-        <p class="text-dim" style="margin-bottom:14px">No health data yet. Expand <strong style="color:var(--white)">Connect Health App</strong> below to set up iPhone or Android sync.</p>
-        <button class="btn btn-outline btn-sm" onclick="toggle('setup')">📱 Open Setup Guide →</button>
-      `;
-      return;
-    }
-
-    // 7-day bar data
-    const last7 = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      const key = d.toLocaleDateString('en-CA');
-      const log = logs.find(l => l.date === key);
-      last7.push({ day: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2), steps: log?.steps || 0, isToday: i === 0 });
-    }
-    const maxSteps = Math.max(...last7.map(d => d.steps), goal);
-    const avg7 = Math.round(last7.reduce((s, d) => s + d.steps, 0) / 7);
-
-    document.getElementById('inner-activity').innerHTML = `
-      <div class="health-grid">
-        <div class="health-stat"><div class="health-stat-icon">👟</div><div class="health-stat-val">${steps.toLocaleString('en-IN')}</div><div class="health-stat-label">Steps</div></div>
-        <div class="health-stat"><div class="health-stat-icon">🔥</div><div class="health-stat-val">${cals.toLocaleString('en-IN')}</div><div class="health-stat-label">Calories</div></div>
-        <div class="health-stat"><div class="health-stat-icon">⏱️</div><div class="health-stat-val">${mins}</div><div class="health-stat-label">Active Min</div></div>
-        <div class="health-stat"><div class="health-stat-icon">📍</div><div class="health-stat-val">${Number(dist).toFixed(1)}</div><div class="health-stat-label">km walked</div></div>
-      </div>
-      <div class="stat-label" style="margin-bottom:6px">7-Day Steps <span class="text-dim" style="font-weight:400">· Goal: ${goal.toLocaleString('en-IN')}/day</span></div>
-      <div class="steps-bar-wrap">
-        ${last7.map(d => `<div class="steps-bar-col">
-          <div class="steps-bar${d.isToday ? ' today' : ''}" style="height:${d.steps ? Math.max(6, Math.round((d.steps / maxSteps) * 62)) : 3}px" title="${d.steps.toLocaleString('en-IN')} steps"></div>
-          <div class="steps-bar-day">${d.day}</div>
-        </div>`).join('')}
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-top:6px">
-        <span class="text-dim text-small">7-day avg: ${avg7.toLocaleString('en-IN')} steps</span>
-        <span class="text-small" style="color:${pct >= 100 ? '#4ade80' : 'var(--orange)'}">${pct}% of daily goal</span>
-      </div>
-    `;
-  }
-
-  // ── Section: Connect Health App ─────────────────────────────────────────
-  function renderSetupGuide(token) {
-    const origin = window.location.origin;
-    _syncUrl = `${origin}/api/customer/health/sync?token=${token}`;
-    const dlUrl = `/api/customer/health/shortcut?token=${token}`;
-
-    document.getElementById('inner-setup').innerHTML = `
-      <!-- Sync URL -->
-      <div style="background:var(--dark);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:18px">
-        <div class="stat-label" style="margin-bottom:8px">Your Personal Sync URL</div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <code id="sync-url-display" style="flex:1;font-size:11px;color:var(--orange);word-break:break-all;background:rgba(255,92,0,0.06);padding:8px 10px;border-radius:6px;min-width:0">${_syncUrl}</code>
-          <button class="btn btn-outline btn-sm" onclick="copySyncUrl()" style="flex-shrink:0">Copy</button>
-        </div>
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <button class="btn btn-dark btn-sm" onclick="testSync()">🧪 Test</button>
-          <button class="btn btn-dark btn-sm" onclick="regenerateToken()" style="color:var(--text-dim)">↻ New Token</button>
-          <span id="test-result" class="text-small hidden"></span>
-        </div>
-      </div>
-
-      <!-- Platform tabs -->
-      <div style="display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px">
-        <button id="tab-ios" onclick="switchTab('ios')" style="flex:1;padding:9px;font-size:13px;font-weight:600;background:var(--orange);color:#fff;border:none;cursor:pointer">🍎 iPhone</button>
-        <button id="tab-android" onclick="switchTab('android')" style="flex:1;padding:9px;font-size:13px;font-weight:600;background:var(--card);color:var(--text-dim);border:none;cursor:pointer">🤖 Android</button>
-      </div>
-
-      <!-- iOS guide -->
-      <div id="guide-ios">
-        <div style="background:linear-gradient(135deg,rgba(255,92,0,0.12),rgba(124,58,237,0.12));border:1px solid rgba(255,92,0,0.25);border-radius:12px;padding:16px 18px;margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-            <span style="font-size:2rem">⬇️</span>
-            <div style="flex:1">
-              <div style="font-weight:600;color:var(--white);margin-bottom:2px">Download Ready-Made Shortcut</div>
-              <div class="text-dim text-small">Tap on your iPhone in Safari — iOS downloads and opens it in Shortcuts.</div>
-            </div>
-          </div>
-          <div style="margin-top:12px">
-            <a href="${dlUrl}" class="btn btn-primary" style="text-decoration:none">📲 Download Shortcut</a>
-          </div>
-          <div style="margin-top:12px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:10px 12px;font-size:12px;color:#fbbf24">
-            <strong>⚠️ iOS 15–26:</strong> Settings → Shortcuts → <strong>Allow Untrusted Shortcuts</strong> → ON, then tap the button above.
-          </div>
-        </div>
-        <div class="stat-label" style="margin-bottom:8px">Or set up manually — ~3 min</div>
-        <div class="setup-step"><span class="setup-step-num">1</span><div>Open <strong>Shortcuts</strong> app → tap <strong>+</strong> → name it <strong>"Fitanya Sync"</strong></div></div>
-        <div class="setup-step"><span class="setup-step-num">2</span><div>Add Action → search <strong>Health</strong> → <strong>Find Health Samples</strong> · Steps · Today · Sum → variable <em>Steps</em></div></div>
-        <div class="setup-step"><span class="setup-step-num">3</span><div>Repeat for <strong>Active Energy Burned</strong> → <em>Calories</em>, <strong>Walking Distance</strong> → <em>Distance</em>, <strong>Exercise Minutes</strong> → <em>ActiveMin</em></div></div>
-        <div class="setup-step"><span class="setup-step-num">4</span><div><strong>Get Contents of URL</strong> → POST · URL = Sync URL above · Body = JSON<br><span class="text-dim text-small">Keys: steps · calories · distance_km · active_minutes · date (yyyy-MM-dd)</span></div></div>
-        <div class="setup-step"><span class="setup-step-num">5</span><div><strong>Automation</strong> tab → Time of Day → 10 PM daily → Run shortcut · disable "Ask Before Running"</div></div>
-      </div>
-
-      <!-- Android guide -->
-      <div id="guide-android" class="hidden">
-        <div class="stat-label" style="margin-bottom:8px">Android via HTTP Request Shortcuts — ~5 min</div>
-        <div class="setup-step"><span class="setup-step-num">1</span><div>Install <strong>HTTP Request Shortcuts</strong> from Play Store (by Waboodoo, free)</div></div>
-        <div class="setup-step"><span class="setup-step-num">2</span><div>Tap <strong>+</strong> → Regular Shortcut → Method: POST → URL: your Sync URL above</div></div>
-        <div class="setup-step"><span class="setup-step-num">3</span><div>Content Type: <strong>application/json</strong> · Body:<br><code style="font-size:11px;color:var(--orange);background:rgba(255,92,0,0.06);padding:6px 8px;border-radius:4px;display:block;margin-top:4px">{"steps":8000,"calories":400,"active_minutes":45,"distance_km":6.2,"date":"2024-01-15"}</code></div></div>
-        <div class="setup-step"><span class="setup-step-num">4</span><div>Use <strong>Tasker</strong> + HTTP Request plugin for 10 PM daily automation</div></div>
-      </div>
-    `;
-  }
-
-  function switchTab(tab) {
-    document.getElementById('guide-ios').classList.toggle('hidden', tab !== 'ios');
-    document.getElementById('guide-android').classList.toggle('hidden', tab !== 'android');
-    document.getElementById('tab-ios').style.cssText     = `flex:1;padding:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:${tab === 'ios' ? 'var(--orange);color:#fff' : 'var(--card);color:var(--text-dim)'}`;
-    document.getElementById('tab-android').style.cssText = `flex:1;padding:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:${tab === 'android' ? 'var(--orange);color:#fff' : 'var(--card);color:var(--text-dim)'}`;
-  }
-
-  function copySyncUrl() {
-    navigator.clipboard.writeText(_syncUrl).then(() => toast('Sync URL copied!', 'success'));
-  }
-
-  async function regenerateToken() {
-    if (!confirm('Regenerate your token? Your existing Shortcut will stop working until you update its URL.')) return;
-    const data = await api.post('/api/customer/health/token/regenerate', {});
-    if (data?.success) {
-      pageCache.bust(CACHE_KEYS.setup);
-      _loaded.setup = false;
-      await loadSection('setup');
-      toast('Token regenerated. Re-download the Shortcut to apply the new URL.', 'success');
-    }
-  }
-
-  async function testSync() {
-    const el = document.getElementById('test-result');
-    el.textContent = 'Testing…'; el.classList.remove('hidden'); el.style.color = 'var(--text-dim)';
-    const today = new Date().toLocaleDateString('en-CA');
-    const r = await fetch(_syncUrl, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: today, steps: 0, calories: 0, active_minutes: 0, distance_km: 0 }),
-    });
-    const d = await r.json();
-    if (d?.success) { el.textContent = '✅ Connection works!'; el.style.color = '#4ade80'; }
-    else { el.textContent = '❌ ' + (d?.error || 'Failed'); el.style.color = '#f87171'; }
-  }
-
-  // ── Section: Charts & History ───────────────────────────────────────────
-  function renderProgress(logs) {
     if (!logs.length) {
-      document.getElementById('inner-progress').innerHTML = '<p class="text-dim">No progress logs yet. Use the <strong style="color:var(--white)">Log This Week</strong> section above to get started.</p>';
+      el.innerHTML = `<div class="card text-center" style="padding:40px;color:var(--text-dim)">
+        No measurements logged yet.<br>Use the form above to log your first entry.
+      </div>`;
       return;
     }
 
-    document.getElementById('sub-progress').textContent = `${logs.length} log${logs.length !== 1 ? 's' : ''}`;
+    // logs come latest-first from API (ORDER BY year DESC, week_number DESC)
+    el.innerHTML = logs.map(l => {
+      const metrics = [
+        { val: l.weight,  label: 'kg',     cls: 'orange' },
+        { val: l.waist,   label: 'Waist"', cls: '' },
+        { val: l.thigh,   label: 'Thigh"', cls: '' },
+        { val: l.arm,     label: 'Arm"',   cls: '' },
+        { val: l.chest,   label: 'Chest"', cls: '' },
+      ].filter(m => m.val);
 
-    const rows = logs.map(l => `
-      <tr>
-        <td>Week ${l.week_number}, ${l.year}</td>
-        <td>${formatDate(l.log_date)}</td>
-        <td class="text-orange">${l.weight || '—'}</td>
-        <td>${l.waist || '—'}</td>
-        <td>${l.thigh || '—'}</td>
-        <td>${l.arm || '—'}</td>
-        <td>${l.chest || '—'}</td>
-        <td>${l.steps ? Number(l.steps).toLocaleString('en-IN') : '—'}</td>
-      </tr>`).join('');
-
-    document.getElementById('inner-progress').innerHTML = `
-      <div class="grid-2 gap-24" style="margin-bottom:24px">
-        <div>
-          <div class="section-title" style="margin-bottom:10px">Weight Trend (kg)</div>
-          <canvas id="weight-chart" height="180"></canvas>
-        </div>
-        <div>
-          <div class="section-title" style="margin-bottom:10px">Measurements Trend</div>
-          <canvas id="measurements-chart" height="180"></canvas>
-        </div>
-      </div>
-      <div class="section-title" style="margin-bottom:10px">History</div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Week</th><th>Date</th><th>Weight (kg)</th><th>Waist"</th><th>Thigh"</th><th>Arm"</th><th>Chest"</th><th>Steps</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-    `;
-
-    // Destroy old charts if they exist (e.g. after save + re-render)
-    if (weightChart) { weightChart.destroy(); weightChart = null; }
-    if (measChart)   { measChart.destroy();   measChart   = null; }
-
-    const reversed = [...logs].reverse();
-    const labels   = reversed.map(l => `Wk ${l.week_number}`);
-    const opts     = { plugins: { legend: { labels: { color: '#888' } } }, scales: { x: { ticks: { color: '#888' } }, y: { ticks: { color: '#888' } } } };
-
-    weightChart = new Chart(document.getElementById('weight-chart'), {
-      type: 'line',
-      data: { labels, datasets: [{ label: 'Weight (kg)', data: reversed.map(l => l.weight), borderColor: '#FF5C00', backgroundColor: 'rgba(255,92,0,0.1)', fill: true, tension: 0.4, pointBackgroundColor: '#FF5C00' }] },
-      options: opts,
-    });
-
-    measChart = new Chart(document.getElementById('measurements-chart'), {
-      type: 'line',
-      data: { labels, datasets: [
-        { label: 'Waist', data: reversed.map(l => l.waist), borderColor: '#3b82f6', tension: 0.4 },
-        { label: 'Chest', data: reversed.map(l => l.chest), borderColor: '#22c55e', tension: 0.4 },
-        { label: 'Arm',   data: reversed.map(l => l.arm),   borderColor: '#f59e0b', tension: 0.4 },
-      ] },
-      options: opts,
-    });
-  }
-
-  // ── Section: Coach Notes ────────────────────────────────────────────────
-  function renderNotes(sessions) {
-    const sub = document.getElementById('sub-notes');
-    if (!sessions.length) {
-      sub.textContent = 'Session feedback & next-session plans';
-      document.getElementById('inner-notes').innerHTML = '<p class="text-dim">No coach notes yet. Notes appear here after each completed session.</p>';
-      return;
-    }
-    sub.textContent = `${sessions.length} session${sessions.length !== 1 ? 's' : ''} with notes`;
-    document.getElementById('inner-notes').innerHTML = sessions.map(b => `
-      <div style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px">
-        <div class="flex-between mb-12">
-          <div>
-            <div style="font-weight:600;color:var(--white)">${formatSessionDate(b.date, b.start_time)} · ${formatSessionTime(b.start_time, b.date)}</div>
-            <div class="text-dim text-small">Coach: ${b.coach_name}</div>
+      return `
+        <div class="history-row">
+          <div class="history-row-header">
+            <span class="history-date">${formatDate(l.log_date)}</span>
+            <span class="history-week">Week ${l.week_number}, ${l.year}</span>
           </div>
-          <span class="badge badge-green">Completed</span>
-        </div>
-        <p style="color:var(--text);font-size:14px;margin-bottom:8px"><strong class="text-orange">Notes:</strong><br>${b.session_notes}</p>
-        ${b.workout_done ? `<p style="font-size:13px;color:var(--text);margin-bottom:6px"><strong class="text-dim">Workout done:</strong> ${b.workout_done}</p>` : ''}
-        ${b.next_session_plan ? `<p style="font-size:13px;color:var(--text)"><strong class="text-dim">Next session plan:</strong> ${b.next_session_plan}</p>` : ''}
-      </div>`).join('');
+          <div class="history-metrics">
+            ${metrics.map(m => `
+              <div class="history-metric">
+                <div class="history-metric-val ${m.cls}">${m.val}</div>
+                <div class="history-metric-label">${m.label}</div>
+              </div>`).join('')}
+            ${!metrics.length ? '<span class="text-dim text-small">No measurements recorded</span>' : ''}
+          </div>
+          ${l.notes ? `<div class="history-notes">"${l.notes}"</div>` : ''}
+        </div>`;
+    }).join('');
   }
 
-  // ── Log form save ───────────────────────────────────────────────────────
+  async function toggleNotes() {
+    const body = document.getElementById('body-notes');
+    const hdr  = document.getElementById('hdr-notes');
+    const chev = document.getElementById('chev-notes');
+    const opening = !body.classList.contains('open');
+    body.classList.toggle('open', opening);
+    hdr.classList.toggle('open', opening);
+    chev.classList.toggle('open', opening);
+    if (opening && !_notesLoaded) {
+      _notesLoaded = true;
+      document.getElementById('inner-notes').innerHTML = '<div class="spinner"></div>';
+      const data  = await api.get('/api/bookings/my');
+      const notes = data?.bookings?.filter(b => b.session_notes) || [];
+      const sub   = document.getElementById('sub-notes');
+      if (!notes.length) {
+        sub.textContent = 'Session feedback & next-session plans';
+        document.getElementById('inner-notes').innerHTML = '<p class="text-dim">No coach notes yet. Notes appear here after each completed session.</p>';
+        return;
+      }
+      sub.textContent = `${notes.length} session${notes.length !== 1 ? 's' : ''} with notes`;
+      document.getElementById('inner-notes').innerHTML = notes.map(b => `
+        <div style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px">
+          <div class="flex-between mb-12">
+            <div>
+              <div style="font-weight:600;color:var(--white)">${formatSessionDate(b.date, b.start_time)} · ${formatSessionTime(b.start_time, b.date)}</div>
+              <div class="text-dim text-small">Coach: ${b.coach_name}</div>
+            </div>
+            <span class="badge badge-green">Completed</span>
+          </div>
+          <p style="color:var(--text);font-size:14px;margin-bottom:8px"><strong class="text-orange">Notes:</strong><br>${b.session_notes}</p>
+          ${b.workout_done     ? `<p style="font-size:13px;color:var(--text);margin-bottom:6px"><strong class="text-dim">Workout done:</strong> ${b.workout_done}</p>` : ''}
+          ${b.next_session_plan ? `<p style="font-size:13px;color:var(--text)"><strong class="text-dim">Next session plan:</strong> ${b.next_session_plan}</p>` : ''}
+        </div>`).join('');
+    }
+  }
+
   async function saveProgress() {
     const btn = document.querySelector('[onclick="saveProgress()"]');
     if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
     try {
       const payload = {
         weight: document.getElementById('log-weight').value,
-        steps:  document.getElementById('log-steps').value,
         waist:  document.getElementById('log-waist').value,
         thigh:  document.getElementById('log-thigh').value,
         arm:    document.getElementById('log-arm').value,
@@ -559,20 +266,19 @@
       };
       const data = await api.post('/api/customer/progress', payload);
       if (data?.success) {
-        toast('Progress saved! 💪', 'success');
-        pageCache.bust(CACHE_KEYS.progress);
-        _progressData = null;
-        _loaded.progress = false;
-        if (document.getElementById('body-progress').classList.contains('open')) {
-          await loadSection('progress');
-        }
+        toast('Measurements saved! 💪', 'success');
+        ['log-weight','log-waist','log-thigh','log-arm','log-chest','log-notes'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+        loadHistory();
       } else {
         toast(data?.error || 'Failed to save — please try again', 'error');
       }
     } catch (e) {
       toast('Network error — please try again', 'error');
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = 'Save Progress 💪'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Save Measurements 💪'; }
     }
   }
 
