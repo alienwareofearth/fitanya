@@ -1002,6 +1002,12 @@ router.post('/monthly-games/:id/process-winners', async (req, res) => {
       }
     }
 
+    // End the game — once winners are processed it's officially closed
+    await db.execute({
+      sql: `UPDATE monthly_games SET is_active=0, updated_at=datetime('now') WHERE id=?`,
+      args: [id],
+    });
+
     res.json({ success: true, message: `Winners processed. ${winnersCount} member(s) completed all ${totalDays} days.`, winners: winnersCount });
   } catch (err) { console.error('[admin] process-winners:', err.message); res.status(500).json({ error: 'Failed.' }); }
 });
