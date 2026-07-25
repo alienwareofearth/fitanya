@@ -282,11 +282,13 @@ app.get('/auth/login/google/callback', async (req, res) => {
     // Block coaches and admins — Google login is members only
     if (user.role !== 'customer') return res.redirect('/login?error=not_member');
 
+    const prevLogin = user.last_login_at || null;
     await db.execute({ sql: `UPDATE users SET last_login_at = datetime('now') WHERE id = ?`, args: [user.id] });
 
     req.session.user = {
       id: user.id, name: user.name, email: user.email,
       role: user.role, profile_picture: user.profile_picture || picture || null,
+      prev_login: prevLogin,
     };
     res.redirect('/dashboard');
   } catch (err) {
