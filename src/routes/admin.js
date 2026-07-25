@@ -441,16 +441,14 @@ router.post('/members/:id/reassign-coach', async (req, res) => {
   try {
     const { coach_id } = req.body;
     const db = getDb();
-    const coachId = parseInt(coach_id);
+    const coachId = coach_id ? parseInt(coach_id) : null;
     const memberId = parseInt(req.params.id);
 
-    // Always store on users table (works even without a membership)
     await db.execute({
       sql: `UPDATE users SET assigned_coach_id = ? WHERE id = ?`,
       args: [coachId, memberId],
     });
 
-    // Also update active membership if one exists
     await db.execute({
       sql: `UPDATE memberships SET coach_id = ? WHERE user_id = ? AND status = 'active'`,
       args: [coachId, memberId],

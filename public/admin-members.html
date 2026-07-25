@@ -362,9 +362,11 @@
     document.getElementById('reassign-member-id').value = memberId;
     document.getElementById('reassign-member-name').textContent = memberName;
     const sel = document.getElementById('reassign-coach-id');
-    sel.innerHTML = allCoaches.filter(c => c.is_active).map(c =>
-      `<option value="${c.id}" ${String(c.id) === String(currentCoachId) ? 'selected' : ''}>${c.name}</option>`
-    ).join('');
+    sel.innerHTML =
+      `<option value="">— Remove Coach —</option>` +
+      allCoaches.filter(c => c.is_active).map(c =>
+        `<option value="${c.id}" ${String(c.id) === String(currentCoachId) ? 'selected' : ''}>${c.name}</option>`
+      ).join('');
     document.getElementById('reassign-modal').classList.remove('hidden');
   }
 
@@ -376,7 +378,7 @@
     try {
       const data = await api.post('/api/admin/members/' + memberId + '/reassign-coach', { coach_id: coachId });
       if (data?.success) {
-        toast('Coach assigned!', 'success');
+        toast(coachId ? 'Coach assigned!' : 'Coach removed!', 'success');
         closeModal('reassign-modal');
         init();
       } else toast(data?.error || 'Failed', 'error');
