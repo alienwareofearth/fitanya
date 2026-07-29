@@ -135,6 +135,11 @@ async function initDb() {
     await client.execute(`ALTER TABLE bookings ADD COLUMN is_offline INTEGER NOT NULL DEFAULT 0`);
   } catch (_) { /* column already exists */ }
 
+  // Migrate: track when admin publishes winners (for 5-day banner + popup logic)
+  try {
+    await client.execute(`ALTER TABLE monthly_games ADD COLUMN winners_declared_at TEXT DEFAULT NULL`);
+  } catch (_) { /* column already exists */ }
+
   // Health logs — daily data synced from iPhone Health via iOS Shortcuts
   await client.execute(`CREATE TABLE IF NOT EXISTS health_logs (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -1057,9 +1057,9 @@ router.post('/monthly-games/:id/process-winners', async (req, res) => {
       }
     }
 
-    // End the game — once winners are processed it's officially closed
+    // End the game and stamp winners_declared_at — used for 5-day banner/popup window
     await db.execute({
-      sql: `UPDATE monthly_games SET is_active=0, updated_at=datetime('now') WHERE id=?`,
+      sql: `UPDATE monthly_games SET is_active=0, winners_declared_at=datetime('now'), updated_at=datetime('now') WHERE id=?`,
       args: [id],
     });
 

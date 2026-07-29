@@ -722,6 +722,13 @@ router.get('/monthly-games', async (req, res) => {
     });
     const officialWinner = winnerRow.rows[0]?.is_winner === 1;
 
+    // Only show congrats popup within 5 days of winners being declared
+    const declaredAt = game.winners_declared_at || null;
+    const daysSinceDeclared = declaredAt
+      ? (Date.now() - new Date(declaredAt.replace(' ', 'T') + 'Z').getTime()) / 86400000
+      : null;
+    const withinCongratsWindow = officialWinner && declaredAt && daysSinceDeclared <= 5;
+
     res.json({
       success: true,
       game: game.is_active ? game : null,
@@ -729,6 +736,7 @@ router.get('/monthly-games', async (req, res) => {
         totalDays, completedDays, missedDays,
         daysElapsed: strictPastDays,
         completedDates, status, officialWinner,
+        withinCongratsWindow,
         game_id: game.id, start_date: game.start_date, end_date: game.end_date,
         today, userTz,
       },

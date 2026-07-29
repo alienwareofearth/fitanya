@@ -535,9 +535,10 @@ async function _initWinnerBanner() {
 }
 
 // ── Winner congratulations modal (member dashboard) ───────────────────────
-function showWinnerCongrats(challengeName, firstName) {
-  if (sessionStorage.getItem('congrats_shown')) return;
-  sessionStorage.setItem('congrats_shown', '1');
+function showWinnerCongrats(challengeName, firstName, gameId) {
+  const key = 'fitanya_congrats_' + (gameId || 'game');
+  if (localStorage.getItem(key)) return;
+  localStorage.setItem(key, '1');
 
   const nameGreeting = firstName ? `${firstName}, you're a` : 'You\'re a true';
   const overlay = document.createElement('div');

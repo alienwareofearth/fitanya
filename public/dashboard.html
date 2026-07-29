@@ -323,9 +323,10 @@
     async function checkWinnerCongrats() {
       try {
         const data = await api.get('/api/customer/monthly-games');
-        if (data?.progress?.officialWinner) {
+        if (data?.progress?.withinCongratsWindow) {
           const firstName = _user?.name?.split(' ')[0] || '';
-          showWinnerCongrats(data.recentGame?.title, firstName);
+          const gameId = data.recentGame?.id || data.progress?.game_id;
+          showWinnerCongrats(data.recentGame?.title, firstName, gameId);
         }
       } catch {}
     }
