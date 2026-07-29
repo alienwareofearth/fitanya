@@ -121,6 +121,17 @@
 
     @media (min-width: 900px) { .mg-wrap { padding: 0 24px 40px; } }
 
+    /* ── Light-theme overrides: mg-card has a dark background so force white text ── */
+    body.light .mg-card {
+      --white:    #FFFFFF;
+      --text:     rgba(255,255,255,0.88);
+      --text-dim: rgba(255,255,255,0.55);
+      --muted:    rgba(255,255,255,0.08);
+      --border:   rgba(255,92,0,0.25);
+    }
+    body.light .mg-inactive-title { color: var(--text); }
+    body.light .mg-inactive p { color: var(--text-dim); }
+
     /* ── Challenge tiles ──────────────────────────────────────────── */
     .ch-tile {
       background: var(--card); border: 1px solid var(--border);
