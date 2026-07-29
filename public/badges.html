@@ -221,6 +221,18 @@
       color: var(--text-dim); margin-top: -4px;
     }
 
+    /* ── Light theme: restore white text inside the dark badge-back ── */
+    body.light .badge-back {
+      --white:    #FFFFFF;
+      --text-dim: rgba(255,255,255,0.55);
+    }
+    body.light .badge-name    { color: #1A1A1A; }
+    body.light .badge-sub     { color: #888; }
+    body.light .badge-cell.missed .badge-name { color: #888; }
+    body.light .badges-hero h1 { color: #1A1A1A; }
+    body.light .badges-hero p  { color: #777; }
+    body.light .section-label  { color: #888; }
+
     /* Empty state */
     .empty-card {
       background: var(--card);
