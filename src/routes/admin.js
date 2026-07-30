@@ -210,7 +210,7 @@ router.post('/coaches/:id/reactivate', async (req, res) => {
 router.get('/members', async (req, res) => {
   const db = getDb();
   const result = await db.execute(`
-    SELECT u.id, u.name, u.email, u.phone, u.timezone, u.created_at, u.is_active,
+    SELECT u.id, u.name, u.email, u.phone, u.timezone, u.created_at, u.is_active, u.deleted_at,
            cp.fitness_goal, cp.food_preference,
            m.status as membership_status, m.sessions_total, m.sessions_used,
            COALESCE(m.coach_id, u.assigned_coach_id) as coach_id,

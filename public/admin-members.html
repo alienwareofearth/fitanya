@@ -319,7 +319,10 @@
           <td>${m.package_name || '—'}</td>
           <td id="coach-cell-${m.id}">${m.coach_name || '<span class="text-dim">Unassigned</span>'}</td>
           <td>${m.sessions_used != null ? m.sessions_used + '/' + m.sessions_total : '—'}</td>
-          <td><span class="badge ${m.membership_status === 'active' ? 'badge-green' : 'badge-yellow'}">${m.membership_status || 'no plan'}</span></td>
+          <td>${m.deleted_at
+            ? `<span class="badge badge-red">deleted</span>`
+            : `<span class="badge ${m.membership_status === 'active' ? 'badge-green' : 'badge-yellow'}">${m.membership_status || 'no plan'}</span>`
+          }</td>
           <td>
             <div class="action-rows">
               <div class="action-group">
