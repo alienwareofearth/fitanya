@@ -102,8 +102,9 @@
         <div class="breadcrumb">Fitanya Admin <span class="bc-sep">›</span> <span class="bc-current">Management › Members</span></div>
       </div>
     </div>
-    <div class="card mb-16">
-      <input class="form-control" id="search" placeholder="🔍 Search by name or email..." oninput="filterMembers()" style="max-width:320px" />
+    <div class="card mb-16" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <input class="form-control" id="search" placeholder="🔍 Search by name or email..." oninput="filterMembers()" style="max-width:320px;flex:1;min-width:200px" />
+      <button class="btn btn-dark" style="white-space:nowrap;border-color:rgba(239,68,68,0.4);color:#f87171" onclick="purgeTrialDeleted()">🗑 Purge Deleted Trial Users</button>
     </div>
     <div id="members-wrap"><div class="spinner"></div></div>
   </main>
@@ -347,6 +348,17 @@
   function filterMembers() {
     const q = document.getElementById('search').value.toLowerCase();
     renderMembers(allMembers.filter(m => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)));
+  }
+
+  async function purgeTrialDeleted() {
+    if (!confirm('This will permanently delete all data for deleted users who only had a Free Trial, and block their email/phone from getting another trial. Continue?')) return;
+    const data = await api.post('/api/admin/purge-trial-deleted', {});
+    if (data?.success) {
+      toast(`Purged ${data.purged} of ${data.found} deleted trial users`, data.purged > 0 ? 'success' : 'info');
+      init();
+    } else {
+      toast(data?.error || 'Purge failed', 'error');
+    }
   }
 
   async function assignTrial(memberId, btn) {

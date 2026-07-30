@@ -428,6 +428,16 @@ async function initDb() {
     expired_at TEXT NOT NULL
   )`);
 
+  // Trial blocklist — email/phone of users who already used a free trial
+  await client.execute(`CREATE TABLE IF NOT EXISTS trial_blocklist (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT,
+    phone TEXT,
+    blocked_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
+  try { await client.execute(`CREATE INDEX IF NOT EXISTS idx_trial_blocklist_email ON trial_blocklist(email)`); } catch (_) {}
+  try { await client.execute(`CREATE INDEX IF NOT EXISTS idx_trial_blocklist_phone ON trial_blocklist(phone)`); } catch (_) {}
+
   // Migrate progress_logs: change unique constraint from (user_id, week_number, year) to (user_id, log_date)
   // This allows multiple entries per week, fixing the overwrite-on-same-week bug.
   try {

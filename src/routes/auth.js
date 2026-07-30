@@ -179,11 +179,18 @@ router.post('/register', async (req, res) => {
     try {
       const trialPkg = await db.execute(`SELECT id FROM packages WHERE name = 'Free Trial' LIMIT 1`);
       if (trialPkg.rows.length) {
-        await db.execute({
-          sql: `INSERT INTO memberships (user_id, package_id, sessions_total, sessions_used, start_date, end_date, status, is_trial)
-                VALUES (?, ?, 1, 0, date('now'), date('now', '+30 days'), 'active', 1)`,
-          args: [userId, trialPkg.rows[0].id],
+        // Skip trial if email or phone is in the blocklist (previously used a trial)
+        const blocked = await db.execute({
+          sql: `SELECT id FROM trial_blocklist WHERE email = ? OR (phone IS NOT NULL AND phone = ?) LIMIT 1`,
+          args: [pending.email.toLowerCase(), safePhone || ''],
         });
+        if (!blocked.rows.length) {
+          await db.execute({
+            sql: `INSERT INTO memberships (user_id, package_id, sessions_total, sessions_used, start_date, end_date, status, is_trial)
+                  VALUES (?, ?, 1, 0, date('now'), date('now', '+30 days'), 'active', 1)`,
+            args: [userId, trialPkg.rows[0].id],
+          });
+        }
       }
     } catch (e) {
       console.warn('[auth] trial membership creation failed:', e.message);

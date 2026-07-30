@@ -396,6 +396,67 @@ router.get('/google-auth-url', (_req, res) => {
   res.json({ success: true, url });
 });
 
+// Admin: purge deleted trial-only users — hard delete their data, save email/phone to blocklist
+router.post('/purge-trial-deleted', async (_req, res) => {
+  try {
+    const db = getDb();
+
+    // Find deleted users whose only memberships were free trials
+    const targets = await db.execute(`
+      SELECT u.id, u.email, u.phone
+      FROM users u
+      WHERE u.deleted_at IS NOT NULL
+        AND u.role = 'customer'
+        AND NOT EXISTS (
+          SELECT 1 FROM memberships m
+          WHERE m.user_id = u.id AND m.is_trial = 0
+        )
+    `);
+
+    let purged = 0;
+    for (const u of targets.rows) {
+      try {
+        // Save to blocklist (ignore if already there)
+        if (u.email) {
+          await db.execute({
+            sql: `INSERT OR IGNORE INTO trial_blocklist (email, phone) VALUES (?, ?)`,
+            args: [u.email.toLowerCase(), u.phone || null],
+          });
+        } else if (u.phone) {
+          await db.execute({
+            sql: `INSERT OR IGNORE INTO trial_blocklist (email, phone) VALUES (?, ?)`,
+            args: [null, u.phone],
+          });
+        }
+
+        // Hard delete all user data (cascade handles profiles, but explicit for safety)
+        const uid = u.id;
+        await db.execute({ sql: `DELETE FROM monthly_game_participants WHERE user_id = ?`, args: [uid] });
+        await db.execute({ sql: `DELETE FROM progress_logs WHERE user_id = ?`, args: [uid] });
+        await db.execute({ sql: `DELETE FROM hydration_logs WHERE user_id = ?`, args: [uid] });
+        await db.execute({ sql: `DELETE FROM health_logs WHERE user_id = ?`, args: [uid] });
+        await db.execute({ sql: `DELETE FROM session_notes WHERE customer_id = ?`, args: [uid] });
+        await db.execute({ sql: `DELETE FROM bookings WHERE customer_id = ?`, args: [uid] });
+        await db.execute({ sql: `DELETE FROM notifications WHERE user_id = ?`, args: [uid] });
+        await db.execute({ sql: `DELETE FROM stories WHERE user_id = ?`, args: [uid] });
+        await db.execute({ sql: `DELETE FROM referrals WHERE referrer_id = ? OR referee_id = ?`, args: [uid, uid] });
+        await db.execute({ sql: `DELETE FROM memberships WHERE user_id = ?`, args: [uid] });
+        await db.execute({ sql: `DELETE FROM customer_profiles WHERE user_id = ?`, args: [uid] });
+        await db.execute({ sql: `DELETE FROM users WHERE id = ?`, args: [uid] });
+
+        purged++;
+      } catch (e) {
+        console.error(`[purge-trial] user ${u.id}:`, e.message);
+      }
+    }
+
+    res.json({ success: true, found: targets.rows.length, purged });
+  } catch (err) {
+    console.error('[admin] purge-trial-deleted:', err.message);
+    res.status(500).json({ error: 'Request failed. Please try again.' });
+  }
+});
+
 // Admin: regenerate Meet links for bookings that have broken/placeholder links
 router.post('/fix-meet-links', async (_req, res) => {
   try {
