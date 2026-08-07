@@ -717,8 +717,8 @@ router.post('/stories/:id/review', async (req, res) => {
     const db = getDb();
     const story = await db.execute({ sql: `SELECT user_id FROM stories WHERE id = ?`, args: [req.params.id] });
     await db.execute({
-      sql: `UPDATE stories SET status=?, admin_note=?, reviewed_by=?, reviewed_at=datetime('now') WHERE id=?`,
-      args: [status, admin_note || null, 0, req.params.id],
+      sql: `UPDATE stories SET status=?, admin_note=?, reviewed_by=NULL, reviewed_at=datetime('now') WHERE id=?`,
+      args: [status, admin_note || null, req.params.id],
     });
     res.json({ success: true });
     // Fire notification after responding so it never blocks or fails the approval
