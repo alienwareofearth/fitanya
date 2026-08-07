@@ -680,15 +680,16 @@ router.post('/stories/:id/review', async (req, res) => {
     const story = await db.execute({ sql: `SELECT user_id FROM stories WHERE id = ?`, args: [req.params.id] });
     await db.execute({
       sql: `UPDATE stories SET status=?, admin_note=?, reviewed_by=?, reviewed_at=datetime('now') WHERE id=?`,
-      args: [status, admin_note, req.session.user.id, req.params.id],
+      args: [status, admin_note || null, 0, req.params.id],
     });
+    res.json({ success: true });
+    // Fire notification after responding so it never blocks or fails the approval
     const userId = story.rows[0]?.user_id;
     if (userId) {
       const { notify } = require('../services/notifications');
-      if (status === 'approved') await notify.storyApproved(userId);
-      else await notify.storyRejected(userId, admin_note);
+      if (status === 'approved') notify.storyApproved(userId).catch(() => {});
+      else notify.storyRejected(userId, admin_note).catch(() => {});
     }
-    res.json({ success: true });
   } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
