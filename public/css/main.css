@@ -1078,6 +1078,12 @@ body.light .dp-num { color: #333; }
 body.light .dp-day { color: #888; }
 body.light .date-pill:hover { background: rgba(255,92,0,0.07); }
 body.light .date-pill.past { opacity: 0.35; }
+body.light .date-pill.today { background: var(--orange) !important; }
+body.light .date-pill.today .dp-num { color: #fff; }
+body.light .date-pill.today .dp-day { color: rgba(255,255,255,.85); }
+body.light .date-pill.selected { background: rgba(255,92,0,.15) !important; }
+body.light .date-pill.selected .dp-num { color: var(--orange); }
+body.light .date-pill.selected .dp-day { color: var(--orange); }
 
 /* Tab bar (schedule page) */
 body.light .sched-tab-bar {
