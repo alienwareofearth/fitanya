@@ -396,6 +396,44 @@ router.get('/google-auth-url', (_req, res) => {
   res.json({ success: true, url });
 });
 
+// GET /api/admin/google-token-status — check where the token is coming from
+router.get('/google-token-status', async (_req, res) => {
+  try {
+    const db = getDb();
+    const row = await db.execute(`SELECT value, updated_at FROM app_settings WHERE key = 'google_refresh_token' LIMIT 1`);
+    if (row.rows.length && row.rows[0].value) {
+      return res.json({ success: true, source: 'db', updatedAt: row.rows[0].updated_at });
+    }
+    if (process.env.GOOGLE_REFRESH_TOKEN) {
+      return res.json({ success: true, source: 'env' });
+    }
+    res.json({ success: true, source: 'none' });
+  } catch (err) {
+    console.error('[admin] google-token-status:', err.message);
+    res.status(500).json({ error: 'Request failed. Please try again.' });
+  }
+});
+
+// POST /api/admin/save-google-token — manually save a refresh token to DB
+router.post('/save-google-token', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token || typeof token !== 'string' || !token.trim()) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+    const db = getDb();
+    await db.execute({
+      sql: `INSERT INTO app_settings (key, value, updated_at) VALUES ('google_refresh_token', ?, datetime('now'))
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+      args: [token.trim()],
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[admin] save-google-token:', err.message);
+    res.status(500).json({ error: 'Request failed. Please try again.' });
+  }
+});
+
 // Admin: purge deleted trial-only users — hard delete their data, save email/phone to blocklist
 router.post('/purge-trial-deleted', async (_req, res) => {
   try {

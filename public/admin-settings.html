@@ -56,25 +56,63 @@
 
     <div class="card" style="max-width:540px">
       <div class="section-title mb-4">Google Meet</div>
-      <p class="text-dim text-small mb-16">If members are seeing "Link Pending", the Google authorization token has expired. Re-authorize below to get a new token, then fix all pending links.</p>
-      <div class="flex gap-12 flex-wrap">
+      <p class="text-dim text-small mb-8">If members are seeing "Link Pending", the Google authorization token has expired. Re-authorize below — the token is saved directly to the database, no redeployment needed.</p>
+
+      <!-- Token status -->
+      <div id="token-status-bar" style="display:flex;align-items:center;gap:10px;background:var(--dark);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:16px">
+        <span id="token-status-icon">⏳</span>
+        <span id="token-status-text" class="text-dim text-small">Checking token status…</span>
+      </div>
+
+      <!-- Primary actions -->
+      <div class="flex gap-12 flex-wrap mb-16">
         <button class="btn btn-primary" onclick="reauthorizeGoogle(this)">🔑 Re-authorize Google Calendar</button>
         <button class="btn btn-dark" onclick="fixMeetLinks(this)">🔧 Fix Pending Meet Links</button>
       </div>
-      <p class="text-dim text-small mt-8" id="meet-status"></p>
+
+      <!-- Manual token entry (fallback when Google doesn't return a new token) -->
+      <details style="margin-top:4px">
+        <summary style="cursor:pointer;font-size:13px;color:var(--text-dim);user-select:none">⚙️ Manually paste refresh token</summary>
+        <div style="margin-top:12px">
+          <p class="text-dim text-small mb-8">Use this if re-authorize didn't return a new token. Paste the token from <code>myaccount.google.com/permissions</code> after revoking and re-doing the flow, or from your previous Render env var.</p>
+          <textarea id="manual-token" class="form-control" rows="3" placeholder="Paste refresh token here…" style="font-family:monospace;font-size:12px;resize:vertical"></textarea>
+          <button class="btn btn-primary mt-8" onclick="saveManualToken(this)">💾 Save Token to Database</button>
+        </div>
+      </details>
     </div>
   </main>
 </div>
 <div id="toast-container"></div>
 <script src="/js/app.js"></script>
 <script>
+  async function loadTokenStatus() {
+    const data = await api.get('/api/admin/google-token-status');
+    const icon = document.getElementById('token-status-icon');
+    const text = document.getElementById('token-status-text');
+    if (!data) return;
+    if (data.source === 'db') {
+      icon.textContent = '✅';
+      const when = data.updatedAt ? ' — saved ' + new Date(data.updatedAt + 'Z').toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+      text.textContent = 'Token stored in database' + when + '. Re-authorize when members see "Link Pending".';
+      text.style.color = '';
+    } else if (data.source === 'env') {
+      icon.textContent = '⚠️';
+      text.textContent = 'Token is from environment variable (Render). Re-authorize once to save it to the database and avoid future redeployments.';
+      text.style.color = '#fbbf24';
+    } else {
+      icon.textContent = '❌';
+      text.textContent = 'No token found — Google Meet links cannot be created until you re-authorize.';
+      text.style.color = '#f87171';
+    }
+  }
+
   async function reauthorizeGoogle(btn) {
     btn.disabled = true; btn.textContent = 'Opening…';
     const data = await api.get('/api/admin/google-auth-url');
     btn.disabled = false; btn.textContent = '🔑 Re-authorize Google Calendar';
     if (data?.url) {
       window.open(data.url, '_blank');
-      document.getElementById('meet-status').textContent = 'A Google sign-in page opened. After authorizing, copy the new GOOGLE_REFRESH_TOKEN shown and update it in your Render environment variables, then redeploy.';
+      toast('Google sign-in opened. After authorizing, the token is saved automatically — come back and click Fix Pending Meet Links.', 'info');
     } else {
       toast('Failed to generate auth URL', 'error');
     }
@@ -85,14 +123,31 @@
     const data = await api.post('/api/admin/fix-meet-links', {});
     btn.disabled = false; btn.textContent = '🔧 Fix Pending Meet Links';
     if (data?.success) {
-      toast(data.message || 'Done!', 'success');
-      document.getElementById('meet-status').textContent = data.message || 'Meet links fixed.';
+      const msg = `Fixed ${data.fixed} of ${data.total} pending links.`;
+      toast(msg, 'success');
+      loadTokenStatus();
     } else {
       toast(data?.error || 'Failed', 'error');
     }
   }
 
+  async function saveManualToken(btn) {
+    const token = document.getElementById('manual-token').value.trim();
+    if (!token) { toast('Please paste a token first', 'error'); return; }
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const data = await api.post('/api/admin/save-google-token', { token });
+    btn.disabled = false; btn.textContent = '💾 Save Token to Database';
+    if (data?.success) {
+      toast('Token saved to database ✅', 'success');
+      document.getElementById('manual-token').value = '';
+      loadTokenStatus();
+    } else {
+      toast(data?.error || 'Failed to save token', 'error');
+    }
+  }
+
   async function init() {
+    loadTokenStatus();
     const data = await api.get('/api/admin/referral-config');
     if (!data?.success) { window.location.href = '/login'; return; }
     const c = data.config;

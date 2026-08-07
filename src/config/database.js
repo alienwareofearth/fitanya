@@ -428,6 +428,13 @@ async function initDb() {
     expired_at TEXT NOT NULL
   )`);
 
+  // App settings / secrets stored in DB (avoids redeployment for rotating tokens)
+  await client.execute(`CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
+
   // Trial blocklist — email/phone of users who already used a free trial
   await client.execute(`CREATE TABLE IF NOT EXISTS trial_blocklist (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

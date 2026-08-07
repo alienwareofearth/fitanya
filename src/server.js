@@ -343,14 +343,24 @@ app.get('/auth/google/callback', (req, res, next) => {
     );
     const { tokens } = await oauth2Client.getToken(code);
     const refreshToken = tokens.refresh_token;
+    if (refreshToken) {
+      const { getDb } = require('./config/database');
+      const db = getDb();
+      await db.execute({
+        sql: `INSERT INTO app_settings (key, value, updated_at) VALUES ('google_refresh_token', ?, datetime('now'))
+              ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+        args: [refreshToken],
+      });
+    }
     res.send(`
       <html><body style="font-family:sans-serif;max-width:600px;margin:60px auto;padding:20px">
-        <h2>✅ Google Authorization Successful</h2>
+        <h2>${refreshToken ? '✅ Google Authorization Successful' : '⚠️ Authorization Completed — No New Token'}</h2>
         ${refreshToken
-          ? `<p>Copy this new <strong>GOOGLE_REFRESH_TOKEN</strong> and paste it into your Render environment variables:</p>
-             <textarea rows="4" style="width:100%;font-family:monospace;font-size:13px;padding:10px" onclick="this.select()">${refreshToken}</textarea>
-             <p style="color:#666;font-size:13px">After updating the env var in Render, redeploy the service. Then go to Admin → Settings → Fix Meet Links.</p>`
-          : `<p style="color:orange">⚠️ No refresh token returned — Google may have omitted it because this account already authorized the app. Try revoking access at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a> and re-authorizing.</p>`
+          ? `<p>✅ The new refresh token has been <strong>saved automatically</strong> to the database. No redeployment needed.</p>
+             <p><a href="/admin/settings" style="color:#FF5C00;font-weight:600">← Back to Admin Settings</a> — then click <strong>Fix Pending Meet Links</strong>.</p>`
+          : `<p style="color:orange">No refresh token returned — Google omitted it because this account already authorized the app previously.</p>
+             <p>Try revoking access at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>, then re-authorize. Or paste the existing token manually in Admin → Settings.</p>
+             <p><a href="/admin/settings" style="color:#FF5C00">← Back to Admin Settings</a></p>`
         }
       </body></html>
     `);
