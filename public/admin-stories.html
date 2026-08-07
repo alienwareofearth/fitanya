@@ -80,7 +80,23 @@
     return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
 
+  let currentTab = 'pending';
+
+  async function deleteStory(id, btn) {
+    if (!confirm('Permanently delete this review? This cannot be undone.')) return;
+    btn.disabled = true;
+    const data = await api.del('/api/admin/stories/' + id);
+    if (data?.success) {
+      toast('Review deleted', 'info');
+      loadStories(currentTab);
+    } else {
+      btn.disabled = false;
+      toast(data?.error || 'Delete failed', 'error');
+    }
+  }
+
   async function loadStories(status = 'pending') {
+    currentTab = status;
     const data = await api.get('/api/admin/stories?status=' + status);
     if (!data?.success) { window.location.href = '/login'; return; }
     const el = document.getElementById('stories-wrap');
@@ -89,9 +105,10 @@
       <div class="card mb-24">
         <div class="flex-between mb-16">
           <div><strong class="text-white">${e(s.user_name)}</strong><br><span class="text-dim text-small">${formatDate(s.created_at)}</span></div>
-          <div class="flex gap-8">
+          <div class="flex gap-8 align-center">
             <span class="badge ${s.status==='approved'?'badge-green':s.status==='rejected'?'badge-red':'badge-yellow'}">${s.status}</span>
             ${status === 'pending' ? `<button class="btn btn-primary btn-sm" data-id="${e(s.id)}" data-name="${e(s.user_name)}" data-body="${e(s.body)}" data-photo="${e(s.photo_url||'')}" onclick="openReview(this)">Review</button>` : ''}
+            <button class="btn btn-sm" style="border-color:var(--red);color:var(--red)" onclick="deleteStory(${s.id}, this)">🗑 Delete</button>
           </div>
         </div>
         ${s.photo_url ? `<img src="${e(s.photo_url)}" style="width:100%;max-height:200px;object-fit:cover;border-radius:var(--radius-sm);margin-bottom:12px" />` : ''}

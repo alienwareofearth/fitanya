@@ -731,6 +731,15 @@ router.post('/stories/:id/review', async (req, res) => {
   } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
 });
 
+router.delete('/stories/:id', async (req, res) => {
+  try {
+    const db = getDb();
+    const result = await db.execute({ sql: `DELETE FROM stories WHERE id = ?`, args: [req.params.id] });
+    if (result.rowsAffected === 0) return res.status(404).json({ error: 'Story not found' });
+    res.json({ success: true });
+  } catch (err) { console.error('[admin]', err.message); res.status(500).json({ error: 'Request failed. Please try again.' }); }
+});
+
 // ── Referral Config ───────────────────────────────────────────────────────────
 router.get('/referral-config', async (req, res) => {
   const db = getDb();
